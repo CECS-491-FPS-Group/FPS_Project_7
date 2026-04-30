@@ -83,6 +83,9 @@ crashlytics-build.properties
 # TestRunner generated files
 InitTestScene*.unity*
 
+# Database heavy plugins (surpass the 100MB limit)
+Assets/Firebase/Plugins/
+
 # Addressables default ignores, before user customizations
 /ServerData
 /[Aa]ssets/StreamingAssets/aa*

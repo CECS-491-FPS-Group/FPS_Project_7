@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "916932663106",
+    "firebase_url": "https://fps-project-7-db-default-rtdb.firebaseio.com",
+    "project_id": "fps-project-7-db",
+    "storage_bucket": "fps-project-7-db.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:916932663106:android:369284444a168d798fdadb",
+        "android_client_info": {
+          "package_name": "com.EliasG.fpsproject"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvdEmxkQFFb2LanuTcFTe0KMumG95hWsM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
