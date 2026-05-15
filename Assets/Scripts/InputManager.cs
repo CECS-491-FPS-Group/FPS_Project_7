@@ -17,7 +17,7 @@ public class InputManager : MonoBehaviour
         
     }
 
-    private void onEnable()
+    private void OnEnable()
     {
         gameplayActions.Enable();
     }

@@ -7,7 +7,7 @@ public class PlayerController : NetworkBehaviour
 
     void Update()
     {
-        // If the person pressing the keus does NOT own this character, stop the code right away
+        // If the person pressing the keys does NOT own this character, stop the code right away
         if (!base.IsOwner)
             return;
         
