@@ -14,6 +14,7 @@
 .idea/
 .vscode/
 *.erp
+.DS_Store
 
 # By default unity supports Blender asset imports, *.blend1 blender files do not need to be commited to version control.
 *.blend1
@@ -82,6 +83,9 @@ crashlytics-build.properties
 
 # TestRunner generated files
 InitTestScene*.unity*
+
+# Database heavy plugins (surpass the 100MB limit)
+Assets/Firebase/Plugins/
 
 # Addressables default ignores, before user customizations
 /ServerData
