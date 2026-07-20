@@ -1,7 +1,8 @@
 using UnityEngine;
 using FishNet.Object;
 
-public class PlayerController : NetworkBehaviour
+public class NetworkPlayerController : NetworkBehaviour
+
 {
     public float moveSpeed = 5f;
 
