@@ -43,6 +43,15 @@
                     "initialStateCheck": false
                 },
                 {
+                    "name": "Crouch",
+                    "type": "PassThrough",
+                    "id": "883eeb1f-c2f6-4536-8014-edd49f915272",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
                     "name": "Shoot",
                     "type": "Button",
                     "id": "afc4ec2c-5bd7-4eff-9b68-bfd7041cdd8f",
@@ -226,6 +235,17 @@
                     "processors": "",
                     "groups": "Gamepad",
                     "action": "Sprint",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "ac63b17c-d20f-4239-971f-a3443a7c34ea",
+                    "path": "<Keyboard>/leftCtrl",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "KeyboardMouse",
+                    "action": "Crouch",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },

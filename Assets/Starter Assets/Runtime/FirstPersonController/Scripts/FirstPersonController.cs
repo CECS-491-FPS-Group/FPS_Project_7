@@ -15,13 +15,15 @@ namespace StarterAssets
 		[Tooltip("Move speed of the character in m/s")]
 		public float MoveSpeed = 4.0f;
 		[Tooltip("Sprint speed of the character in m/s")]
-		public float SprintSpeed = 6.0f;
-		[Tooltip("Rotation speed of the character")]
+		public float SprintSpeed = 8.0f;
+        [Tooltip("Crouch speed of the character in m/s")]
+        public float CrouchSpeed = 1.0f;
+        [Tooltip("Rotation speed of the character")]
 		public float RotationSpeed = 1.0f;
 		[Tooltip("Acceleration and deceleration")]
 		public float SpeedChangeRate = 10.0f;
 
-		[Space(10)]
+        [Space(10)]
 		[Tooltip("The height the player can jump")]
 		public float JumpHeight = 1.2f;
 		[Tooltip("The character uses its own gravity value. The engine default is -9.81f")]
@@ -154,7 +156,7 @@ namespace StarterAssets
 		private void Move()
 		{
 			// set target speed based on move speed, sprint speed and if sprint is pressed
-			float targetSpeed = _input.sprint ? SprintSpeed : MoveSpeed;
+			float targetSpeed = _input.sprint ? SprintSpeed : _input.crouch ? CrouchSpeed : MoveSpeed;
 
 			// a simplistic acceleration and deceleration designed to be easy to remove, replace, or iterate upon
 

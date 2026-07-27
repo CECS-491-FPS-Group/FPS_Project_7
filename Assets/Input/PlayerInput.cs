@@ -170,7 +170,7 @@ public partial class @PlayerInput: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""299d6b79-b92e-4b6f-886f-f8953b6b76e1"",
-                    ""path"": ""<Keyboard>/space"",
+                    ""path"": ""<Keyboard>/leftCtrl"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": "";DefaultKBM"",

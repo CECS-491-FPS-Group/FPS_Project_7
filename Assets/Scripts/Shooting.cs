@@ -6,11 +6,13 @@ public class HitscanShooter : MonoBehaviour
     public int damage = 40;
     public float range = 100f;
 
+    private GameObject _mainCamera;
     private Camera cam;
 
     private void Awake()
     {
-        cam = GetComponent<Camera>();
+        _mainCamera = GameObject.FindGameObjectWithTag("MainCamera");
+        cam = _mainCamera.GetComponent<Camera>();
     }
 
     private void Update()
