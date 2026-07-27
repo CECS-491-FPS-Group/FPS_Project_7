@@ -113,6 +113,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -1449842966210500793, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      propertyPath: <PrefabId>k__BackingField
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: -1449842966210500793, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: <AssetPathHash>k__BackingField
       value: 7293770709239535224
       objectReference: {fileID: 0}
@@ -123,6 +127,10 @@ PrefabInstance:
     - target: {fileID: 1240188883754520712, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1240188883754520719, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      propertyPath: GroundLayers.m_Bits
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 1908921049238719026, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: m_LocalPosition.x
