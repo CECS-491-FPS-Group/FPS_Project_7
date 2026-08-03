@@ -14,6 +14,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/LobbyScene_v1.unity
     guid: e0435432f60de37418654cb1d1087bf2
+  - enabled: 1
+    path: Assets/Starter Assets/Sample/FirstPersonController/Playground.unity
+    guid: 707acc8dffb72b144bb1ffbe1c965f3d
   m_configObjects:
     com.unity.input.settings: {fileID: 11400000, guid: 9e7be553448fa2546aea5752021cbcf7, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
