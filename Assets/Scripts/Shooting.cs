@@ -2,6 +2,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+
+
+// from how things look, there will be separate shooting codes for each weapon and they will gnerally follow this sccript (correct me if im wrong)
+// each individual weapon will have different recoil, damaage, and hitmarkers appropriate to the weapon, and currently all thsese properties are adjustable in the inspector.
+// right now its all about polishing thw code so that it looks correct.
+
 public class HitscanShooter : MonoBehaviour
 {
 
@@ -20,10 +26,13 @@ public class HitscanShooter : MonoBehaviour
     private Vector3 originalRotation;
     private float currentRecoil;
 
-    // Hitmarker
+    // Hitmarker (use a queue to determine which hitmarker to destroy after 8 are spawned, and since it makes sense to be time based))
     public GameObject hitMarker;
     public int maxHitMarkers = 8;
     private Queue<GameObject> hitMarkers = new Queue<GameObject>();
+
+
+    // ignore the recoil code for now, i learned that there is a better way to handle recoil. the current version has it so that you dont return to the original position after shooting. so its pretty bad code right now.
 
 
 
@@ -31,6 +40,8 @@ public class HitscanShooter : MonoBehaviour
     {
         cam = GetComponentInChildren<Camera>();
 
+
+        //used for recoil code. ignore for now. though maygbe it wont be changed i need to check online how to handle recoil so that it returns to position of 1st shot.
         originalRotation = cam.transform.localEulerAngles;
     }
 
@@ -44,11 +55,16 @@ public class HitscanShooter : MonoBehaviour
         HandleRecoil();
     }
 
+
+
     private void ApplyRecoil()
     {
         currentRecoil -= recoilAmount;
     }
 
+
+    // i want to say thaat the firat position of the the camera when the first shot is taken will be recorded here. it feels like i will need to have the camera try and "revert" back to the original
+    // orientaation gradually. like the camera should naturally return to the base after the last shot is fired. thats the hard part i think. 
     private void HandleRecoil()
     {
         currentRecoil = Mathf.Lerp(
@@ -108,7 +124,7 @@ public class HitscanShooter : MonoBehaviour
             }
         }
 
-        // Apply recoil every shot
+
         ApplyRecoil();
 
         Debug.DrawRay(ray.origin, ray.direction * range, Color.red, 1f);
