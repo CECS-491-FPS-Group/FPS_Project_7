@@ -21,7 +21,7 @@ public class SpeedHackDetector : NetworkBehaviour
     {
         // THE SECURITY LOCK: Only the Host/Server is allowed to run this code!
         // If a client tries to run this, it immediately stops.
-        if (!base.IsServer)
+        if (!base.IsServerInitialized)
             return;
 
         timer += Time.deltaTime;
