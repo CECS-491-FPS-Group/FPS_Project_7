@@ -1,11 +1,43 @@
 using UnityEngine;
-using TMPro;    // We need this to read TextMeshPro Input Field
+using TMPro;
 using FishNet;
+using FishNet.Managing.Scened;
+using FishNet.Transporting;
 
 public class  LobbyConnection : MonoBehaviour
 {
     [Header("UI References")]
     public TMP_InputField ipInputField; // Input field for IP address
+
+    private void Awake()
+    {
+        // Subscribe to the server state event so we know exactly when it finishes starting
+        InstanceFinder.ServerManager.OnServerConnectionState += OnServerStateChanged;
+    }
+
+    private void OnDestroy()
+    {
+        // Always unsubscribe from events when the object is destroyed to prevent memory leaks
+        if (InstanceFinder.ServerManager != null)
+        {
+            InstanceFinder.ServerManager.OnServerConnectionState -= OnServerStateChanged;
+        }
+    }
+
+    private void OnServerStateChanged(ServerConnectionStateArgs args)
+    {
+        // Check if the server has started successfully, then load the lobby
+        if (args.ConnectionState == LocalConnectionState.Started)
+        {
+            SceneLoadData sld = new SceneLoadData("LobbyScene_v1");
+            sld.ReplaceScenes = ReplaceOption.All;
+            InstanceFinder.SceneManager.LoadGlobalScenes(sld);
+        }
+        else if (args.ConnectionState == LocalConnectionState.Stopped)
+        {
+            Debug.Log("Server stopped.");
+        }
+    }
 
     // This gets called when the Host button is clicked
     public void StartHost()
