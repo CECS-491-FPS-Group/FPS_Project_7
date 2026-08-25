@@ -1953,6 +1953,11 @@ MonoBehaviour:
   - {fileID: 2009691101}
   - {fileID: 460672100}
   - {fileID: 1596497769}
+  statusSlots:
+  - {fileID: 799282961}
+  - {fileID: 1669376408}
+  - {fileID: 293649319}
+  - {fileID: 1298723586}
 --- !u!4 &885133746
 Transform:
   m_ObjectHideFlags: 0
@@ -2811,9 +2816,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 599530809}
-        m_TargetAssemblyTypeName: LobbyBehavior, Assembly-CSharp
-        m_MethodName: onReady
+      - m_Target: {fileID: 885133745}
+        m_TargetAssemblyTypeName: NetworkLobbyUI, Assembly-CSharp
+        m_MethodName: ReadyUpClicked
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
