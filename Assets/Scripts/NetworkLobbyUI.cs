@@ -32,8 +32,8 @@ public class NetworkLobbyUI : NetworkBehaviour
 
         // Add the Host to the List immediately
         _playerClientIds.Add(0);
-        _playerNames.Add("<Host> Player 0");
         _playerReady.Add(false);    // default to not ready
+        _playerNames.Add("<Host> Player 0");
 
         // Tell the server to listen for new people joining
         ServerManager.OnRemoteConnectionState += OnClientConnectionState;
@@ -46,8 +46,8 @@ public class NetworkLobbyUI : NetworkBehaviour
         {
             // A remove client joined! Add them to the synced list.
             _playerClientIds.Add(conn.ClientId);
-            _playerNames.Add($"Player {conn.ClientId}");
             _playerReady.Add(false);
+            _playerNames.Add($"Player {conn.ClientId}");
         }
         else if (args.ConnectionState == RemoteConnectionState.Stopped)
         {
