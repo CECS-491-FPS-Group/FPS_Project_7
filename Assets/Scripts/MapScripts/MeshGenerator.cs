@@ -4,7 +4,7 @@ using System.Collections;
 public static class MeshGenerator {
 
 
-	public static MeshData GenerateTerrainMesh(float[,] heightMap, MeshSettings meshSettings, int levelOfDetail) {
+	public static MeshData GenerateTerrainMesh(float[,] heightMap, float[,] surfaceMask, MeshSettings meshSettings, int levelOfDetail) {
 
 		int skipIncrement = (levelOfDetail == 0)?1:levelOfDetail * 2;
 		int numVertsPerLine = meshSettings.numVertsPerLine;
@@ -58,7 +58,8 @@ public static class MeshGenerator {
 						height = heightMainVertexA * (1 - dstPercentFromAToB) + heightMainVertexB * dstPercentFromAToB;
 					}
 
-					meshData.AddVertex (new Vector3(vertexPosition2D.x, height, vertexPosition2D.y), percent, vertexIndex);
+					float mask = surfaceMask != null ? surfaceMask [x, y] : 0f;
+					meshData.AddVertex (new Vector3(vertexPosition2D.x, height, vertexPosition2D.y), percent, mask, vertexIndex);
 
 					bool createTriangle = x < numVertsPerLine - 1 && y < numVertsPerLine - 1 && (!isEdgeConnectionVertex || (x != 2 && y != 2));
 
@@ -87,6 +88,7 @@ public class MeshData {
 	Vector3[] vertices;
 	int[] triangles;
 	Vector2[] uvs;
+	Color32[] colors;
 	Vector3[] bakedNormals;
 
 	Vector3[] outOfMeshVertices;
@@ -107,6 +109,7 @@ public class MeshData {
 
 		vertices = new Vector3[numMeshEdgeVertices + numEdgeConnectionVertices + numMainVertices];
 		uvs = new Vector2[vertices.Length];
+		colors = new Color32[vertices.Length];
 
 		int numMeshEdgeTriangles = 8 * (numVertsPerLine - 4);
 		int numMainTriangles = (numMainVerticesPerLine - 1) * (numMainVerticesPerLine - 1) * 2;
@@ -116,12 +119,14 @@ public class MeshData {
 		outOfMeshTriangles = new int[24 * (numVertsPerLine-2)];
 	}
 
-	public void AddVertex(Vector3 vertexPosition, Vector2 uv, int vertexIndex) {
+	public void AddVertex(Vector3 vertexPosition, Vector2 uv, float surfaceMask, int vertexIndex) {
 		if (vertexIndex < 0) {
 			outOfMeshVertices [-vertexIndex - 1] = vertexPosition;
 		} else {
 			vertices [vertexIndex] = vertexPosition;
 			uvs [vertexIndex] = uv;
+			// Red carries the layout mask; the other channels are free for later surface data.
+			colors [vertexIndex] = new Color32 ((byte)Mathf.RoundToInt (Mathf.Clamp01 (surfaceMask) * 255f), 0, 0, 255);
 		}
 	}
 
@@ -208,15 +213,18 @@ public class MeshData {
 	void FlatShading() {
 		Vector3[] flatShadedVertices = new Vector3[triangles.Length];
 		Vector2[] flatShadedUvs = new Vector2[triangles.Length];
+		Color32[] flatShadedColors = new Color32[triangles.Length];
 
 		for (int i = 0; i < triangles.Length; i++) {
 			flatShadedVertices [i] = vertices [triangles [i]];
 			flatShadedUvs [i] = uvs [triangles [i]];
+			flatShadedColors [i] = colors [triangles [i]];
 			triangles [i] = i;
 		}
 
 		vertices = flatShadedVertices;
 		uvs = flatShadedUvs;
+		colors = flatShadedColors;
 	}
 
 	public Mesh CreateMesh() {
@@ -224,6 +232,7 @@ public class MeshData {
 		mesh.vertices = vertices;
 		mesh.triangles = triangles;
 		mesh.uv = uvs;
+		mesh.colors32 = colors;
 		if (useFlatShading) {
 			mesh.RecalculateNormals ();
 		} else {

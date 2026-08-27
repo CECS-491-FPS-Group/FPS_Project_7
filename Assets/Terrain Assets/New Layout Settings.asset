@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76ed669e83fb4ecb97c29366fffa9048, type: 3}
+  m_Name: New Layout Settings
+  m_EditorClassIdentifier: Assembly-CSharp::LayoutSettings
+  autoUpdate: 1
+  poiCount: 8
+  minPoiSpacing: 160
+  edgeInset: 110
+  maxPoiSlopeDegrees: 18
+  minPoiHeight: 2
+  roadHalfWidth: 5
+  roadShoulder: 10
+  extraRoadLinks: 2
+  roadCurveJitter: 0.18
+  samplesPerRoadSpan: 10
+  gradeSmoothingPasses: 6
+  maxRoadGradeDegrees: 12
+  plotsPerPoi: 4
+  plotSizeRange: {x: 9, y: 18}
+  plotShoulder: 5
+  maxPlotSlopeDegrees: 15
+  plotRoadClearance: 3
+  plotMaxRoadDistance: 26
+  plotSpacing: 6
+  plotPlacementAttempts: 40
