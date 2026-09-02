@@ -413,7 +413,7 @@ GameObject:
   - component: {fileID: 67769984}
   - component: {fileID: 67769987}
   m_Layer: 5
-  m_Name: ConnectionIcon
+  m_Name: P3ConnectionIcon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -954,7 +954,7 @@ GameObject:
   - component: {fileID: 293649319}
   - component: {fileID: 293649318}
   m_Layer: 5
-  m_Name: StatusText
+  m_Name: P3StatusText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1508,7 +1508,7 @@ GameObject:
   - component: {fileID: 460672100}
   - component: {fileID: 460672099}
   m_Layer: 5
-  m_Name: Player3NameText
+  m_Name: P3NameText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2149,7 +2149,7 @@ GameObject:
   - component: {fileID: 673357846}
   - component: {fileID: 673357849}
   m_Layer: 5
-  m_Name: ConnectionIcon
+  m_Name: P2ConnectionIcon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2578,7 +2578,7 @@ GameObject:
   - component: {fileID: 799282961}
   - component: {fileID: 799282960}
   m_Layer: 5
-  m_Name: StatusText
+  m_Name: P1StatusText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2670,8 +2670,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 18
-  m_fontSizeBase: 18
+  m_fontSize: 20
+  m_fontSizeBase: 20
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -2780,7 +2780,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: READY UP
+  m_text: READY
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -3089,11 +3089,19 @@ MonoBehaviour:
   - {fileID: 2009691101}
   - {fileID: 460672100}
   - {fileID: 1596497769}
+  statusSlots:
+  - {fileID: 799282961}
+  - {fileID: 1669376408}
+  - {fileID: 293649319}
+  - {fileID: 1298723586}
   connectionBars:
   - {fileID: 977394684}
   - {fileID: 673357849}
   - {fileID: 67769987}
   - {fileID: 1575221335}
+  readyButtonImage: {fileID: 1339364881}
+  readyButtonText: {fileID: 810421356}
+  startGameButton: {fileID: 1056033632}
   maximumReportedPing: 60000
   maximumPlayers: 4
 --- !u!4 &885133746
@@ -3337,7 +3345,7 @@ GameObject:
   - component: {fileID: 977394681}
   - component: {fileID: 977394684}
   m_Layer: 5
-  m_Name: ConnectionIcon
+  m_Name: P1ConnectionIcon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3820,7 +3828,7 @@ MonoBehaviour:
     m_HighlightedColor: {r: 0.3529412, g: 0.54901963, b: 1, a: 1}
     m_PressedColor: {r: 0.15686275, g: 0.3137255, b: 0.7058824, a: 1}
     m_SelectedColor: {r: 0.27450982, g: 0.50980395, b: 1, a: 1}
-    m_DisabledColor: {r: 0.47058824, g: 0.47058824, b: 0.47058824, a: 1}
+    m_DisabledColor: {r: 0.26415092, g: 0.26415092, b: 0.26415092, a: 1}
     m_ColorMultiplier: 1
     m_FadeDuration: 0.1
   m_SpriteState:
@@ -3838,7 +3846,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1056033633}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 885133745}
+        m_TargetAssemblyTypeName: NetworkLobbyUI, Assembly-CSharp
+        m_MethodName: StartGameClicked
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1056033633
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4180,7 +4200,7 @@ GameObject:
   - component: {fileID: 1298723586}
   - component: {fileID: 1298723585}
   m_Layer: 5
-  m_Name: StatusText
+  m_Name: P4StatusText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5108,7 +5128,7 @@ GameObject:
   - component: {fileID: 1575221337}
   - component: {fileID: 1575221335}
   m_Layer: 5
-  m_Name: ConnectionIcon
+  m_Name: P4ConnectionIcon
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5236,7 +5256,7 @@ GameObject:
   - component: {fileID: 1596497769}
   - component: {fileID: 1596497768}
   m_Layer: 5
-  m_Name: Player4NameText
+  m_Name: P4NameText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5712,7 +5732,7 @@ GameObject:
   - component: {fileID: 1669376408}
   - component: {fileID: 1669376407}
   m_Layer: 5
-  m_Name: StatusText
+  m_Name: P2StatusText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5870,7 +5890,7 @@ GameObject:
   - component: {fileID: 1672525520}
   - component: {fileID: 1672525522}
   m_Layer: 5
-  m_Name: Player1NameText
+  m_Name: P1NameText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6841,7 +6861,7 @@ GameObject:
   - component: {fileID: 2009691101}
   - component: {fileID: 2009691100}
   m_Layer: 5
-  m_Name: Player2NameText
+  m_Name: P2NameText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
