@@ -17,7 +17,7 @@ public class DisplayTimeRemaining : MonoBehaviour
     {
         if (timerText.timerIsRunning)
         {
-            displayText.text = timerText.timeText;
+            displayText.text = timerText.currentStateName + "\n" + timerText.timeText;
         }
     }
 }
