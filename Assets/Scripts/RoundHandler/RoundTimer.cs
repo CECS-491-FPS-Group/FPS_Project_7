@@ -2,10 +2,11 @@ using System.Collections.Generic;
 using FishNet.Serializing.Helping;
 using Unity.VectorGraphics;
 using UnityEngine;
+using UnityEngine.Animations;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
-
+// todo: reload this object on scene reload but NOT parent
 
 public class RoundTimer : MonoBehaviour
 {
@@ -77,6 +78,11 @@ public class RoundTimer : MonoBehaviour
 
     void updateGameState()
     {
+        // this is a line just for testing the credit readout
+        // you won't be getting credits after every state like this
+        // not this many, anyway
+        GetComponentInParent<TrackPlayerCurrency>().testIncrementPlayerCredits();
+
         switch (currentState)
         {
             // if we're in the pregame, switch to main game
@@ -95,7 +101,9 @@ public class RoundTimer : MonoBehaviour
 
             // if we're in the postgame, reload the scene
             case gameStates.POSTGAME:
+                // this might need to be converted to a fishnet function
                 SceneManager.LoadScene("RoundImplementation");
+                startGame();
                 break;
         }
     }
