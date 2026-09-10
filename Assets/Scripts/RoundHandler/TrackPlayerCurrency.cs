@@ -52,7 +52,9 @@ public class TrackPlayerCurrency : MonoBehaviour
         foreach (GameObject player in playerList)
         {
             playerCredits[player] += 67;
+            Debug.Log(playerCredits[player]);
         }
+        
     }
 
     public int displayCredits(GameObject player)
