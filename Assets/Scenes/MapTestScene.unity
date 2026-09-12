@@ -705,7 +705,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1008436975}
   - component: {fileID: 1008436976}
-  - component: {fileID: 1008436977}
   m_Layer: 0
   m_Name: Map Generator
   m_TagString: Untagged
@@ -740,31 +739,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5ed9d55d767f47ef80b94009415a728, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  colliderLODIndex: 0
-  detailLevels:
-  - lod: 0
-    visibleDstThreshold: 1200
-  - lod: 1
-    visibleDstThreshold: 2000
-  colliderGenerationDistanceThreshold: 200
-  terrainLayer: 0
+  worldSettings: {fileID: 11400000, guid: 9226c449c0424eb2905380ae058070b6, type: 2}
   meshSettings: {fileID: 11400000, guid: 8fd1bd3b38f9b0448a5ddd9401f1e324, type: 2}
   heightMapSettings: {fileID: 11400000, guid: 0a20e4726d0a5d44fb068ad1f9a2e953, type: 2}
   textureSettings: {fileID: 11400000, guid: d99a9d98dcb55cd47b348c6daba07834, type: 2}
+  colliderLODIndex: 0
+  detailLevels:
+  - lod: 0
+    visibleDstThreshold: 250
+  - lod: 1
+    visibleDstThreshold: 600
+  terrainLayer: 0
   viewer: {fileID: 472840204}
   mapMaterial: {fileID: 2100000, guid: b0872f84cf3c7441d893168677410c73, type: 2}
---- !u!114 &1008436977
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1008436972}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 60765b39c6679414382a47b20bd4a882, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  buildProfile: 0
+  generateOnStart: 1
 --- !u!1 &1711656484
 GameObject:
   m_ObjectHideFlags: 0

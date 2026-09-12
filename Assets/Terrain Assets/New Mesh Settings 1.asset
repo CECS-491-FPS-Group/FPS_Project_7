@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: New Mesh Settings 1
   m_EditorClassIdentifier: Assembly-CSharp::MeshSettings
   autoUpdate: 1
-  meshScale: 6
+  meshScale: 2
   useFlatShading: 0
-  chunkSizeIndex: 8
+  chunkSizeIndex: 2
   flatshadedChunkSizeIndex: 2

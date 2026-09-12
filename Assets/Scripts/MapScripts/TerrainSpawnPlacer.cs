@@ -1,4 +1,5 @@
-using System.Collections;
+﻿using System.Collections;
+using System.Reflection;
 using UnityEngine;
 
 /// <summary>
@@ -37,6 +38,12 @@ public class TerrainSpawnPlacer : MonoBehaviour {
 	[Tooltip("Scripts disabled while waiting for the ground (e.g. FirstPersonController).")]
 	public MonoBehaviour[] scriptsToDisableWhileWaiting;
 
+	[Tooltip("Re-place the character if it ends up under the world. Last line of defence against a fall through.")]
+	public bool recoverOnFallThrough = true;
+
+	[Tooltip("Metres below the lowest possible terrain before a fall counts as out of bounds.")]
+	public float fallRecoveryDepth = 30f;
+
 	[Tooltip("Log placement details to the console.")]
 	public bool verboseLogging;
 
@@ -46,6 +53,7 @@ public class TerrainSpawnPlacer : MonoBehaviour {
 
 	bool rigidbodyWasKinematic;
 	bool placed;
+	bool placing;
 
 	/// <summary>True once the character has been placed on solid ground.</summary>
 	public bool Placed { get { return placed; } }
@@ -67,6 +75,8 @@ public class TerrainSpawnPlacer : MonoBehaviour {
 	void OnEnable() {
 		placed = false;
 
+		ValidateGroundLayers();
+
 		if (characterController != null && (scriptsToDisableWhileWaiting == null || scriptsToDisableWhileWaiting.Length == 0)) {
 			Debug.LogWarning("[TerrainSpawnPlacer] scriptsToDisableWhileWaiting is empty. Add your movement script (e.g. FirstPersonController) so it does not call Move() on the disabled CharacterController while we wait for the ground.", this);
 		}
@@ -74,10 +84,57 @@ public class TerrainSpawnPlacer : MonoBehaviour {
 		StartCoroutine(PlaceOnTerrainRoutine());
 	}
 
+	/// <summary>
+	/// Chunks are spawned on TerrainGenerator.terrainLayer. Anything that tests for ground with a
+	/// LayerMask has to include that layer, or the character never registers as grounded and behaves
+	/// as though it is permanently falling - which in game reads as falling through the world.
+	/// </summary>
+	void ValidateGroundLayers() {
+		if (terrainGenerator == null) {
+			return;
+		}
+
+		int layer = terrainGenerator.terrainLayer;
+		int bit = 1 << layer;
+		string layerName = LayerMask.LayerToName(layer);
+		if (string.IsNullOrEmpty(layerName)) {
+			layerName = "layer " + layer;
+		}
+
+		if ((terrainMask.value & bit) == 0) {
+			Debug.LogError(string.Format(
+				"[TerrainSpawnPlacer] terrainMask excludes '{0}', the layer TerrainGenerator puts chunks on. The spawn probe will never find ground.",
+				layerName), this);
+		}
+
+		MonoBehaviour[] behaviours = GetComponentsInChildren<MonoBehaviour>(true);
+		for (int i = 0; i < behaviours.Length; i++) {
+			MonoBehaviour behaviour = behaviours[i];
+			if (behaviour == null) {
+				continue;
+			}
+
+			FieldInfo field = behaviour.GetType().GetField("GroundLayers", BindingFlags.Public | BindingFlags.Instance);
+			if (field == null || field.FieldType != typeof(LayerMask)) {
+				continue;
+			}
+
+			LayerMask mask = (LayerMask)field.GetValue(behaviour);
+			if ((mask.value & bit) == 0) {
+				Debug.LogError(string.Format(
+					"[TerrainSpawnPlacer] {0}.GroundLayers excludes '{1}', the layer the terrain is on, so this character will never be grounded. Add '{1}' to GroundLayers or change TerrainGenerator.terrainLayer.",
+					behaviour.GetType().Name, layerName), behaviour);
+			}
+		}
+	}
+
 	IEnumerator PlaceOnTerrainRoutine() {
+		placing = true;
 		Freeze(true);
 
-		Vector3 spawnXZ = transform.position;
+		// Probing outside the grid would never hit anything, so a character recovered after
+		// falling past the edge is pulled back inside before we look for ground.
+		Vector3 spawnXZ = ClampToWorld(transform.position);
 
 		// Lift to the probe height first, so the character is nowhere near any geometry while
 		// frozen and the generator streams chunks around the correct XZ.
@@ -100,6 +157,7 @@ public class TerrainSpawnPlacer : MonoBehaviour {
 				PlaceAt(hit.point);
 				Freeze(false);
 				placed = true;
+				placing = false;
 
 				if (verboseLogging) {
 					Debug.Log(string.Format("[TerrainSpawnPlacer] Placed on '{0}' at {1}.", hit.collider.name, hit.point), this);
@@ -112,6 +170,50 @@ public class TerrainSpawnPlacer : MonoBehaviour {
 
 		Debug.LogWarning("[TerrainSpawnPlacer] Timed out waiting for a terrain collider. Check that colliderLODIndex is a valid index into detailLevels and that terrainMask includes the terrain layer.", this);
 		Freeze(false);
+		placing = false;
+	}
+
+	void Update() {
+		if (!recoverOnFallThrough || placing || !placed) {
+			return;
+		}
+
+		if (transform.position.y >= FallRecoveryHeight) {
+			return;
+		}
+
+		Debug.LogWarning(string.Format(
+			"[TerrainSpawnPlacer] {0} fell to y={1:F1}, below the world. Re-placing it on the terrain.",
+			name, transform.position.y), this);
+
+		placed = false;
+		StartCoroutine(PlaceOnTerrainRoutine());
+	}
+
+	/// <summary>Height below which the character is considered to have left the world.</summary>
+	float FallRecoveryHeight {
+		get {
+			float lowest = 0f;
+			if (terrainGenerator != null && terrainGenerator.heightMapSettings != null) {
+				lowest = terrainGenerator.heightMapSettings.minHeight;
+			}
+			return lowest - Mathf.Max(1f, fallRecoveryDepth);
+		}
+	}
+
+	/// <summary>Pulls an XZ position inside the generated grid, leaving a margin off the edge.</summary>
+	Vector3 ClampToWorld(Vector3 position) {
+		if (terrainGenerator == null || terrainGenerator.worldSettings == null || terrainGenerator.MeshWorldSize <= 0f) {
+			return position;
+		}
+
+		Rect bounds = terrainGenerator.worldSettings.WorldRect(terrainGenerator.MeshWorldSize);
+		float margin = Mathf.Min(bounds.width, bounds.height) * 0.05f;
+
+		return new Vector3(
+			Mathf.Clamp(position.x, bounds.xMin + margin, bounds.xMax - margin),
+			position.y,
+			Mathf.Clamp(position.z, bounds.yMin + margin, bounds.yMax - margin));
 	}
 
 	void PlaceAt(Vector3 groundPoint) {

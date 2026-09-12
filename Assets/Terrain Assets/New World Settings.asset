@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 804ad339af634d14b3ad72aab1455952, type: 3}
+  m_Name: New World Settings
+  m_EditorClassIdentifier: Assembly-CSharp::WorldSettings
+  autoUpdate: 1
+  gridSize: 5
+  editorSeed: 2385
+  layoutSettings: {fileID: 11400000, guid: bbdaa385979f475ab57f13cd920cd4de, type: 2}
+  useFalloff: 1
+  falloffStart: 0.55
+  falloffEnd: 1
