@@ -8,6 +8,7 @@ using FishNet.Transporting;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
 public class NetworkLobbyUI : NetworkBehaviour
 {
@@ -247,6 +248,13 @@ public class NetworkLobbyUI : NetworkBehaviour
         }
     }
 
+    private void Update()
+    {
+        // Overrides the FPS controller's attempt to lock the mouse while the Lobby is open
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+    }
+
     public void ReadyUpClicked()
     {
         CmdToggleReady(LocalConnection);
@@ -266,11 +274,28 @@ public class NetworkLobbyUI : NetworkBehaviour
     {
         // Double-check that only the server is allowed to trigger a map change
         if (!IsServerStarted) return;
+        StartCoroutine(TransitionToGame());
+    }
+    
+    private IEnumerator TransitionToGame()
+    {
+        // Tell all computers to close their lobby UY
+        RpcHideLobby();
+        
+        // Wait 1 second to let the UI hide and the background thread prep
+        yield return new WaitForSeconds(1f);
         
         // Use FishNet's Scene Manager to load the actual game map
         // For now we put "MapTestScene", change to the real scene name later
-        SceneLoadData sld = new SceneLoadData("Playground");
+        SceneLoadData sld = new SceneLoadData("RoundImplementation");
         sld.ReplaceScenes = ReplaceOption.All;
         InstanceFinder.SceneManager.LoadGlobalScenes(sld);
+    }
+
+    [ObserversRpc]
+    public void RpcHideLobby()
+    {
+        // Instantly disables the Lobby Panel on all connected screens
+        gameObject.SetActive(false);
     }
 }

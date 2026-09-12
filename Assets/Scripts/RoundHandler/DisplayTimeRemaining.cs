@@ -6,15 +6,21 @@ public class DisplayTimeRemaining : MonoBehaviour
     public GameObject timer;
     TextMeshProUGUI displayText;
     RoundTimer timerText;
+
     void Start()
     {
         displayText = GetComponent<TextMeshProUGUI>();
-        timerText = timer.GetComponent<RoundTimer>();
+        
+        // Dynamically reconnect to the scene object
+        if (timer == null) timer = GameObject.Find("RoundHandler");
+        if (timer != null) timerText = timer.GetComponent<RoundTimer>();
     }
 
-    // Update is called once per frame
     void Update()
     {
+        // Safety check to prevent the infinite crash loop
+        if (!timerText) return;
+        
         if (timerText.timerIsRunning)
         {
             displayText.text = timerText.currentStateName + "\n" + timerText.timeText;
