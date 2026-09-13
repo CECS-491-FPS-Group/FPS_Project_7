@@ -256,6 +256,11 @@ RectTransform:
   m_AnchoredPosition: {x: 49, y: 0}
   m_SizeDelta: {x: 350, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!4 &168079245 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5441333827384318846, guid: cb4dec2fd6848924192efb496662299a, type: 3}
+  m_PrefabInstance: {fileID: 1135775653}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &542508511
 GameObject:
   m_ObjectHideFlags: 0
@@ -402,6 +407,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1312352244, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -52.69995
+      objectReference: {fileID: 0}
     - target: {fileID: 7443408887813606049, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
       propertyPath: m_LocalPosition.x
       value: -7.4099
@@ -442,22 +451,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7443408887813606050, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
-      propertyPath: _spawnablePrefabs
-      value: 
-      objectReference: {fileID: 11400000, guid: 3658dfe5440624353bf9547a2707acb1, type: 2}
     - target: {fileID: 7443408887813606051, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
       propertyPath: m_Name
       value: NetworkManager
       objectReference: {fileID: 0}
-    - target: {fileID: 7443408887813606051, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7443408887813606060, guid: 0b650fca685f2eb41a86538aa883e4c1, type: 3}
-      propertyPath: _playerPrefab
-      value: 
-      objectReference: {fileID: 302602946835337134, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -842,10 +839,30 @@ MonoBehaviour:
     m_Bits: 4294967295
   moveSpeed: 3
   rotationSpeed: 8
+  patrolRadius: 12
+  patrolWaitTime: 2
+  searchDuration: 4
   damage: 10
   shotsPerSecond: 1.5
   retreatHealthPercent: 0
+  tracerColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  tracerDuration: 0.08
   currentState: 0
+--- !u!114 &1039225651
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1039225644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 609476b03249844b3901b3a1b99912bf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AIBotAnimation
+  weapon: {fileID: 2071000467}
+  recoilAngle: 10
+  recoilTime: 0.15
 --- !u!1001 &1135775653
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -854,6 +871,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 5441333827376641190, guid: cb4dec2fd6848924192efb496662299a, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: b76315724b5804c128c16595085b2c49, type: 2}
     - target: {fileID: 5441333827383887642, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       propertyPath: m_Name
       value: Soldier_demo (2)
@@ -908,6 +929,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5441333827383887642, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2116296045}
+    - targetCorrespondingSourceObject: {fileID: 5441333827383887642, guid: cb4dec2fd6848924192efb496662299a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2116296051}
   m_SourcePrefab: {fileID: 100100000, guid: cb4dec2fd6848924192efb496662299a, type: 3}
 --- !u!1 &1239620178
 GameObject:
@@ -1017,6 +1041,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 5441333827376641190, guid: cb4dec2fd6848924192efb496662299a, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 9100000, guid: b76315724b5804c128c16595085b2c49, type: 2}
     - target: {fileID: 5441333827383887642, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       propertyPath: m_Name
       value: Soldier_demo (3)
@@ -1071,6 +1099,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5441333827383887642, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1039225645}
+    - targetCorrespondingSourceObject: {fileID: 5441333827383887642, guid: cb4dec2fd6848924192efb496662299a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1039225651}
   m_SourcePrefab: {fileID: 100100000, guid: cb4dec2fd6848924192efb496662299a, type: 3}
 --- !u!1 &1764214107
 GameObject:
@@ -1325,6 +1356,11 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7d001cacf887eb14cbf269a09e3ec3ba, type: 3}
+--- !u!4 &2071000467 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5441333827384318846, guid: cb4dec2fd6848924192efb496662299a, type: 3}
+  m_PrefabInstance: {fileID: 1337392619}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &2084445384
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1473,10 +1509,30 @@ MonoBehaviour:
     m_Bits: 4294967295
   moveSpeed: 3
   rotationSpeed: 8
+  patrolRadius: 12
+  patrolWaitTime: 2
+  searchDuration: 4
   damage: 10
   shotsPerSecond: 1.5
   retreatHealthPercent: 0
+  tracerColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  tracerDuration: 0.08
   currentState: 0
+--- !u!114 &2116296051
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2116296044}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 609476b03249844b3901b3a1b99912bf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AIBotAnimation
+  weapon: {fileID: 168079245}
+  recoilAngle: 10
+  recoilTime: 0.15
 --- !u!1 &2114283753834967212
 GameObject:
   m_ObjectHideFlags: 0

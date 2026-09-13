@@ -226,6 +226,7 @@ public class BotAI : MonoBehaviour
             return;
 
         nextShotTime = Time.time + 1f / Mathf.Max(0.01f, shotsPerSecond);
+        GetComponent<AIBotAnimation>()?.PlayShootAnimation();
         Vector3 origin = GetShotOrigin();
         Vector3 destination = target.position + Vector3.up * aimHeight;
         Vector3 direction = (destination - origin).normalized;
