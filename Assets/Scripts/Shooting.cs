@@ -1,16 +1,26 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[RequireComponent(typeof(AudioSource))]
 public class HitscanShooter : MonoBehaviour
 {
     public int damage = 40;
     public float range = 100f;
+    public AudioClip gunshotClip;
+    [Range(0f, 1f)] public float gunshotVolume = 1f;
 
     private Camera cam;
+    private AudioSource audioSource;
 
     private void Awake()
     {
         cam = GetComponent<Camera>();
+        audioSource = GetComponent<AudioSource>();
+
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
     }
 
     private void Update()
@@ -23,6 +33,11 @@ public class HitscanShooter : MonoBehaviour
 
     private void Shoot()
     {
+        if (gunshotClip != null)
+        {
+            audioSource.PlayOneShot(gunshotClip, gunshotVolume);
+        }
+
         Vector3 crosshairPosition = new Vector3(Screen.width / 2f, Screen.height / 2f, 0f);
         Ray ray = cam.ScreenPointToRay(crosshairPosition);
 
