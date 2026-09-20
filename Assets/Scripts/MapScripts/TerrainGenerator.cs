@@ -112,6 +112,8 @@ public class TerrainGenerator : MonoBehaviour
         Layout = BuildLayout(seed);
         generating = true;
 
+        WarnIfRuntimeCompanionsMissing();
+
         if (OnLayoutBuilt != null)
         {
             OnLayoutBuilt();
@@ -159,6 +161,26 @@ public class TerrainGenerator : MonoBehaviour
         {
             chunkList[i].Load();
         }
+    }
+
+    /// <summary>Bridge spans are uncarved on purpose, so without a spawner or deck builder they are gaps over water.</summary>
+    void WarnIfRuntimeCompanionsMissing()
+    {
+        if (Layout == null || Layout.Bridges.Length == 0)
+        {
+            return;
+        }
+
+        bool spawner = GetComponent<StructureSpawner>() != null;
+        bool decks = GetComponent<RoadMeshBuilder>() != null;
+        if (spawner || decks)
+        {
+            return;
+        }
+
+        Debug.LogError(string.Format(
+            "[TerrainGenerator] Layout has {0} bridge span(s) but no StructureSpawner or RoadMeshBuilder on '{1}', so nothing will be built over the water. Run Tools > Map > Set Up Player In Scene, then save the scene.",
+            Layout.Bridges.Length, name), this);
     }
 
     WorldLayout BuildLayout(int seed)

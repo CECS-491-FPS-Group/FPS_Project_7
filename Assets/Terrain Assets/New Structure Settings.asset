@@ -18,8 +18,8 @@ MonoBehaviour:
   buildingFootprintFill: 0.85
   buildingScaleRange: {x: 0.6, y: 2.5}
   faceNearestRoad: 1
-  bridgeStart: {fileID: 0}
-  bridgeMiddle: {fileID: 0}
-  bridgeEnd: {fileID: 0}
-  bridgeMiddleLength: 0
+  bridgeStart: {fileID: 3711121649324795615, guid: 4d6fb99d4a93e7644ae4887a69ba493d, type: 3}
+  bridgeMiddle: {fileID: 1442880585691255208, guid: a1dded8703fb1a6499a382e718953393, type: 3}
+  bridgeEnd: {fileID: 1082692261080640350, guid: 434f215cfb91d9e47aba98314a6ed5f6, type: 3}
+  bridgeMiddleLength: 8
   bridgePivotOffset: 0
