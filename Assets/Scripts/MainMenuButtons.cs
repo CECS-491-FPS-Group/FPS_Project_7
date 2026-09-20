@@ -2,6 +2,20 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 public class MainMenuButtons : MonoBehaviour
 {
+    [SerializeField] private AudioClip clickSound;
+    [SerializeField, Range(0f, 1f)] private float clickVolume = 1f;
+
+    private void Awake()
+    {
+        ButtonClickSound buttonClickSound = GetComponent<ButtonClickSound>();
+        if (buttonClickSound == null)
+        {
+            buttonClickSound = gameObject.AddComponent<ButtonClickSound>();
+        }
+
+        buttonClickSound.Configure(clickSound, clickVolume);
+    }
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
