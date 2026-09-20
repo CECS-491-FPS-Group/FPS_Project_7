@@ -35,6 +35,7 @@ public class NetworkLobbyUI : NetworkBehaviour
     private readonly SyncDictionary<int, int> _playerPings = new SyncDictionary<int, int>();
 
     private TimeManager _timeManager;
+    private bool _transitionInProgress;
 
     private void Awake()
     {
@@ -55,6 +56,7 @@ public class NetworkLobbyUI : NetworkBehaviour
     public override void OnStartServer()
     {
         base.OnStartServer();
+        _transitionInProgress = false;
         _playerNames.Clear();
         _playerIds.Clear();
         _playerReady.Clear();
@@ -244,7 +246,7 @@ public class NetworkLobbyUI : NetworkBehaviour
             }
             
             // The button is only clickable if EVERYONE is ready AND this computer is the Host
-            startGameButton.interactable = allReady && IsServerStarted;
+            startGameButton.interactable = allReady && IsServerStarted && !_transitionInProgress;
         }
     }
 
@@ -263,6 +265,7 @@ public class NetworkLobbyUI : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     public void CmdToggleReady(NetworkConnection caller)
     {
+        if (_transitionInProgress) return;
         int index = _playerIds.IndexOf(caller.ClientId);
         if (index != -1)
         {
@@ -272,14 +275,27 @@ public class NetworkLobbyUI : NetworkBehaviour
 
     public void StartGameClicked()
     {
-        // Double-check that only the server is allowed to trigger a map change
-        if (!IsServerStarted) return;
+        if (!IsServerStarted || _transitionInProgress) return;
+
+        // Recheck the server's connected roster rather than trusting button state.
+        bool hasPlayers = false;
+        foreach (NetworkConnection connection in ServerManager.Clients.Values)
+        {
+            if (!connection.IsAuthenticated) continue;
+            int index = _playerIds.IndexOf(connection.ClientId);
+            if (index < 0 || index >= _playerReady.Count || !_playerReady[index]) return;
+            hasPlayers = true;
+        }
+        if (!hasPlayers) return;
+
+        _transitionInProgress = true;
+        if (startGameButton) startGameButton.interactable = false;
         StartCoroutine(TransitionToGame());
     }
     
     private IEnumerator TransitionToGame()
     {
-        // Tell all computers to close their lobby UY
+        // Hide presentation without stopping this object's transition coroutine.
         RpcHideLobby();
         
         // Wait 1 second to let the UI hide and the background thread prep
@@ -289,13 +305,28 @@ public class NetworkLobbyUI : NetworkBehaviour
         // For now we put "MapTestScene", change to the real scene name later
         SceneLoadData sld = new SceneLoadData("RoundImplementation");
         sld.ReplaceScenes = ReplaceOption.All;
-        InstanceFinder.SceneManager.LoadGlobalScenes(sld);
+        var networkManager = InstanceFinder.NetworkManager;
+        // Remove the lobby from FishNet's spawned registry before its scene unloads.
+        // Do not yield after despawning: this Lobby object may become inactive.
+        networkManager.ServerManager.Despawn(NetworkObject);
+        networkManager.SceneManager.LoadGlobalScenes(sld);
     }
 
     [ObserversRpc]
     public void RpcHideLobby()
     {
-        // Instantly disables the Lobby Panel on all connected screens
-        gameObject.SetActive(false);
+        foreach (TextMeshProUGUI slot in playerSlots)
+        {
+            if (!slot) continue;
+            Canvas canvas = slot.GetComponentInParent<Canvas>();
+            if (!canvas) continue;
+
+            Canvas lobbyCanvas = canvas.rootCanvas;
+            foreach (GraphicRaycaster raycaster in lobbyCanvas.GetComponentsInChildren<GraphicRaycaster>(true))
+                raycaster.enabled = false;
+            foreach (Canvas childCanvas in lobbyCanvas.GetComponentsInChildren<Canvas>(true))
+                childCanvas.enabled = false;
+            break;
+        }
     }
 }
