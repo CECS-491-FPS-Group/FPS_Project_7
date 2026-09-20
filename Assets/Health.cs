@@ -7,19 +7,24 @@ public class Health : MonoBehaviour
     public int currentHp;
 
     [Header("Respawn")]
-    public bool respawnOnDeath;
-    public float respawnDelay = 3f;
-    public Transform respawnPoint;
+    public bool respawnOnDeath = true;
+    public float respawnDelay = 5f;
+    public bool showRespawnUI = true;
+
+    public bool IsDead => isDead;
 
     private Vector3 startingPosition;
-    private Quaternion startingRotation;
     private bool isDead;
+
+    private RandomRespawnArea randomRespawnArea;
 
     private void Awake()
     {
         currentHp = maxHp;
         startingPosition = transform.position;
-        startingRotation = transform.rotation;
+
+        randomRespawnArea =
+            FindFirstObjectByType<RandomRespawnArea>();
     }
 
     public void TakeDamage(int damage)
@@ -27,8 +32,18 @@ public class Health : MonoBehaviour
         if (isDead)
             return;
 
-        currentHp = Mathf.Max(0, currentHp - damage);
-        Debug.Log(gameObject.name + " took " + damage + " damage. HP left: " + currentHp);
+        currentHp = Mathf.Max(
+            0,
+            currentHp - damage
+        );
+
+        Debug.Log(
+            gameObject.name +
+            " took " +
+            damage +
+            " damage. HP left: " +
+            currentHp
+        );
 
         if (currentHp <= 0)
             Die();
@@ -36,7 +51,11 @@ public class Health : MonoBehaviour
 
     private void Die()
     {
+        if (isDead)
+            return;
+
         isDead = true;
+
         Debug.Log(gameObject.name + " died.");
 
         if (respawnOnDeath)
@@ -47,59 +66,151 @@ public class Health : MonoBehaviour
 
     private IEnumerator RespawnRoutine()
     {
-        RespawnUI respawnUI = FindFirstObjectByType<RespawnUI>();
-        SetPlayerActive(false);
+        RespawnUI respawnUI = null;
+
+        if (showRespawnUI)
+        {
+            respawnUI =
+                FindFirstObjectByType<RespawnUI>();
+        }
+
+        SetObjectActive(false);
 
         float timeRemaining = respawnDelay;
+
         while (timeRemaining > 0f)
         {
             if (respawnUI != null)
-                respawnUI.ShowCountdown(Mathf.CeilToInt(timeRemaining));
+            {
+                respawnUI.ShowCountdown(
+                    Mathf.CeilToInt(timeRemaining)
+                );
+            }
 
             timeRemaining -= Time.deltaTime;
             yield return null;
         }
 
-        CharacterController controller = GetComponent<CharacterController>();
+        CharacterController controller =
+            GetComponent<CharacterController>();
+
         if (controller != null)
             controller.enabled = false;
 
+        Vector3 newPosition;
+
+        if (randomRespawnArea != null)
+        {
+            newPosition =
+                randomRespawnArea.GetRandomSpawnPosition(
+                    controller
+                );
+        }
+        else
+        {
+            newPosition = startingPosition;
+
+            Debug.LogWarning(
+                "RandomRespawnArea was not found."
+            );
+        }
+
         transform.SetPositionAndRotation(
-            respawnPoint != null ? respawnPoint.position : startingPosition,
-            respawnPoint != null ? respawnPoint.rotation : startingRotation);
+            newPosition,
+            Quaternion.Euler(
+                0f,
+                Random.Range(0f, 360f),
+                0f
+            )
+        );
 
         if (controller != null)
             controller.enabled = true;
 
         currentHp = maxHp;
         isDead = false;
-        SetPlayerActive(true);
+
+        SetObjectActive(true);
 
         if (respawnUI != null)
             respawnUI.Hide();
 
-        Debug.Log(gameObject.name + " respawned.");
+        Debug.Log(
+            gameObject.name +
+            " respawned."
+        );
     }
 
-    private void SetPlayerActive(bool active)
+    private void SetObjectActive(bool active)
     {
-        foreach (Renderer modelRenderer in GetComponentsInChildren<Renderer>(true))
-            modelRenderer.enabled = active;
-
-        CharacterController controller = GetComponent<CharacterController>();
-        if (controller != null)
-            controller.enabled = active;
-
-        SetBehaviourEnabled("FirstPersonController", active);
-        SetBehaviourEnabled("HitscanShooter", active);
-    }
-
-    private void SetBehaviourEnabled(string typeName, bool enabled)
-    {
-        foreach (MonoBehaviour behaviour in GetComponents<MonoBehaviour>())
+        foreach (
+            Renderer renderer
+            in GetComponentsInChildren<Renderer>(true)
+        )
         {
-            if (behaviour != null && behaviour.GetType().Name == typeName)
-                behaviour.enabled = enabled;
+            renderer.enabled = active;
+        }
+
+        foreach (
+            Collider collider
+            in GetComponentsInChildren<Collider>(true)
+        )
+        {
+            collider.enabled = active;
+        }
+
+        SetBehaviourEnabled(
+            "FirstPersonController",
+            active
+        );
+
+        SetBehaviourEnabled(
+            "HitscanShooter",
+            active
+        );
+
+        SetBehaviourEnabled(
+            "BotAI",
+            active
+        );
+
+        SetBehaviourEnabled(
+            "AIBotAnimation",
+            active
+        );
+    }
+
+    private void SetBehaviourEnabled(
+        string typeName,
+        bool enabledState
+    )
+    {
+        foreach (
+            MonoBehaviour behaviour
+            in GetComponentsInChildren<MonoBehaviour>(true)
+        )
+        {
+            if (
+                behaviour != null &&
+                behaviour.GetType().Name == typeName
+            )
+            {
+                behaviour.enabled = enabledState;
+            }
+        }
+
+        foreach (
+            MonoBehaviour behaviour
+            in GetComponentsInParent<MonoBehaviour>(true)
+        )
+        {
+            if (
+                behaviour != null &&
+                behaviour.GetType().Name == typeName
+            )
+            {
+                behaviour.enabled = enabledState;
+            }
         }
     }
 }

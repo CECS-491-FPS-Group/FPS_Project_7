@@ -5,7 +5,14 @@ using UnityEngine.AI;
 [RequireComponent(typeof(NavMeshAgent))]
 public class BotAI : MonoBehaviour
 {
-    public enum BotState { Patrol, Chase, Search, Attack, Retreat }
+    public enum BotState
+    {
+        Patrol,
+        Chase,
+        Search,
+        Attack,
+        Retreat
+    }
 
     [Header("Targeting")]
     [SerializeField] private float detectionRange = 30f;
@@ -25,7 +32,9 @@ public class BotAI : MonoBehaviour
     [Header("Combat")]
     [SerializeField] private int damage = 10;
     [SerializeField] private float shotsPerSecond = 1.5f;
-    [SerializeField, Range(0f, 0.9f)] private float retreatHealthPercent = 0f;
+    [SerializeField, Range(0f, 0.9f)]
+    private float retreatHealthPercent = 0f;
+
     [SerializeField] private Color tracerColor = Color.yellow;
     [SerializeField] private float tracerDuration = 0.08f;
 
@@ -36,7 +45,9 @@ public class BotAI : MonoBehaviour
     private NavMeshAgent agent;
     private Transform target;
     private LineRenderer tracer;
+
     private Vector3 lastKnownPosition;
+
     private float lastSeenTime = -999f;
     private float nextShotTime;
     private float nextTargetSearchTime;
@@ -44,58 +55,117 @@ public class BotAI : MonoBehaviour
 
     private void Awake()
     {
-        botHealth = GetComponent<Health>();
-        agent = GetComponent<NavMeshAgent>();
+        botHealth =
+            GetComponentInParent<Health>();
+
+        agent =
+            GetComponent<NavMeshAgent>();
+
         agent.speed = moveSpeed;
         agent.angularSpeed = rotationSpeed * 60f;
         agent.stoppingDistance = attackRange * 0.8f;
 
-        tracer = gameObject.AddComponent<LineRenderer>();
+        tracer =
+            gameObject.AddComponent<LineRenderer>();
+
         tracer.positionCount = 2;
         tracer.startWidth = 0.045f;
         tracer.endWidth = 0.015f;
         tracer.startColor = tracerColor;
         tracer.endColor = tracerColor;
-        tracer.material = new Material(Shader.Find("Sprites/Default"));
+        tracer.material =
+            new Material(Shader.Find("Sprites/Default"));
+
         tracer.enabled = false;
+    }
+
+    private void OnDisable()
+    {
+        if (tracer != null)
+            tracer.enabled = false;
+
+        StopAllCoroutines();
     }
 
     private void Update()
     {
+        if (botHealth != null && botHealth.IsDead)
+        {
+            if (agent != null && agent.isOnNavMesh)
+                agent.ResetPath();
+
+            if (tracer != null)
+                tracer.enabled = false;
+
+            StopAllCoroutines();
+
+            return;
+        }
+
         if (Time.time >= nextTargetSearchTime)
         {
             FindClosestPlayer();
-            nextTargetSearchTime = Time.time + 0.25f;
+            nextTargetSearchTime =
+                Time.time + 0.25f;
         }
 
-        bool canSeeTarget = HasLineOfSight(detectionRange);
+        bool canSeeTarget =
+            HasLineOfSight(detectionRange);
+
         if (target != null && canSeeTarget)
         {
-            lastKnownPosition = target.position;
-            lastSeenTime = Time.time;
+            lastKnownPosition =
+                target.position;
+
+            lastSeenTime =
+                Time.time;
         }
 
-        currentState = DecideState(canSeeTarget);
+        currentState =
+            DecideState(canSeeTarget);
+
         RunState(currentState);
     }
 
     private BotState DecideState(bool canSeeTarget)
     {
-        if (retreatHealthPercent > 0f && botHealth != null &&
-            botHealth.currentHp <= botHealth.maxHp * retreatHealthPercent)
+        if (
+            retreatHealthPercent > 0f &&
+            botHealth != null &&
+            botHealth.currentHp <=
+            botHealth.maxHp * retreatHealthPercent
+        )
+        {
             return BotState.Retreat;
+        }
 
         if (target != null)
         {
-            float distance = Vector3.Distance(transform.position, target.position);
-            if (canSeeTarget && distance <= attackRange)
+            float distance =
+                Vector3.Distance(
+                    transform.position,
+                    target.position
+                );
+
+            if (
+                canSeeTarget &&
+                distance <= attackRange
+            )
+            {
                 return BotState.Attack;
+            }
+
             if (canSeeTarget)
                 return BotState.Chase;
         }
 
-        if (Time.time - lastSeenTime <= searchDuration)
+        if (
+            Time.time - lastSeenTime <=
+            searchDuration
+        )
+        {
             return BotState.Search;
+        }
 
         return BotState.Patrol;
     }
@@ -110,18 +180,28 @@ public class BotAI : MonoBehaviour
             case BotState.Patrol:
                 Patrol();
                 break;
+
             case BotState.Chase:
-                agent.stoppingDistance = attackRange * 0.8f;
-                agent.SetDestination(target.position);
+                agent.stoppingDistance =
+                    attackRange * 0.8f;
+
+                if (target != null)
+                    agent.SetDestination(
+                        target.position
+                    );
+
                 break;
+
             case BotState.Search:
                 SearchLastKnownPosition();
                 break;
+
             case BotState.Attack:
                 agent.ResetPath();
                 FaceTarget();
                 TryShoot();
                 break;
+
             case BotState.Retreat:
                 FaceTarget();
                 MoveAwayFromTarget();
@@ -132,42 +212,89 @@ public class BotAI : MonoBehaviour
     private void Patrol()
     {
         agent.stoppingDistance = 0f;
-        if (agent.hasPath && agent.remainingDistance > 0.5f)
+
+        if (
+            agent.hasPath &&
+            agent.remainingDistance > 0.5f
+        )
+        {
             return;
+        }
+
         if (Time.time < nextPatrolTime)
             return;
 
-        Vector3 randomPoint = transform.position + Random.insideUnitSphere * patrolRadius;
-        randomPoint.y = transform.position.y;
-        if (NavMesh.SamplePosition(randomPoint, out NavMeshHit hit, patrolRadius, NavMesh.AllAreas))
-            agent.SetDestination(hit.position);
+        Vector3 randomPoint =
+            transform.position +
+            Random.insideUnitSphere *
+            patrolRadius;
 
-        nextPatrolTime = Time.time + patrolWaitTime;
+        randomPoint.y =
+            transform.position.y;
+
+        if (
+            NavMesh.SamplePosition(
+                randomPoint,
+                out NavMeshHit hit,
+                patrolRadius,
+                NavMesh.AllAreas
+            )
+        )
+        {
+            agent.SetDestination(hit.position);
+        }
+
+        nextPatrolTime =
+            Time.time + patrolWaitTime;
     }
 
     private void SearchLastKnownPosition()
     {
         agent.stoppingDistance = 0f;
-        agent.SetDestination(lastKnownPosition);
-        if (!agent.pathPending && agent.remainingDistance <= 0.6f)
-            transform.Rotate(0f, 60f * Time.deltaTime, 0f);
+
+        agent.SetDestination(
+            lastKnownPosition
+        );
+
+        if (
+            !agent.pathPending &&
+            agent.remainingDistance <= 0.6f
+        )
+        {
+            transform.Rotate(
+                0f,
+                60f * Time.deltaTime,
+                0f
+            );
+        }
     }
 
     private void FindClosestPlayer()
     {
-        GameObject[] players = GameObject.FindGameObjectsWithTag("Player");
+        GameObject[] players =
+            GameObject.FindGameObjectsWithTag(
+                "Player"
+            );
+
         Transform closest = null;
-        float closestDistance = detectionRange;
+        float closestDistance =
+            detectionRange;
 
         foreach (GameObject player in players)
         {
-            float distance = Vector3.Distance(transform.position, player.transform.position);
+            float distance =
+                Vector3.Distance(
+                    transform.position,
+                    player.transform.position
+                );
+
             if (distance < closestDistance)
             {
                 closestDistance = distance;
                 closest = player.transform;
             }
         }
+
         target = closest;
     }
 
@@ -176,14 +303,24 @@ public class BotAI : MonoBehaviour
         if (target == null)
             return;
 
-        Vector3 direction = target.position - transform.position;
+        Vector3 direction =
+            target.position -
+            transform.position;
+
         direction.y = 0f;
+
         if (direction.sqrMagnitude < 0.001f)
             return;
 
-        Quaternion desiredRotation = Quaternion.LookRotation(direction);
-        transform.rotation = Quaternion.Slerp(
-            transform.rotation, desiredRotation, rotationSpeed * Time.deltaTime);
+        Quaternion desiredRotation =
+            Quaternion.LookRotation(direction);
+
+        transform.rotation =
+            Quaternion.Slerp(
+                transform.rotation,
+                desiredRotation,
+                rotationSpeed * Time.deltaTime
+            );
     }
 
     private void MoveAwayFromTarget()
@@ -191,16 +328,33 @@ public class BotAI : MonoBehaviour
         if (target == null)
             return;
 
-        Vector3 away = transform.position - target.position;
+        Vector3 away =
+            transform.position -
+            target.position;
+
         away.y = 0f;
+
         if (away.sqrMagnitude < 0.001f)
             away = -transform.forward;
 
-        Vector3 desiredPosition = transform.position + away.normalized * 6f;
-        if (NavMesh.SamplePosition(desiredPosition, out NavMeshHit hit, 6f, NavMesh.AllAreas))
+        Vector3 desiredPosition =
+            transform.position +
+            away.normalized * 6f;
+
+        if (
+            NavMesh.SamplePosition(
+                desiredPosition,
+                out NavMeshHit hit,
+                6f,
+                NavMesh.AllAreas
+            )
+        )
         {
             agent.stoppingDistance = 0f;
-            agent.SetDestination(hit.position);
+
+            agent.SetDestination(
+                hit.position
+            );
         }
     }
 
@@ -209,60 +363,156 @@ public class BotAI : MonoBehaviour
         if (target == null)
             return false;
 
-        Vector3 origin = GetShotOrigin();
-        Vector3 destination = target.position + Vector3.up * aimHeight;
-        Vector3 direction = destination - origin;
+        Vector3 origin =
+            GetShotOrigin();
 
-        if (Physics.Raycast(origin, direction.normalized, out RaycastHit hit,
-                maxDistance, lineOfSightMask, QueryTriggerInteraction.Ignore))
-            return hit.transform == target || hit.transform.IsChildOf(target);
+        Vector3 destination =
+            target.position +
+            Vector3.up * aimHeight;
+
+        Vector3 direction =
+            destination - origin;
+
+        if (
+            Physics.Raycast(
+                origin,
+                direction.normalized,
+                out RaycastHit hit,
+                maxDistance,
+                lineOfSightMask,
+                QueryTriggerInteraction.Ignore
+            )
+        )
+        {
+            return
+                hit.transform == target ||
+                hit.transform.IsChildOf(target);
+        }
 
         return false;
     }
 
     private void TryShoot()
     {
-        if (target == null || Time.time < nextShotTime)
-            return;
-
-        nextShotTime = Time.time + 1f / Mathf.Max(0.01f, shotsPerSecond);
-        GetComponent<AIBotAnimation>()?.PlayShootAnimation();
-        Vector3 origin = GetShotOrigin();
-        Vector3 destination = target.position + Vector3.up * aimHeight;
-        Vector3 direction = (destination - origin).normalized;
-        Vector3 tracerEnd = origin + direction * attackRange;
-
-        if (Physics.Raycast(origin, direction, out RaycastHit hit,
-                attackRange, lineOfSightMask, QueryTriggerInteraction.Ignore))
+        if (
+            botHealth != null &&
+            botHealth.IsDead
+        )
         {
-            tracerEnd = hit.point;
-            Health health = hit.collider.GetComponentInParent<Health>();
-            if (health != null && health != botHealth)
-                health.TakeDamage(damage);
+            return;
         }
 
-        StartCoroutine(ShowTracer(origin, tracerEnd));
+        if (
+            target == null ||
+            Time.time < nextShotTime
+        )
+        {
+            return;
+        }
+
+        nextShotTime =
+            Time.time +
+            1f / Mathf.Max(
+                0.01f,
+                shotsPerSecond
+            );
+
+        GetComponent<AIBotAnimation>()?
+            .PlayShootAnimation();
+
+        Vector3 origin =
+            GetShotOrigin();
+
+        Vector3 destination =
+            target.position +
+            Vector3.up * aimHeight;
+
+        Vector3 direction =
+            (destination - origin).normalized;
+
+        Vector3 tracerEnd =
+            origin +
+            direction * attackRange;
+
+        if (
+            Physics.Raycast(
+                origin,
+                direction,
+                out RaycastHit hit,
+                attackRange,
+                lineOfSightMask,
+                QueryTriggerInteraction.Ignore
+            )
+        )
+        {
+            tracerEnd = hit.point;
+
+            Health health =
+                hit.collider.GetComponentInParent<Health>();
+
+            if (
+                health != null &&
+                health != botHealth
+            )
+            {
+                health.TakeDamage(damage);
+            }
+        }
+
+        StartCoroutine(
+            ShowTracer(
+                origin,
+                tracerEnd
+            )
+        );
     }
 
     private Vector3 GetShotOrigin()
     {
-        return transform.position + Vector3.up * aimHeight + transform.forward * 0.7f;
+        return
+            transform.position +
+            Vector3.up * aimHeight +
+            transform.forward * 0.7f;
     }
 
-    private IEnumerator ShowTracer(Vector3 start, Vector3 end)
+    private IEnumerator ShowTracer(
+        Vector3 start,
+        Vector3 end
+    )
     {
+        if (
+            botHealth != null &&
+            botHealth.IsDead
+        )
+        {
+            yield break;
+        }
+
         tracer.SetPosition(0, start);
         tracer.SetPosition(1, end);
         tracer.enabled = true;
-        yield return new WaitForSeconds(tracerDuration);
+
+        yield return new WaitForSeconds(
+            tracerDuration
+        );
+
         tracer.enabled = false;
     }
 
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, detectionRange);
+
+        Gizmos.DrawWireSphere(
+            transform.position,
+            detectionRange
+        );
+
         Gizmos.color = Color.red;
-        Gizmos.DrawWireSphere(transform.position, attackRange);
+
+        Gizmos.DrawWireSphere(
+            transform.position,
+            attackRange
+        );
     }
 }

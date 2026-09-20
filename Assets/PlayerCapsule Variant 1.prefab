@@ -113,12 +113,20 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -1449842966210500793, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      propertyPath: _initializedTimestamp
+      value: -8584118167995318498
+      objectReference: {fileID: 0}
+    - target: {fileID: -1449842966210500793, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: <PrefabId>k__BackingField
       value: 4
       objectReference: {fileID: 0}
     - target: {fileID: -1449842966210500793, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: <AssetPathHash>k__BackingField
       value: 7293770709239535224
+      objectReference: {fileID: 0}
+    - target: {fileID: 1240188883754520708, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      propertyPath: m_NeverAutoSwitchControlSchemes
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1240188883754520712, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: m_Name
@@ -127,6 +135,14 @@ PrefabInstance:
     - target: {fileID: 1240188883754520712, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1240188883754520719, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      propertyPath: Grounded
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1240188883754520719, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      propertyPath: GroundedOffset
+      value: -0.05
       objectReference: {fileID: 0}
     - target: {fileID: 1240188883754520719, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: GroundLayers.m_Bits
@@ -172,6 +188,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3285470575367376116, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      propertyPath: jump
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -209,4 +229,4 @@ MonoBehaviour:
   currentHp: 0
   respawnOnDeath: 1
   respawnDelay: 5
-  respawnPoint: {fileID: 0}
+  showRespawnUI: 1
