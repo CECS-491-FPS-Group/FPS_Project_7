@@ -71,6 +71,12 @@ public static class MapSceneSetup
         EditorSceneManager.MarkSceneDirty(generator.gameObject.scene);
 
         Debug.Log("[MapSceneSetup]\n" + report);
+
+        if (!Application.isBatchMode && EditorUtility.DisplayDialog("Map Setup",
+            "Scene configured. Save it now so the components persist?", "Save scene", "Later"))
+        {
+            EditorSceneManager.SaveScene(generator.gameObject.scene);
+        }
     }
 
     static int ResolveTerrainLayer(StringBuilder report)
