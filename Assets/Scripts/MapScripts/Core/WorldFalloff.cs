@@ -1,8 +1,6 @@
 using UnityEngine;
 
-/// <summary>
-/// Edge falloff for a bounded world, evaluated in world space so it is continuous across chunks.
-/// </summary>
+/// <summary>Edge falloff for a bounded world, evaluated in world space so it is continuous across chunks.</summary>
 public readonly struct WorldFalloff
 {
     public readonly bool Enabled;

@@ -2,6 +2,7 @@
 using System.Collections;
 
 [CreateAssetMenu()]
+/// <summary>Noise, falloff and height curve for the terrain.</summary>
 public class HeightMapSettings : UpdatableData {
 
 	public NoiseSettings noiseSettings;

@@ -5,10 +5,7 @@ using System.Threading;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
-/// <summary>
-/// Bounded worker pool for terrain generation work. Replaces the one-OS-thread-per-request
-/// model, which spawned ~100 threads when a whole bounded world was requested in one frame.
-/// </summary>
+/// <summary>Bounded worker pool for terrain generation work.</summary>
 public static class GenerationScheduler
 {
     struct WorkItem
@@ -33,7 +30,7 @@ public static class GenerationScheduler
     static int outstanding;
     static int workerCount = 1;
 
-    /// <summary>Milliseconds of callbacks to run per frame. Zero drains the queue completely.</summary>
+    /// <summary>Milliseconds of callbacks to run per frame.</summary>
     public static float MaxPumpMillisecondsPerFrame = 0f;
 
     public static int Outstanding

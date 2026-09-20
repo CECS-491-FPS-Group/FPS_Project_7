@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+/// <summary>Disables the preview objects when entering play mode.</summary>
+
 public class HideOnPlay : MonoBehaviour {
 
 	// Use this for initialization

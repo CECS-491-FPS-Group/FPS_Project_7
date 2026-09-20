@@ -2,12 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Immutable uniform grid over 2D items, stored compressed-sparse-row. Built once on the
-/// main thread and queried concurrently by chunk workers, which is safe because it is read-only.
-/// Query results may contain the same item twice when it straddles cells; callers that
-/// reduce to a minimum distance do not care.
-/// </summary>
+/// <summary>Immutable uniform grid over 2D items, stored compressed-sparse-row.</summary>
 public sealed class SpatialGrid
 {
     readonly Rect bounds;

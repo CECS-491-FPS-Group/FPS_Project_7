@@ -1,6 +1,7 @@
 using UnityEngine;
 
 [CreateAssetMenu(menuName = "Map/Layout Settings")]
+/// <summary>Tunables for points of interest, roads, bridges, road mesh and building pads.</summary>
 public class LayoutSettings : UpdatableData
 {
     [Header("Points of Interest")]
@@ -31,6 +32,19 @@ public class LayoutSettings : UpdatableData
     [Tooltip("Hard ceiling on road steepness. Smoothing alone cannot guarantee this, so it is enforced separately.")]
     [Range(1f, 45f)]
     public float maxRoadGradeDegrees = 12f;
+
+    [Header("Water")]
+    [Tooltip("Points of interest and pads must sit at least this far above sea level.")]
+    public float shoreClearance = 1.5f;
+    [Tooltip("Bridge deck height above sea level.")]
+    public float bridgeDeckClearance = 2.5f;
+
+    [Header("Road Mesh")]
+    [Tooltip("How far the road surface floats above the carved terrain, to avoid z-fighting.")]
+    public float roadSurfaceLift = 0.08f;
+    [Tooltip("Metres of road per texture repeat along its length.")]
+    public float roadTextureLength = 8f;
+    public float bridgeDeckThickness = 0.6f;
 
     [Header("Building Plots")]
     [Min(0)]

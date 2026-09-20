@@ -1,5 +1,7 @@
 using UnityEngine;
 
+/// <summary>Drains finished generation jobs on the main thread each frame.</summary>
+
 public class GenerationSchedulerPump : MonoBehaviour
 {
     static GenerationSchedulerPump instance;

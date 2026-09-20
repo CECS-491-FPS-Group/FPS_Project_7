@@ -1,9 +1,6 @@
 using UnityEngine;
 
-/// <summary>
-/// A flattened rectangular pad. Phase 5 places building prefabs on these; the height layer
-/// only needs the pad's footprint and target height.
-/// </summary>
+/// <summary>A flattened rectangular pad.</summary>
 public struct BuildingPlot
 {
     public Vector2 Centre;

@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+/// <summary>ScriptableObject base that notifies listeners when edited in the inspector.</summary>
+
 public class UpdatableData : ScriptableObject {
 
 	public event System.Action OnValuesUpdated;

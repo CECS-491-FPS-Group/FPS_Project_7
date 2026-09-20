@@ -2,6 +2,7 @@ using UnityEditor;
 using UnityEngine;
 
 [CustomEditor(typeof(TerrainGenerator))]
+/// <summary>Inspector controls and scene gizmos for TerrainGenerator.</summary>
 public class TerrainGeneratorEditor : Editor
 {
     static readonly Vector2[] plotCorners = new Vector2[4];
@@ -30,6 +31,14 @@ public class TerrainGeneratorEditor : Editor
             EditorGUILayout.LabelField("Points of Interest", layout.PointsOfInterest.Length.ToString());
             EditorGUILayout.LabelField("Road Segments", layout.Roads.SegmentCount.ToString());
             EditorGUILayout.LabelField("Building Plots", layout.Plots.Length.ToString());
+            EditorGUILayout.LabelField("Bridge Spans", layout.Bridges.Length.ToString());
+
+            StructureSpawner structures = generator.GetComponent<StructureSpawner>();
+            if (structures != null)
+            {
+                EditorGUILayout.LabelField("Buildings Spawned", structures.BuildingCount.ToString());
+                EditorGUILayout.LabelField("Bridges Spawned", structures.BridgeCount.ToString());
+            }
         }
 
         Rect progressRect = EditorGUILayout.GetControlRect(false, EditorGUIUtility.singleLineHeight);
@@ -67,7 +76,9 @@ public class TerrainGeneratorEditor : Editor
         }
 
         DrawWorldBounds(layout);
+        DrawSeaLevel(layout);
         DrawRoads(layout);
+        DrawBridges(layout);
         DrawPlots(layout);
         DrawPointsOfInterest(layout, generator);
     }
@@ -82,6 +93,40 @@ public class TerrainGeneratorEditor : Editor
             new Vector3(bounds.xMax, 0f, bounds.yMax),
             new Vector3(bounds.xMin, 0f, bounds.yMax),
             new Vector3(bounds.xMin, 0f, bounds.yMin));
+    }
+
+    static void DrawSeaLevel(WorldLayout layout)
+    {
+        Rect bounds = layout.WorldBounds;
+        float y = layout.SeaLevel;
+        Handles.color = new Color(0.2f, 0.5f, 1f, 0.5f);
+        Handles.DrawAAPolyLine(2f,
+            new Vector3(bounds.xMin, y, bounds.yMin),
+            new Vector3(bounds.xMax, y, bounds.yMin),
+            new Vector3(bounds.xMax, y, bounds.yMax),
+            new Vector3(bounds.xMin, y, bounds.yMax),
+            new Vector3(bounds.xMin, y, bounds.yMin));
+    }
+
+    static void DrawBridges(WorldLayout layout)
+    {
+        Handles.color = new Color(0.2f, 1f, 0.9f, 1f);
+
+        for (int i = 0; i < layout.Bridges.Length; i++)
+        {
+            BridgeSpan span = layout.Bridges[i];
+            Vector3[] path = new Vector3[span.LastPoint - span.FirstPoint + 3];
+            path[0] = span.Start + Vector3.up * 0.6f;
+            for (int p = span.FirstPoint; p <= span.LastPoint; p++)
+            {
+                path[p - span.FirstPoint + 1] = layout.Roads.Points[p] + Vector3.up * 0.6f;
+            }
+            path[path.Length - 1] = span.End + Vector3.up * 0.6f;
+
+            Handles.DrawAAPolyLine(7f, path);
+            Handles.Label(layout.Roads.Points[(span.FirstPoint + span.LastPoint) / 2] + Vector3.up * 3f,
+                "bridge " + span.Length.ToString("F0") + " m");
+        }
     }
 
     static void DrawRoads(WorldLayout layout)

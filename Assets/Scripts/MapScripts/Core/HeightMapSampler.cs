@@ -1,13 +1,8 @@
 using UnityEngine;
 
-/// <summary>
-/// Converts between world XZ and heightmap indices for a single chunk, and samples height
-/// and slope without touching physics. Safe to use from a worker thread.
-/// </summary>
+/// <summary>Converts between world XZ and heightmap indices for a single chunk, and samples height and slope without touching physics.</summary>
 public readonly struct HeightMapSampler
 {
-    // Indices 0 and NumVertsPerLine-1 are the out-of-mesh border ring that MeshGenerator uses
-    // only for normals; the visible surface spans indices 1 .. NumVertsPerLine-2.
     readonly float[,] values;
 
     public readonly int NumVertsPerLine;

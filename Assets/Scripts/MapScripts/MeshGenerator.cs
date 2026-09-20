@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+/// <summary>Builds a chunk mesh with LOD stitching and the layout mask in vertex colour.</summary>
+
 public static class MeshGenerator {
 
 

@@ -16,6 +16,8 @@ MonoBehaviour:
   gridSize: 5
   editorSeed: 2385
   layoutSettings: {fileID: 11400000, guid: bbdaa385979f475ab57f13cd920cd4de, type: 2}
+  structureSettings: {fileID: 11400000, guid: 5acacb40af1b4bc9a34cca50059f9bd8, type: 2}
+  seaLevel: 6
   useFalloff: 1
   falloffStart: 0.55
   falloffEnd: 1

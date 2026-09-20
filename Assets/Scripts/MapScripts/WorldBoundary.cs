@@ -1,9 +1,6 @@
 using UnityEngine;
 
-/// <summary>
-/// Invisible walls around the generated grid. Past the outermost chunk there is no terrain at
-/// all, so without these a character that walks off the edge falls indefinitely.
-/// </summary>
+/// <summary>Invisible walls around the generated grid.</summary>
 [DisallowMultipleComponent]
 public class WorldBoundary : MonoBehaviour
 {

@@ -2,18 +2,7 @@
 using System.Reflection;
 using UnityEngine;
 
-/// <summary>
-/// Safely drops a character onto procedurally generated terrain.
-///
-/// Terrain chunks are built on a background thread, so for the first frames after a scene loads
-/// (or after a networked player spawns) there is no MeshCollider under the character and gravity
-/// pulls it straight through the world. This component freezes the character, registers it as the
-/// TerrainGenerator's viewer so the chunk beneath it is generated, waits for that chunk's collider,
-/// then raycasts down and places the character on the surface before handing control back.
-///
-/// Put this on the root of your player prefab (the object with the CharacterController/Rigidbody).
-/// For a FishNet setup, enable it only for the owning client.
-/// </summary>
+/// <summary>Safely drops a character onto procedurally generated terrain.</summary>
 [DisallowMultipleComponent]
 public class TerrainSpawnPlacer : MonoBehaviour {
 
@@ -84,11 +73,7 @@ public class TerrainSpawnPlacer : MonoBehaviour {
 		StartCoroutine(PlaceOnTerrainRoutine());
 	}
 
-	/// <summary>
-	/// Chunks are spawned on TerrainGenerator.terrainLayer. Anything that tests for ground with a
-	/// LayerMask has to include that layer, or the character never registers as grounded and behaves
-	/// as though it is permanently falling - which in game reads as falling through the world.
-	/// </summary>
+	/// <summary>Chunks are spawned on TerrainGenerator.terrainLayer.</summary>
 	void ValidateGroundLayers() {
 		if (terrainGenerator == null) {
 			return;
@@ -132,12 +117,8 @@ public class TerrainSpawnPlacer : MonoBehaviour {
 		placing = true;
 		Freeze(true);
 
-		// Probing outside the grid would never hit anything, so a character recovered after
-		// falling past the edge is pulled back inside before we look for ground.
 		Vector3 spawnXZ = ClampToWorld(transform.position);
 
-		// Lift to the probe height first, so the character is nowhere near any geometry while
-		// frozen and the generator streams chunks around the correct XZ.
 		transform.position = new Vector3(spawnXZ.x, probeHeight, spawnXZ.z);
 
 		if (terrainGenerator != null && registerAsViewer) {
@@ -149,9 +130,7 @@ public class TerrainSpawnPlacer : MonoBehaviour {
 		float deadline = Time.time + Mathf.Max(1f, timeout);
 
 		while (Time.time < deadline) {
-			// Wait for the chunk under us to report a baked collider when we can ask; otherwise
-			// just keep probing. Physics.Raycast against a MeshCollider with a null sharedMesh
-			// simply misses, so the raycast alone is already a valid readiness test.
+			// Wait for the chunk under us to report a baked collider when we can ask; otherwise just keep probing.
 			RaycastHit hit;
 			if (Physics.Raycast(rayOrigin, Vector3.down, out hit, rayLength, terrainMask, QueryTriggerInteraction.Ignore)) {
 				PlaceAt(hit.point);
@@ -220,8 +199,6 @@ public class TerrainSpawnPlacer : MonoBehaviour {
 		float feetOffset = FeetOffset();
 		Vector3 target = groundPoint + Vector3.up * (feetOffset + groundClearance);
 
-		// A CharacterController must be disabled before its transform is moved, or it will
-		// snap back to its internal position. Freeze(true) has already disabled it.
 		transform.position = target;
 
 		if (body != null) {

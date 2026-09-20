@@ -1,10 +1,6 @@
 using UnityEngine;
 
-/// <summary>
-/// Evaluates the terrain noise at an arbitrary world position rather than on a chunk grid.
-/// The layout layer needs terrain height before any chunk exists, so this is the single
-/// implementation and <see cref="Noise.GenerateNoiseMap"/> drives it too.
-/// </summary>
+/// <summary>Evaluates the terrain noise at an arbitrary world position rather than on a chunk grid.</summary>
 public struct NoiseSampler
 {
     readonly Vector2[] octaveOffsets;
@@ -26,10 +22,7 @@ public struct NoiseSampler
         lacunarity = settings.lacunarity;
     }
 
-    /// <summary>
-    /// Offsets are drawn in the same order as the grid generator so a given seed produces
-    /// the same octave offsets either way.
-    /// </summary>
+    /// <summary>Offsets are drawn in the same order as the grid generator so a given seed produces the same octave offsets either way.</summary>
     public static NoiseSampler Create(NoiseSettings settings, int seed, float meshScale)
     {
         DeterministicRandom prng = new DeterministicRandom((uint)seed);
@@ -54,8 +47,7 @@ public struct NoiseSampler
     /// <summary>Un-normalised fBm sum, matching the grid generator's inner loop.</summary>
     public float EvaluateRaw(Vector2 worldXZ)
     {
-        // World position expressed in the noise's own units. The half-unit shift and the
-        // negated Z come from inverting MeshGenerator's vertex placement.
+        // World position expressed in the noise's own units.
         float px = worldXZ.x / meshScale - 0.5f;
         float pz = -worldXZ.y / meshScale - 0.5f;
 

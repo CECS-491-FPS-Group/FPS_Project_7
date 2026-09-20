@@ -63,8 +63,6 @@ public class TerrainChunk
         this.viewer = viewer;
 
         detailLevels = config.detailLevels;
-        // An index past the end of detailLevels leaves the MeshCollider without a mesh,
-        // which drops anything standing on the chunk straight through it.
         colliderLODIndex = Mathf.Clamp(config.colliderLODIndex, 0, detailLevels.Length - 1);
         context = HeightMapContext.ForChunk(coord, config.meshSettings, config.worldSettings, config.seed, config.layout);
 
@@ -149,7 +147,7 @@ public class TerrainChunk
         RaiseReadyIfComplete();
     }
 
-    /// <summary>Picks the LOD mesh matching the viewer's distance. Bounded worlds never hide a chunk.</summary>
+    /// <summary>Picks the LOD mesh matching the viewer's distance.</summary>
     public void UpdateLevelOfDetail()
     {
         if (!heightMapReceived || !config.RendersTerrain)

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Linq;
 
 [CreateAssetMenu()]
+/// <summary>Height-banded texture layers pushed into the terrain material.</summary>
 public class TextureData : UpdatableData {
 
 	const int textureSize = 512;

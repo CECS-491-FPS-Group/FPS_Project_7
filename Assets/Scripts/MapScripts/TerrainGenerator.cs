@@ -2,10 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Builds a bounded grid of terrain chunks from a single seed. Every client that receives the
-/// same seed produces the same world, so terrain is never replicated.
-/// </summary>
+/// <summary>Builds a bounded grid of terrain chunks from a single seed.</summary>
 public class TerrainGenerator : MonoBehaviour
 {
     public WorldSettings worldSettings;
@@ -40,6 +37,7 @@ public class TerrainGenerator : MonoBehaviour
     bool generating;
 
     public event Action<float> OnGenerationProgress;
+    public event Action OnLayoutBuilt;
     public event Action OnWorldGenerationComplete;
 
     public bool IsGenerated { get; private set; }
@@ -49,6 +47,11 @@ public class TerrainGenerator : MonoBehaviour
     public float MeshWorldSize
     {
         get { return meshSettings != null ? meshSettings.meshWorldSize : 0f; }
+    }
+
+    public float SeaLevel
+    {
+        get { return worldSettings != null ? worldSettings.seaLevel : float.NegativeInfinity; }
     }
 
     public float WorldSize
@@ -108,6 +111,11 @@ public class TerrainGenerator : MonoBehaviour
         Seed = seed;
         Layout = BuildLayout(seed);
         generating = true;
+
+        if (OnLayoutBuilt != null)
+        {
+            OnLayoutBuilt();
+        }
         IsGenerated = false;
         readyChunkCount = 0;
 
@@ -164,7 +172,7 @@ public class TerrainGenerator : MonoBehaviour
         WorldFalloff falloff = WorldFalloff.From(worldSettings, meshWorldSize);
         TerrainHeightField field = new TerrainHeightField(heightMapSettings, falloff, seed, meshSettings.meshScale);
 
-        return WorldLayout.Build(seed, worldSettings.WorldRect(meshWorldSize), field, worldSettings.layoutSettings);
+        return WorldLayout.Build(seed, worldSettings.WorldRect(meshWorldSize), field, worldSettings.layoutSettings, worldSettings.seaLevel);
     }
 
     public void Clear()

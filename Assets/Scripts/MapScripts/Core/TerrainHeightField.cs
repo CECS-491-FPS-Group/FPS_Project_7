@@ -1,10 +1,6 @@
 using UnityEngine;
 
-/// <summary>
-/// Terrain height before any layout carving, queryable at any world position.
-/// The layout layer uses this to grade roads and flatten building pads without
-/// needing a chunk to exist yet.
-/// </summary>
+/// <summary>Terrain height before any layout carving, queryable at any world position.</summary>
 public sealed class TerrainHeightField
 {
     readonly NoiseSampler noise;
@@ -22,10 +18,7 @@ public sealed class TerrainHeightField
         applyFalloff = settings.useFalloff && falloff.Enabled;
     }
 
-    /// <summary>
-    /// Shared by the grid generator and the layout so both agree exactly. The noise is
-    /// multiplied back in rather than replaced, matching the original generator.
-    /// </summary>
+    /// <summary>Shared by the grid generator and the layout so both agree exactly.</summary>
     public static float Combine(float normalisedNoise, float falloffAmount, bool applyFalloff, AnimationCurve curve, float multiplier)
     {
         float value = applyFalloff ? Mathf.Clamp01(normalisedNoise - falloffAmount) : normalisedNoise;

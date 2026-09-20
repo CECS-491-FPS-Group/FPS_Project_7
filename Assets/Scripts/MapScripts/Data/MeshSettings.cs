@@ -2,6 +2,7 @@
 using System.Collections;
 
 [CreateAssetMenu()]
+/// <summary>Chunk resolution and world scale.</summary>
 public class MeshSettings : UpdatableData {
 
 	public const int numSupportedLODs = 5;

@@ -3,17 +3,14 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
-/// <summary>
-/// Wires a playable character into a scene that has a TerrainGenerator: puts the terrain and the
-/// character's ground mask on the same layer, drops in a player and camera if the scene has none,
-/// and configures TerrainSpawnPlacer so the character lands on generated ground instead of
-/// falling while chunks are still being built.
-/// </summary>
+/// <summary>Wires a playable character into a scene that has a TerrainGenerator: puts the terrain and the character's ground mask on the same layer, drops in a player and camera if the scene has none, and configures TerrainSpawnPlacer so the character lands on generated ground instead of falling while chunks are still being built.</summary>
 public static class MapSceneSetup
 {
     const string PlayerPrefabPath = "Assets/Starter Assets/Runtime/FirstPersonController/Prefabs/PlayerCapsule.prefab";
     const string PreferredLayerName = "Ground";
     const string CameraRootName = "PlayerCameraRoot";
+    const string RoadMaterialPath = "Assets/Terrain Assets/Road.mat";
+    const string WaterMaterialPath = "Assets/Terrain Assets/Water.mat";
 
     [MenuItem("Tools/Map/Set Up Player In Scene")]
     public static void Run()
@@ -62,6 +59,7 @@ public static class MapSceneSetup
 
         ConfigureSpawnPlacer(player, generator, terrainLayer, controller, report);
         ConfigureBoundary(generator, terrainLayer, report);
+        ConfigureRoadsAndWater(generator, report);
 
         Undo.RecordObject(generator, "Set Up Player");
         generator.viewer = player.transform;
@@ -142,15 +140,10 @@ public static class MapSceneSetup
         camera.AddComponent<AudioListener>();
         camera.transform.SetParent(cameraRoot, false);
 
-        // The controller pitches PlayerCameraRoot and yaws the player, so a plain child camera
-        // tracks the look direction without pulling in Cinemachine.
         report.AppendLine("Scene had no camera; added one under " + cameraRoot.name);
     }
 
-    /// <summary>
-    /// Adds the terrain layer to whichever component exposes a GroundLayers mask. Found by
-    /// serialised property name so this does not need a reference to the Starter Assets assembly.
-    /// </summary>
+    /// <summary>Adds the terrain layer to whichever component exposes a GroundLayers mask.</summary>
     static MonoBehaviour FindGroundedController(GameObject player, int terrainLayer, out string componentName)
     {
         componentName = null;
@@ -234,10 +227,53 @@ public static class MapSceneSetup
         }
     }
 
-    /// <summary>
-    /// The placeholder Viewer cube sits at the origin with a BoxCollider, which the terrain now
-    /// generates around. Left active it blocks the player and can catch the spawn probe.
-    /// </summary>
+    static void ConfigureRoadsAndWater(TerrainGenerator generator, StringBuilder report)
+    {
+        RoadMeshBuilder roads = generator.GetComponent<RoadMeshBuilder>();
+        if (roads == null)
+        {
+            roads = Undo.AddComponent<RoadMeshBuilder>(generator.gameObject);
+            report.AppendLine("Added RoadMeshBuilder to " + generator.name);
+        }
+
+        Undo.RecordObject(roads, "Set Up Player");
+        roads.terrainGenerator = generator;
+        if (roads.roadMaterial == null)
+        {
+            roads.roadMaterial = AssetDatabase.LoadAssetAtPath<Material>(RoadMaterialPath);
+        }
+        EditorUtility.SetDirty(roads);
+
+        WaterSurface water = generator.GetComponent<WaterSurface>();
+        if (water == null)
+        {
+            water = Undo.AddComponent<WaterSurface>(generator.gameObject);
+            report.AppendLine("Added WaterSurface to " + generator.name);
+        }
+
+        Undo.RecordObject(water, "Set Up Player");
+        water.terrainGenerator = generator;
+        if (water.waterMaterial == null)
+        {
+            water.waterMaterial = AssetDatabase.LoadAssetAtPath<Material>(WaterMaterialPath);
+        }
+        EditorUtility.SetDirty(water);
+
+        report.AppendLine("Water at sea level " + generator.SeaLevel.ToString("F1") + " m");
+
+        StructureSpawner structures = generator.GetComponent<StructureSpawner>();
+        if (structures == null)
+        {
+            structures = Undo.AddComponent<StructureSpawner>(generator.gameObject);
+            report.AppendLine("Added StructureSpawner to " + generator.name);
+        }
+
+        Undo.RecordObject(structures, "Set Up Player");
+        structures.terrainGenerator = generator;
+        EditorUtility.SetDirty(structures);
+    }
+
+    /// <summary>The placeholder Viewer cube sits at the origin with a BoxCollider, which the terrain now generates around.</summary>
     static void DisablePlaceholderViewer(TerrainGenerator generator, GameObject player, StringBuilder report)
     {
         GameObject[] roots = generator.gameObject.scene.GetRootGameObjects();

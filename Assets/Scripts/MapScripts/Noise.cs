@@ -1,5 +1,7 @@
 using UnityEngine;
 
+/// <summary>Chunk noise map driven by NoiseSampler, plus the serialisable noise settings.</summary>
+
 public static class Noise {
 
 	public enum NormalizeMode {Local, Global};

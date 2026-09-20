@@ -1,9 +1,6 @@
 using UnityEngine;
 
-/// <summary>
-/// Integer-only PRNG. Every operation is exact on any platform, so two clients seeded
-/// identically produce identical worlds without replicating placement data.
-/// </summary>
+/// <summary>Integer-only PRNG.</summary>
 public struct DeterministicRandom
 {
     uint state;

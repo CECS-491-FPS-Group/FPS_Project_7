@@ -45,7 +45,7 @@ public static class HeightMapGenerator {
 
 public struct HeightMap {
 	public readonly float[,] values;
-	/// <summary>1 where the layout carved a road or building pad, 0 on natural terrain. Null when there is no layout.</summary>
+	/// <summary>1 where the layout carved a road or building pad, 0 on natural terrain.</summary>
 	public readonly float[,] surfaceMask;
 	public readonly float minValue;
 	public readonly float maxValue;

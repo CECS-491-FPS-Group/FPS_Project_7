@@ -1,9 +1,6 @@
 using UnityEngine;
 
-/// <summary>
-/// Everything a chunk's heightmap needs to know about where it sits in the world.
-/// Built on the main thread from the settings assets, then passed by value to a worker.
-/// </summary>
+/// <summary>Everything a chunk's heightmap needs to know about where it sits in the world.</summary>
 public readonly struct HeightMapContext
 {
     public readonly int Seed;

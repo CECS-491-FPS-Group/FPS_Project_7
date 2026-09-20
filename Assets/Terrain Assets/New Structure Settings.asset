@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4e49a46b7d24f0ea9b5b36f864efbcb, type: 3}
+  m_Name: New Structure Settings
+  m_EditorClassIdentifier: Assembly-CSharp::StructureSettings
+  autoUpdate: 0
+  buildingPrefabs:
+  - {fileID: 5418299342752462037, guid: 2d1aed8ada79e4d4e99084037c3b094a, type: 3}
+  buildingFootprintFill: 0.85
+  buildingScaleRange: {x: 0.6, y: 2.5}
+  faceNearestRoad: 1
+  bridgeStart: {fileID: 0}
+  bridgeMiddle: {fileID: 0}
+  bridgeEnd: {fileID: 0}
+  bridgeMiddleLength: 0
+  bridgePivotOffset: 0

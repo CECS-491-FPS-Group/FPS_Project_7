@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+/// <summary>Debug textures from height and mask arrays.</summary>
+
 public static class TextureGenerator {
 
 	public static Texture2D TextureFromColourMap(Color[] colourMap, int width, int height) {

@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+/// <summary>Edge falloff curve used to sink terrain toward the world boundary.</summary>
+
 public static class FalloffGenerator {
 
 	public static float[,] GenerateFalloffMap(int size) {

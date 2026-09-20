@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 
+/// <summary>Editor-time preview of a single chunk as noise, mesh, falloff or surface mask.</summary>
+
 public class MapPreview : MonoBehaviour {
 
 	public Renderer textureRender;
@@ -61,7 +63,7 @@ public class MapPreview : MonoBehaviour {
 			float meshWorldSize = meshSettings.meshWorldSize;
 			WorldFalloff falloff = WorldFalloff.From (worldSettings, meshWorldSize);
 			TerrainHeightField field = new TerrainHeightField (heightMapSettings, falloff, seed, meshSettings.meshScale);
-			layout = WorldLayout.Build (seed, worldSettings.WorldRect (meshWorldSize), field, worldSettings.layoutSettings);
+			layout = WorldLayout.Build (seed, worldSettings.WorldRect (meshWorldSize), field, worldSettings.layoutSettings, worldSettings.seaLevel);
 		}
 
 		return HeightMapContext.ForChunk (previewChunkCoord, meshSettings, worldSettings, seed, layout);
