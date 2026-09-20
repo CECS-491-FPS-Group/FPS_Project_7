@@ -6,6 +6,10 @@ public class Health : MonoBehaviour
     public int maxHp = 100;
     public int currentHp;
 
+    // Used by the player health-bar UI.
+    public float MaximumHealth => maxHp;
+    public float CurrentHealth => currentHp;
+
     [Header("Respawn")]
     public bool respawnOnDeath = true;
     public float respawnDelay = 5f;

@@ -1,0 +1,52 @@
+using UnityEngine;
+using UnityEngine.UI;
+using FishNet.Object;
+
+public class PlayerHealthBarUI : MonoBehaviour
+{
+    private Slider healthSlider;
+    private Health playerHealth;
+
+    private void Awake()
+    {
+        healthSlider = GetComponent<Slider>();
+
+        healthSlider.minValue = 0f;
+        healthSlider.maxValue = 1f;
+        healthSlider.value = 1f;
+    }
+
+    private void Update()
+    {
+        if (playerHealth == null)
+        {
+            FindLocalPlayerHealth();
+            return;
+        }
+
+        if (playerHealth.MaximumHealth > 0f)
+        {
+            healthSlider.value =
+                playerHealth.CurrentHealth /
+                playerHealth.MaximumHealth;
+        }
+    }
+
+    private void FindLocalPlayerHealth()
+    {
+        Health[] healthObjects =
+            FindObjectsByType<Health>(FindObjectsSortMode.None);
+
+        foreach (Health health in healthObjects)
+        {
+            NetworkObject networkObject =
+                health.GetComponentInParent<NetworkObject>();
+
+            if (networkObject != null && networkObject.IsOwner)
+            {
+                playerHealth = health;
+                return;
+            }
+        }
+    }
+}
