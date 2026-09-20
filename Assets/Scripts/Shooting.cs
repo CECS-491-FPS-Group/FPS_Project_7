@@ -15,6 +15,11 @@ public class HitscanShooter : MonoBehaviour
     private void Awake()
     {
         cam = GetComponent<Camera>();
+        if (cam == null)
+        {
+            cam = Camera.main;
+        }
+
         audioSource = GetComponent<AudioSource>();
 
         if (audioSource == null)
@@ -33,6 +38,11 @@ public class HitscanShooter : MonoBehaviour
 
     private void Shoot()
     {
+        if (cam == null)
+        {
+            return;
+        }
+
         if (gunshotClip != null)
         {
             audioSource.PlayOneShot(gunshotClip, gunshotVolume);
