@@ -32,6 +32,7 @@ public class BotAI : MonoBehaviour
     [Header("Combat")]
     [SerializeField] private int damage = 10;
     [SerializeField] private float shotsPerSecond = 1.5f;
+
     [SerializeField, Range(0f, 0.9f)]
     private float retreatHealthPercent = 0f;
 
@@ -53,6 +54,13 @@ public class BotAI : MonoBehaviour
     private float nextTargetSearchTime;
     private float nextPatrolTime;
 
+    private float baseDetectionRange;
+    private float baseAttackRange;
+    private float baseMoveSpeed;
+    private float baseRotationSpeed;
+    private int baseDamage;
+    private float baseShotsPerSecond;
+
     private void Awake()
     {
         botHealth =
@@ -61,9 +69,18 @@ public class BotAI : MonoBehaviour
         agent =
             GetComponent<NavMeshAgent>();
 
+        baseDetectionRange = detectionRange;
+        baseAttackRange = attackRange;
+        baseMoveSpeed = moveSpeed;
+        baseRotationSpeed = rotationSpeed;
+        baseDamage = damage;
+        baseShotsPerSecond = shotsPerSecond;
+
         agent.speed = moveSpeed;
-        agent.angularSpeed = rotationSpeed * 60f;
-        agent.stoppingDistance = attackRange * 0.8f;
+        agent.angularSpeed =
+            rotationSpeed * 60f;
+        agent.stoppingDistance =
+            attackRange * 0.8f;
 
         tracer =
             gameObject.AddComponent<LineRenderer>();
@@ -74,9 +91,51 @@ public class BotAI : MonoBehaviour
         tracer.startColor = tracerColor;
         tracer.endColor = tracerColor;
         tracer.material =
-            new Material(Shader.Find("Sprites/Default"));
+            new Material(
+                Shader.Find("Sprites/Default")
+            );
 
         tracer.enabled = false;
+    }
+
+    public void ApplyRoundDifficulty(int round)
+    {
+        round =
+            Mathf.Clamp(round, 1, 3);
+
+        float multiplier =
+            1f + (round - 1) * 0.2f;
+
+        detectionRange =
+            baseDetectionRange * multiplier;
+
+        attackRange =
+            baseAttackRange * multiplier;
+
+        moveSpeed =
+            baseMoveSpeed * multiplier;
+
+        rotationSpeed =
+            baseRotationSpeed * multiplier;
+
+        damage =
+            Mathf.RoundToInt(
+                baseDamage * multiplier
+            );
+
+        shotsPerSecond =
+            baseShotsPerSecond * multiplier;
+
+        if (agent != null)
+        {
+            agent.speed = moveSpeed;
+
+            agent.angularSpeed =
+                rotationSpeed * 60f;
+
+            agent.stoppingDistance =
+                attackRange * 0.8f;
+        }
     }
 
     private void OnDisable()
@@ -89,10 +148,19 @@ public class BotAI : MonoBehaviour
 
     private void Update()
     {
-        if (botHealth != null && botHealth.IsDead)
+        if (
+            botHealth != null &&
+            botHealth.IsDead
+        )
         {
-            if (agent != null && agent.isOnNavMesh)
+            if (
+                agent != null &&
+                agent.isOnNavMesh
+            )
+            {
                 agent.ResetPath();
+                agent.velocity = Vector3.zero;
+            }
 
             if (tracer != null)
                 tracer.enabled = false;
@@ -102,9 +170,13 @@ public class BotAI : MonoBehaviour
             return;
         }
 
-        if (Time.time >= nextTargetSearchTime)
+        if (
+            Time.time >=
+            nextTargetSearchTime
+        )
         {
             FindClosestPlayer();
+
             nextTargetSearchTime =
                 Time.time + 0.25f;
         }
@@ -112,7 +184,10 @@ public class BotAI : MonoBehaviour
         bool canSeeTarget =
             HasLineOfSight(detectionRange);
 
-        if (target != null && canSeeTarget)
+        if (
+            target != null &&
+            canSeeTarget
+        )
         {
             lastKnownPosition =
                 target.position;
@@ -127,13 +202,16 @@ public class BotAI : MonoBehaviour
         RunState(currentState);
     }
 
-    private BotState DecideState(bool canSeeTarget)
+    private BotState DecideState(
+        bool canSeeTarget
+    )
     {
         if (
             retreatHealthPercent > 0f &&
             botHealth != null &&
             botHealth.currentHp <=
-            botHealth.maxHp * retreatHealthPercent
+            botHealth.maxHp *
+            retreatHealthPercent
         )
         {
             return BotState.Retreat;
@@ -170,7 +248,9 @@ public class BotAI : MonoBehaviour
         return BotState.Patrol;
     }
 
-    private void RunState(BotState state)
+    private void RunState(
+        BotState state
+    )
     {
         if (!agent.isOnNavMesh)
             return;
@@ -186,9 +266,11 @@ public class BotAI : MonoBehaviour
                     attackRange * 0.8f;
 
                 if (target != null)
+                {
                     agent.SetDestination(
                         target.position
                     );
+                }
 
                 break;
 
@@ -241,7 +323,9 @@ public class BotAI : MonoBehaviour
             )
         )
         {
-            agent.SetDestination(hit.position);
+            agent.SetDestination(
+                hit.position
+            );
         }
 
         nextPatrolTime =
@@ -277,10 +361,13 @@ public class BotAI : MonoBehaviour
             );
 
         Transform closest = null;
+
         float closestDistance =
             detectionRange;
 
-        foreach (GameObject player in players)
+        foreach (
+            GameObject player in players
+        )
         {
             float distance =
                 Vector3.Distance(
@@ -309,17 +396,25 @@ public class BotAI : MonoBehaviour
 
         direction.y = 0f;
 
-        if (direction.sqrMagnitude < 0.001f)
+        if (
+            direction.sqrMagnitude <
+            0.001f
+        )
+        {
             return;
+        }
 
         Quaternion desiredRotation =
-            Quaternion.LookRotation(direction);
+            Quaternion.LookRotation(
+                direction
+            );
 
         transform.rotation =
             Quaternion.Slerp(
                 transform.rotation,
                 desiredRotation,
-                rotationSpeed * Time.deltaTime
+                rotationSpeed *
+                Time.deltaTime
             );
     }
 
@@ -334,8 +429,13 @@ public class BotAI : MonoBehaviour
 
         away.y = 0f;
 
-        if (away.sqrMagnitude < 0.001f)
+        if (
+            away.sqrMagnitude <
+            0.001f
+        )
+        {
             away = -transform.forward;
+        }
 
         Vector3 desiredPosition =
             transform.position +
@@ -358,7 +458,9 @@ public class BotAI : MonoBehaviour
         }
     }
 
-    private bool HasLineOfSight(float maxDistance)
+    private bool HasLineOfSight(
+        float maxDistance
+    )
     {
         if (target == null)
             return false;
@@ -412,7 +514,8 @@ public class BotAI : MonoBehaviour
 
         nextShotTime =
             Time.time +
-            1f / Mathf.Max(
+            1f /
+            Mathf.Max(
                 0.01f,
                 shotsPerSecond
             );
@@ -455,7 +558,10 @@ public class BotAI : MonoBehaviour
                 health != botHealth
             )
             {
-                health.TakeDamage(damage);
+                health.TakeDamage(
+                    damage,
+                    gameObject
+                );
             }
         }
 

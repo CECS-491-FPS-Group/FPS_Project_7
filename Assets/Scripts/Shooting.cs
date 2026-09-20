@@ -29,14 +29,17 @@ public class HitscanShooter : MonoBehaviour
 
     private void Shoot()
     {
-        Vector3 crosshairPosition = new Vector3(
-            Screen.width / 2f,
-            Screen.height / 2f,
-            0f
-        );
+        Vector3 crosshairPosition =
+            new Vector3(
+                Screen.width / 2f,
+                Screen.height / 2f,
+                0f
+            );
 
         Ray ray =
-            cam.ScreenPointToRay(crosshairPosition);
+            cam.ScreenPointToRay(
+                crosshairPosition
+            );
 
         if (
             Physics.Raycast(
@@ -51,7 +54,10 @@ public class HitscanShooter : MonoBehaviour
 
             if (health != null)
             {
-                health.TakeDamage(damage);
+                health.TakeDamage(
+                    damage,
+                    transform.root.gameObject
+                );
 
                 SpawnBloodEffect(
                     hit.point,
@@ -77,10 +83,13 @@ public class HitscanShooter : MonoBehaviour
             return;
 
         Vector3 spawnPosition =
-            hitPoint + hitNormal * 0.01f;
+            hitPoint +
+            hitNormal * 0.01f;
 
         Quaternion rotation =
-            Quaternion.LookRotation(hitNormal);
+            Quaternion.LookRotation(
+                hitNormal
+            );
 
         GameObject bloodEffect =
             Instantiate(
@@ -89,6 +98,9 @@ public class HitscanShooter : MonoBehaviour
                 rotation
             );
 
-        Destroy(bloodEffect, 2f);
+        Destroy(
+            bloodEffect,
+            2f
+        );
     }
 }

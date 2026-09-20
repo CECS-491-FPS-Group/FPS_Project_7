@@ -6,7 +6,6 @@ public class Health : MonoBehaviour
     public int maxHp = 100;
     public int currentHp;
 
-    // Used by the player health-bar UI.
     public float MaximumHealth => maxHp;
     public float CurrentHealth => currentHp;
 
@@ -19,6 +18,7 @@ public class Health : MonoBehaviour
 
     private Vector3 startingPosition;
     private bool isDead;
+    private bool matchFrozen;
 
     private RandomRespawnArea randomRespawnArea;
 
@@ -33,7 +33,15 @@ public class Health : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
-        if (isDead)
+        TakeDamage(damage, null);
+    }
+
+    public void TakeDamage(
+        int damage,
+        GameObject attacker
+    )
+    {
+        if (isDead || matchFrozen)
             return;
 
         currentHp = Mathf.Max(
@@ -50,22 +58,42 @@ public class Health : MonoBehaviour
         );
 
         if (currentHp <= 0)
-            Die();
+            Die(attacker);
     }
 
-    private void Die()
+    private void Die(GameObject attacker)
     {
         if (isDead)
             return;
 
         isDead = true;
 
-        Debug.Log(gameObject.name + " died.");
+        MatchManager matchManager =
+            FindFirstObjectByType<MatchManager>();
+
+        if (matchManager != null)
+        {
+            matchManager.RegisterDeath(
+                gameObject,
+                attacker
+            );
+        }
+
+        Debug.Log(
+            gameObject.name +
+            " died."
+        );
 
         if (respawnOnDeath)
-            StartCoroutine(RespawnRoutine());
+        {
+            StartCoroutine(
+                RespawnRoutine()
+            );
+        }
         else
+        {
             Destroy(gameObject);
+        }
     }
 
     private IEnumerator RespawnRoutine()
@@ -80,18 +108,23 @@ public class Health : MonoBehaviour
 
         SetObjectActive(false);
 
-        float timeRemaining = respawnDelay;
+        float timeRemaining =
+            respawnDelay;
 
         while (timeRemaining > 0f)
         {
             if (respawnUI != null)
             {
                 respawnUI.ShowCountdown(
-                    Mathf.CeilToInt(timeRemaining)
+                    Mathf.CeilToInt(
+                        timeRemaining
+                    )
                 );
             }
 
-            timeRemaining -= Time.deltaTime;
+            timeRemaining -=
+                Time.deltaTime;
+
             yield return null;
         }
 
@@ -112,7 +145,8 @@ public class Health : MonoBehaviour
         }
         else
         {
-            newPosition = startingPosition;
+            newPosition =
+                startingPosition;
 
             Debug.LogWarning(
                 "RandomRespawnArea was not found."
@@ -123,7 +157,10 @@ public class Health : MonoBehaviour
             newPosition,
             Quaternion.Euler(
                 0f,
-                Random.Range(0f, 360f),
+                Random.Range(
+                    0f,
+                    360f
+                ),
                 0f
             )
         );
@@ -145,11 +182,98 @@ public class Health : MonoBehaviour
         );
     }
 
+    public void SetMatchFrozen(bool frozen)
+    {
+        matchFrozen = frozen;
+
+        bool enableBehaviours =
+            !frozen &&
+            !isDead;
+
+        SetBehaviourEnabled(
+            "FirstPersonController",
+            enableBehaviours
+        );
+
+        SetBehaviourEnabled(
+            "HitscanShooter",
+            enableBehaviours
+        );
+
+        SetBehaviourEnabled(
+            "BotAI",
+            enableBehaviours
+        );
+
+        SetBehaviourEnabled(
+            "AIBotAnimation",
+            enableBehaviours
+        );
+    }
+
+    public void ForceRespawnForRound()
+    {
+        StopAllCoroutines();
+
+        RespawnUI respawnUI =
+            FindFirstObjectByType<RespawnUI>();
+
+        if (respawnUI != null)
+            respawnUI.Hide();
+
+        CharacterController controller =
+            GetComponent<CharacterController>();
+
+        if (controller != null)
+            controller.enabled = false;
+
+        Vector3 newPosition;
+
+        if (randomRespawnArea != null)
+        {
+            newPosition =
+                randomRespawnArea.GetRandomSpawnPosition(
+                    controller
+                );
+        }
+        else
+        {
+            newPosition =
+                startingPosition;
+
+            Debug.LogWarning(
+                "RandomRespawnArea was not found."
+            );
+        }
+
+        transform.SetPositionAndRotation(
+            newPosition,
+            Quaternion.Euler(
+                0f,
+                Random.Range(
+                    0f,
+                    360f
+                ),
+                0f
+            )
+        );
+
+        if (controller != null)
+            controller.enabled = true;
+
+        currentHp = maxHp;
+        isDead = false;
+
+        SetObjectActive(true);
+    }
+
     private void SetObjectActive(bool active)
     {
         foreach (
             Renderer renderer
-            in GetComponentsInChildren<Renderer>(true)
+            in GetComponentsInChildren<Renderer>(
+                true
+            )
         )
         {
             renderer.enabled = active;
@@ -157,30 +281,37 @@ public class Health : MonoBehaviour
 
         foreach (
             Collider collider
-            in GetComponentsInChildren<Collider>(true)
+            in GetComponentsInChildren<Collider>(
+                true
+            )
         )
         {
             collider.enabled = active;
         }
 
+        bool enableBehaviours =
+            active &&
+            !matchFrozen &&
+            !isDead;
+
         SetBehaviourEnabled(
             "FirstPersonController",
-            active
+            enableBehaviours
         );
 
         SetBehaviourEnabled(
             "HitscanShooter",
-            active
+            enableBehaviours
         );
 
         SetBehaviourEnabled(
             "BotAI",
-            active
+            enableBehaviours
         );
 
         SetBehaviourEnabled(
             "AIBotAnimation",
-            active
+            enableBehaviours
         );
     }
 
@@ -191,29 +322,37 @@ public class Health : MonoBehaviour
     {
         foreach (
             MonoBehaviour behaviour
-            in GetComponentsInChildren<MonoBehaviour>(true)
+            in GetComponentsInChildren<MonoBehaviour>(
+                true
+            )
         )
         {
             if (
                 behaviour != null &&
-                behaviour.GetType().Name == typeName
+                behaviour.GetType().Name ==
+                typeName
             )
             {
-                behaviour.enabled = enabledState;
+                behaviour.enabled =
+                    enabledState;
             }
         }
 
         foreach (
             MonoBehaviour behaviour
-            in GetComponentsInParent<MonoBehaviour>(true)
+            in GetComponentsInParent<MonoBehaviour>(
+                true
+            )
         )
         {
             if (
                 behaviour != null &&
-                behaviour.GetType().Name == typeName
+                behaviour.GetType().Name ==
+                typeName
             )
             {
-                behaviour.enabled = enabledState;
+                behaviour.enabled =
+                    enabledState;
             }
         }
     }
