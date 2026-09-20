@@ -91,6 +91,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HitscanShooter
   damage: 40
   range: 100
+  bloodEffectPrefab: {fileID: 692219955226784958, guid: 92e583a52cde646a1949f7a83db07062, type: 3}
 --- !u!4 &2013700029042369884 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 9005220659476430818, guid: 2d3a85ecde41a8246a79669975912b74, type: 3}
