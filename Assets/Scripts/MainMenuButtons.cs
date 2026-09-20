@@ -2,8 +2,8 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 public class MainMenuButtons : MonoBehaviour
 {
-    [SerializeField] private AudioClip clickSound;
-    [SerializeField, Range(0f, 1f)] private float clickVolume = 1f;
+    public AudioClip clickSound;
+    [Range(0f, 1f)] public float clickVolume = 1f;
 
     private void Awake()
     {
