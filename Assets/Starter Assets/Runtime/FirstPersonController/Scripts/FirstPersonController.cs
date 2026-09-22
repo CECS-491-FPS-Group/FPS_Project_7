@@ -16,9 +16,7 @@ namespace StarterAssets
 		public float MoveSpeed = 4.0f;
 		[Tooltip("Sprint speed of the character in m/s")]
 		public float SprintSpeed = 6.0f;
-        [Tooltip("Crouch speed of the character in m/s")]
-        public float CrouchSpeed = 1.0f;
-        [Tooltip("Rotation speed of the character")]
+		[Tooltip("Rotation speed of the character")]
 		public float RotationSpeed = 1.0f;
 		[Tooltip("Acceleration and deceleration")]
 		public float SpeedChangeRate = 10.0f;
@@ -66,14 +64,9 @@ namespace StarterAssets
 		private float _jumpTimeoutDelta;
 		private float _fallTimeoutDelta;
 
-		private float m_FieldOfView; 
-		private float old_FieldOfView;
-        private Vector3 old_Scale;
-        private GameObject player_object;
-
-
+	
 #if ENABLE_INPUT_SYSTEM
-        private PlayerInput _playerInput;
+		private PlayerInput _playerInput;
 #endif
 		private CharacterController _controller;
 		private StarterAssetsInputs _input;
@@ -115,20 +108,14 @@ namespace StarterAssets
 			// reset our timeouts on start
 			_jumpTimeoutDelta = JumpTimeout;
 			_fallTimeoutDelta = FallTimeout;
-
-			m_FieldOfView = 60.0f;
-            old_FieldOfView = Camera.main.fieldOfView;
-			player_object = GameObject.FindWithTag("Player");
-        }
+		}
 
 		private void Update()
 		{
 			JumpAndGravity();
 			GroundedCheck();
 			Move();
-			SprintFOV();
-			CrouchScale();
-        }
+		}
 
 		private void LateUpdate()
 		{
@@ -167,7 +154,7 @@ namespace StarterAssets
 		private void Move()
 		{
 			// set target speed based on move speed, sprint speed and if sprint is pressed
-			float targetSpeed = _input.sprint ? SprintSpeed: _input.crouch ? CrouchSpeed : MoveSpeed;
+			float targetSpeed = _input.sprint ? SprintSpeed : MoveSpeed;
 
 			// a simplistic acceleration and deceleration designed to be easy to remove, replace, or iterate upon
 
@@ -258,30 +245,6 @@ namespace StarterAssets
 				_verticalVelocity += Gravity * Time.deltaTime;
 			}
 		}
-
-		private void SprintFOV()
-		{
-			if (_input.sprint == true)
-			{
-				Camera.main.fieldOfView = m_FieldOfView;
-			}
-			else if (_input.sprint == false)
-			{
-				Camera.main.fieldOfView = old_FieldOfView;
-			}
-		}
-
-		private void CrouchScale()
-		{
-			if (_input.crouch == true)
-			{
-				player_object.transform.localScale = new Vector3(1f,0.4f,1f);
-            }
-            else if (_input.crouch == false)
-            {
-                player_object.transform.localScale = Vector3.one;
-            }
-        }
 
 		private static float ClampAngle(float lfAngle, float lfMin, float lfMax)
 		{

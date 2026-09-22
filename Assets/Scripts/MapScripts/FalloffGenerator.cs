@@ -19,7 +19,7 @@ public static class FalloffGenerator {
 		return map;
 	}
 
-	public static float Evaluate(float value) {
+	static float Evaluate(float value) {
 		float a = 3;
 		float b = 2.2f;
 

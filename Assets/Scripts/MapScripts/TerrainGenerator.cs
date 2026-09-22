@@ -1,328 +1,180 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
 
-/// <summary>
-/// Builds a bounded grid of terrain chunks from a single seed. Every client that receives the
-/// same seed produces the same world, so terrain is never replicated.
-/// </summary>
-public class TerrainGenerator : MonoBehaviour
-{
-    public WorldSettings worldSettings;
-    public MeshSettings meshSettings;
-    public HeightMapSettings heightMapSettings;
-    public TextureData textureSettings;
+public class TerrainGenerator : MonoBehaviour {
 
-    [Tooltip("Which entry of detailLevels is used to build MeshColliders. 0 = full detail collider.")]
-    public int colliderLODIndex;
-    public LODInfo[] detailLevels;
+	const float viewerMoveThresholdForChunkUpdate = 25f;
+	const float sqrViewerMoveThresholdForChunkUpdate = viewerMoveThresholdForChunkUpdate * viewerMoveThresholdForChunkUpdate;
 
-    [Tooltip("Layer assigned to every generated chunk. Must be included in the character controller GroundLayers mask.")]
-    public int terrainLayer;
+	[Tooltip("Which entry of detailLevels is used to build MeshColliders. MUST be a valid index into detailLevels. 0 = full detail collider.")]
+	public int colliderLODIndex;
+	public LODInfo[] detailLevels;
 
-    [Tooltip("Transform used to pick LOD levels. May be assigned at runtime via SetViewer().")]
-    public Transform viewer;
-    public Material mapMaterial;
+	[Tooltip("How close (in world units) the viewer must get to a chunk before its MeshCollider is baked. Baking is a main-thread cost, so keep it well below the chunk size, but large enough that the collider exists before the player arrives.")]
+	public float colliderGenerationDistanceThreshold = 5f;
 
-    [Tooltip("ServerOnly skips renderers, materials and non-collider LOD meshes.")]
-    public WorldBuildProfile buildProfile = WorldBuildProfile.Full;
+	[Tooltip("Layer assigned to every generated chunk. This layer MUST be included in your character controller's GroundLayers mask or the player will never register as grounded.")]
+	public int terrainLayer = 0;
 
-    public bool generateOnStart = true;
+	public MeshSettings meshSettings;
+	public HeightMapSettings heightMapSettings;
+	public TextureData textureSettings;
 
-    const float viewerMoveThresholdForLODUpdate = 25f;
-    const float sqrViewerMoveThresholdForLODUpdate = viewerMoveThresholdForLODUpdate * viewerMoveThresholdForLODUpdate;
+	[Tooltip("Transform the terrain streams around. May be left empty and assigned at runtime via SetViewer() - useful when the player is spawned by a network manager.")]
+	public Transform viewer;
+	public Material mapMaterial;
 
-    readonly Dictionary<Vector2, TerrainChunk> chunks = new Dictionary<Vector2, TerrainChunk>();
-    readonly List<TerrainChunk> chunkList = new List<TerrainChunk>();
+	Vector2 viewerPosition;
+	Vector2 viewerPositionOld;
 
-    Vector2 viewerPositionOld;
-    int readyChunkCount;
-    bool generating;
+	float meshWorldSize;
+	int chunksVisibleInViewDst;
+	bool initialised;
 
-    public event Action<float> OnGenerationProgress;
-    public event Action OnWorldGenerationComplete;
+	Dictionary<Vector2, TerrainChunk> terrainChunkDictionary = new Dictionary<Vector2, TerrainChunk>();
+	List<TerrainChunk> visibleTerrainChunks = new List<TerrainChunk>();
 
-    public bool IsGenerated { get; private set; }
-    public int Seed { get; private set; }
-    public WorldLayout Layout { get; private set; }
+	public float MeshWorldSize { get { return meshWorldSize; } }
 
-    public float MeshWorldSize
-    {
-        get { return meshSettings != null ? meshSettings.meshWorldSize : 0f; }
-    }
+	void OnValidate() {
+		if (detailLevels != null && detailLevels.Length > 0) {
+			colliderLODIndex = Mathf.Clamp(colliderLODIndex, 0, detailLevels.Length - 1);
+		}
+		colliderGenerationDistanceThreshold = Mathf.Max(0.01f, colliderGenerationDistanceThreshold);
+	}
 
-    public float WorldSize
-    {
-        get { return worldSettings != null ? worldSettings.WorldSize(MeshWorldSize) : 0f; }
-    }
+	void Start() {
 
-    public float GenerationProgress
-    {
-        get
-        {
-            int total = ExpectedChunkCount;
-            return total == 0 ? 0f : readyChunkCount / (float)total;
-        }
-    }
+		if (detailLevels == null || detailLevels.Length == 0) {
+			Debug.LogError("[TerrainGenerator] detailLevels is empty - no terrain can be generated.", this);
+			enabled = false;
+			return;
+		}
 
-    int ExpectedChunkCount
-    {
-        get { return worldSettings != null ? worldSettings.ChunkCount : 0; }
-    }
+		if (colliderLODIndex < 0 || colliderLODIndex >= detailLevels.Length) {
+			Debug.LogWarning(string.Format(
+				"[TerrainGenerator] colliderLODIndex ({0}) is outside detailLevels (length {1}). Clamping to {2}. " +
+				"Left unclamped this prevents any MeshCollider from being created and characters fall through the terrain.",
+				colliderLODIndex, detailLevels.Length, Mathf.Clamp(colliderLODIndex, 0, detailLevels.Length - 1)), this);
+			colliderLODIndex = Mathf.Clamp(colliderLODIndex, 0, detailLevels.Length - 1);
+		}
 
-    bool RendersTerrain
-    {
-        get { return buildProfile == WorldBuildProfile.Full; }
-    }
+		textureSettings.ApplyToMaterial(mapMaterial);
+		textureSettings.UpdateMeshHeights(mapMaterial, heightMapSettings.minHeight, heightMapSettings.maxHeight);
 
-    void OnValidate()
-    {
-        if (detailLevels != null && detailLevels.Length > 0)
-        {
-            colliderLODIndex = Mathf.Clamp(colliderLODIndex, 0, detailLevels.Length - 1);
-        }
-    }
+		float maxViewDst = detailLevels[detailLevels.Length - 1].visibleDstThreshold;
+		meshWorldSize = meshSettings.meshWorldSize;
+		chunksVisibleInViewDst = Mathf.Max(1, Mathf.RoundToInt(maxViewDst / meshWorldSize));
+		initialised = true;
 
-    void Start()
-    {
-        if (generateOnStart)
-        {
-            Generate();
-        }
-    }
+		if (viewer != null) {
+			viewerPosition = new Vector2(viewer.position.x, viewer.position.z);
+			viewerPositionOld = viewerPosition;
+		}
 
-    public void Generate()
-    {
-        Generate(worldSettings != null ? worldSettings.editorSeed : 0);
-    }
+		UpdateVisibleChunks();
+	}
 
-    public void Generate(int seed)
-    {
-        if (!ValidateSettings())
-        {
-            return;
-        }
+	/// <summary>
+	/// Point the terrain streaming at a different transform. Call this once the player exists
+	/// (e.g. from OnStartClient on the owning FishNet client).
+	/// </summary>
+	public void SetViewer(Transform newViewer) {
+		viewer = newViewer;
 
-        Clear();
+		foreach (KeyValuePair<Vector2, TerrainChunk> entry in terrainChunkDictionary) {
+			entry.Value.SetViewer(newViewer);
+		}
 
-        Seed = seed;
-        Layout = BuildLayout(seed);
-        generating = true;
-        IsGenerated = false;
-        readyChunkCount = 0;
+		if (viewer != null && initialised) {
+			viewerPosition = new Vector2(viewer.position.x, viewer.position.z);
+			viewerPositionOld = viewerPosition;
+			UpdateVisibleChunks();
+		}
+	}
 
-        if (RendersTerrain)
-        {
-            textureSettings.ApplyToMaterial(mapMaterial);
-            textureSettings.UpdateMeshHeights(mapMaterial, heightMapSettings.minHeight, heightMapSettings.maxHeight);
-        }
+	/// <summary>True when the chunk containing this world position has a baked MeshCollider.</summary>
+	public bool IsColliderReadyAt(Vector3 worldPosition) {
+		if (!initialised || meshWorldSize <= 0f) {
+			return false;
+		}
 
-        TerrainChunkConfig config = new TerrainChunkConfig
-        {
-            heightMapSettings = heightMapSettings,
-            meshSettings = meshSettings,
-            worldSettings = worldSettings,
-            detailLevels = detailLevels,
-            colliderLODIndex = colliderLODIndex,
-            parent = transform,
-            material = mapMaterial,
-            layer = terrainLayer,
-            buildProfile = buildProfile,
-            seed = seed,
-            layout = Layout
-        };
+		Vector2 chunkCoord = new Vector2(
+			Mathf.RoundToInt(worldPosition.x / meshWorldSize),
+			Mathf.RoundToInt(worldPosition.z / meshWorldSize));
 
-        int min = worldSettings.ChunkCoordMin;
-        int max = worldSettings.ChunkCoordMax;
+		TerrainChunk chunk;
+		return terrainChunkDictionary.TryGetValue(chunkCoord, out chunk) && chunk.HasCollider;
+	}
 
-        for (int y = min; y <= max; y++)
-        {
-            for (int x = min; x <= max; x++)
-            {
-                Vector2 coord = new Vector2(x, y);
-                TerrainChunk chunk = new TerrainChunk(coord, config, viewer);
-                chunk.onReady += OnChunkReady;
-                chunks.Add(coord, chunk);
-                chunkList.Add(chunk);
-            }
-        }
+	void Update() {
+		if (!initialised || viewer == null) {
+			return;
+		}
 
-        for (int i = 0; i < chunkList.Count; i++)
-        {
-            chunkList[i].Load();
-        }
-    }
+		viewerPosition = new Vector2(viewer.position.x, viewer.position.z);
 
-    WorldLayout BuildLayout(int seed)
-    {
-        if (worldSettings.layoutSettings == null)
-        {
-            return null;
-        }
+		// Run every frame rather than only when the viewer moves: a player standing still at
+		// spawn would otherwise never trigger the collider bake for the chunk beneath them.
+		// UpdateCollisionMesh early-outs once a chunk's collider is set, so this is cheap.
+		for (int i = visibleTerrainChunks.Count - 1; i >= 0; i--) {
+			visibleTerrainChunks[i].UpdateCollisionMesh();
+		}
 
-        float meshWorldSize = meshSettings.meshWorldSize;
-        WorldFalloff falloff = WorldFalloff.From(worldSettings, meshWorldSize);
-        TerrainHeightField field = new TerrainHeightField(heightMapSettings, falloff, seed, meshSettings.meshScale);
+		if ((viewerPositionOld - viewerPosition).sqrMagnitude > sqrViewerMoveThresholdForChunkUpdate) {
+			viewerPositionOld = viewerPosition;
+			UpdateVisibleChunks();
+		}
+	}
 
-        return WorldLayout.Build(seed, worldSettings.WorldRect(meshWorldSize), field, worldSettings.layoutSettings);
-    }
+	void UpdateVisibleChunks() {
+		HashSet<Vector2> alreadyUpdatedChunkCoords = new HashSet<Vector2>();
+		for (int i = visibleTerrainChunks.Count - 1; i >= 0; i--) {
+			alreadyUpdatedChunkCoords.Add(visibleTerrainChunks[i].coord);
+			visibleTerrainChunks[i].UpdateTerrainChunk();
+		}
 
-    public void Clear()
-    {
-        for (int i = 0; i < chunkList.Count; i++)
-        {
-            chunkList[i].Destroy();
-        }
+		int currentChunkCoordX = Mathf.RoundToInt(viewerPosition.x / meshWorldSize);
+		int currentChunkCoordY = Mathf.RoundToInt(viewerPosition.y / meshWorldSize);
 
-        chunks.Clear();
-        chunkList.Clear();
-        readyChunkCount = 0;
-        generating = false;
-        IsGenerated = false;
-        Layout = null;
-    }
+		for (int yOffset = -chunksVisibleInViewDst; yOffset <= chunksVisibleInViewDst; yOffset++) {
+			for (int xOffset = -chunksVisibleInViewDst; xOffset <= chunksVisibleInViewDst; xOffset++) {
+				Vector2 viewedChunkCoord = new Vector2(currentChunkCoordX + xOffset, currentChunkCoordY + yOffset);
+				if (!alreadyUpdatedChunkCoords.Contains(viewedChunkCoord)) {
+					if (terrainChunkDictionary.ContainsKey(viewedChunkCoord)) {
+						terrainChunkDictionary[viewedChunkCoord].UpdateTerrainChunk();
+					} else {
+						TerrainChunk newChunk = new TerrainChunk(viewedChunkCoord, heightMapSettings, meshSettings, detailLevels, colliderLODIndex, transform, viewer, mapMaterial, terrainLayer, colliderGenerationDistanceThreshold);
+						terrainChunkDictionary.Add(viewedChunkCoord, newChunk);
+						newChunk.onVisibilityChanged += OnTerrainChunkVisibilityChanged;
+						newChunk.Load();
+					}
+				}
+			}
+		}
+	}
 
-    bool ValidateSettings()
-    {
-        if (worldSettings == null || meshSettings == null || heightMapSettings == null)
-        {
-            Debug.LogError("[TerrainGenerator] worldSettings, meshSettings and heightMapSettings are all required.", this);
-            return false;
-        }
+	void OnTerrainChunkVisibilityChanged(TerrainChunk chunk, bool isVisible) {
+		if (isVisible) {
+			visibleTerrainChunks.Add(chunk);
+		} else {
+			visibleTerrainChunks.Remove(chunk);
+		}
+	}
 
-        if (detailLevels == null || detailLevels.Length == 0)
-        {
-            Debug.LogError("[TerrainGenerator] detailLevels is empty - no terrain can be generated.", this);
-            return false;
-        }
-
-        if (RendersTerrain && (mapMaterial == null || textureSettings == null))
-        {
-            Debug.LogError("[TerrainGenerator] mapMaterial and textureSettings are required unless buildProfile is ServerOnly.", this);
-            return false;
-        }
-
-        if (worldSettings.layoutSettings != null && heightMapSettings.noiseSettings.normalizeMode != Noise.NormalizeMode.Global)
-        {
-            Debug.LogError("[TerrainGenerator] Roads require normalizeMode Global. Local normalises each chunk against its own range, so the layout's graded road heights will not match the terrain the chunks actually build.", this);
-            return false;
-        }
-
-        colliderLODIndex = Mathf.Clamp(colliderLODIndex, 0, detailLevels.Length - 1);
-        return true;
-    }
-
-    void OnChunkReady(TerrainChunk chunk)
-    {
-        readyChunkCount++;
-
-        if (OnGenerationProgress != null)
-        {
-            OnGenerationProgress(GenerationProgress);
-        }
-
-        if (!generating || readyChunkCount < ExpectedChunkCount)
-        {
-            return;
-        }
-
-        generating = false;
-        IsGenerated = true;
-
-        if (OnWorldGenerationComplete != null)
-        {
-            OnWorldGenerationComplete();
-        }
-    }
-
-    public void SetViewer(Transform newViewer)
-    {
-        viewer = newViewer;
-
-        for (int i = 0; i < chunkList.Count; i++)
-        {
-            chunkList[i].SetViewer(newViewer);
-        }
-
-        if (viewer != null)
-        {
-            viewerPositionOld = new Vector2(viewer.position.x, viewer.position.z);
-            UpdateLevelsOfDetail();
-        }
-    }
-
-    public bool IsColliderReadyAt(Vector3 worldPosition)
-    {
-        TerrainChunk chunk;
-        return TryGetChunkAt(worldPosition, out chunk) && chunk.HasCollider;
-    }
-
-    public bool TryGetChunkAt(Vector3 worldPosition, out TerrainChunk chunk)
-    {
-        chunk = null;
-        float size = MeshWorldSize;
-        if (size <= 0f)
-        {
-            return false;
-        }
-
-        Vector2 coord = new Vector2(
-            Mathf.RoundToInt(worldPosition.x / size),
-            Mathf.RoundToInt(worldPosition.z / size));
-
-        return chunks.TryGetValue(coord, out chunk);
-    }
-
-    /// <summary>Terrain height at a world position, sampled from the heightmap rather than physics.</summary>
-    public bool TrySampleHeight(Vector3 worldPosition, out float height)
-    {
-        height = 0f;
-
-        TerrainChunk chunk;
-        if (!TryGetChunkAt(worldPosition, out chunk) || chunk.Heights.values == null)
-        {
-            return false;
-        }
-
-        height = chunk.Sampler.SampleHeight(new Vector2(worldPosition.x, worldPosition.z));
-        return true;
-    }
-
-    void Update()
-    {
-        if (!RendersTerrain || viewer == null || chunkList.Count == 0)
-        {
-            return;
-        }
-
-        Vector2 viewerPosition = new Vector2(viewer.position.x, viewer.position.z);
-        if ((viewerPositionOld - viewerPosition).sqrMagnitude <= sqrViewerMoveThresholdForLODUpdate)
-        {
-            return;
-        }
-
-        viewerPositionOld = viewerPosition;
-        UpdateLevelsOfDetail();
-    }
-
-    void UpdateLevelsOfDetail()
-    {
-        for (int i = 0; i < chunkList.Count; i++)
-        {
-            chunkList[i].UpdateLevelOfDetail();
-        }
-    }
 }
 
-[Serializable]
-public struct LODInfo
-{
-    [Range(0, MeshSettings.numSupportedLODs - 1)]
-    public int lod;
-    public float visibleDstThreshold;
+[System.Serializable]
+public struct LODInfo {
+	[Range(0, MeshSettings.numSupportedLODs - 1)]
+	public int lod;
+	public float visibleDstThreshold;
 
-    public float sqrVisibleDstThreshold
-    {
-        get { return visibleDstThreshold * visibleDstThreshold; }
-    }
+
+	public float sqrVisibleDstThreshold {
+		get {
+			return visibleDstThreshold * visibleDstThreshold;
+		}
+	}
 }

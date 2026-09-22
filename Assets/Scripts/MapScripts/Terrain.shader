@@ -2,14 +2,8 @@
 {
     Properties
     {
-        // Layer data is pushed from C# via SetColorArray / SetFloatArray / SetTexture.
-        // Road appearance is authored here; the mask itself rides in vertex colour red.
-        _RoadColour ("Road Colour", Color) = (0.32, 0.30, 0.28, 1)
-        _RoadColourStrength ("Road Colour Strength", Range(0, 1)) = 0.45
-        _RoadTextureIndex ("Road Texture Layer", Range(0, 7)) = 2
-        _RoadTextureScale ("Road Texture Scale", Float) = 4
-        _RoadEdgeStart ("Road Edge Start", Range(0, 1)) = 0.25
-        _RoadEdgeEnd ("Road Edge End", Range(0, 1)) = 0.75
+        // Layer data is pushed from C# via SetColorArray / SetFloatArray / SetTexture,
+        // nothing here for the time being
     }
 
     SubShader
@@ -59,13 +53,6 @@
             float minHeight;
             float maxHeight;
 
-            float4 _RoadColour;
-            float  _RoadColourStrength;
-            float  _RoadTextureIndex;
-            float  _RoadTextureScale;
-            float  _RoadEdgeStart;
-            float  _RoadEdgeEnd;
-
             TEXTURE2D_ARRAY(baseTextures);
             SAMPLER(sampler_baseTextures);
 
@@ -73,7 +60,6 @@
             {
                 float4 positionOS : POSITION;
                 float3 normalOS   : NORMAL;
-                float4 color      : COLOR;
                 float2 lightmapUV : TEXCOORD1;
             };
 
@@ -83,7 +69,6 @@
                 float3 positionWS  : TEXCOORD0;
                 float3 normalWS    : TEXCOORD1;
                 float  fogCoord    : TEXCOORD2;
-                float  surfaceMask : TEXCOORD3;
             };
 
             float inverseLerp(float a, float b, float value)
@@ -121,7 +106,6 @@
                 OUT.positionWS  = pos.positionWS;
                 OUT.normalWS    = nrm.normalWS;
                 OUT.fogCoord    = ComputeFogFactor(pos.positionCS.z);
-                OUT.surfaceMask = IN.color.r;
 
                 return OUT;
             }
@@ -149,17 +133,6 @@
                                            * (1 - baseColourStrength[i]);
 
                     albedo = albedo * (1 - drawStrength) + (baseColour + textureColour) * drawStrength;
-                }
-
-                // Roads and building pads. The mask ramps across the carved shoulder, so remapping
-                // it lets the painted surface be narrower or wider than the flattened geometry.
-                float roadMask = smoothstep(_RoadEdgeStart, max(_RoadEdgeEnd, _RoadEdgeStart + 1e-4), IN.surfaceMask);
-
-                if (roadMask > 0)
-                {
-                    float3 roadTexture = triplanar(IN.positionWS, _RoadTextureScale, blendAxes, (int)_RoadTextureIndex);
-                    float3 roadAlbedo = lerp(roadTexture, _RoadColour.rgb, _RoadColourStrength);
-                    albedo = lerp(albedo, roadAlbedo, roadMask);
                 }
 
                 InputData inputData = (InputData)0;
