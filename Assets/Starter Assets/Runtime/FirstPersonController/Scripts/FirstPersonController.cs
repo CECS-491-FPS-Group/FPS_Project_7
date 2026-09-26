@@ -20,6 +20,9 @@ namespace StarterAssets
 		public float RotationSpeed = 1.0f;
 		[Tooltip("Acceleration and deceleration")]
 		public float SpeedChangeRate = 10.0f;
+		public AudioClip[] FootstepAudioClips;
+		[Range(0f, 1f)] public float FootstepAudioVolume = 0.5f;
+		public float FootstepDistance = 2f;
 
 		[Space(10)]
 		[Tooltip("The height the player can jump")]
@@ -63,6 +66,7 @@ namespace StarterAssets
 		// timeout deltatime
 		private float _jumpTimeoutDelta;
 		private float _fallTimeoutDelta;
+		private float _distanceSinceLastFootstep;
 
 	
 #if ENABLE_INPUT_SYSTEM
@@ -195,7 +199,35 @@ namespace StarterAssets
 			}
 
 			// move the player
-			_controller.Move(inputDirection.normalized * (_speed * Time.deltaTime) + new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
+			Vector3 horizontalMotion = inputDirection.normalized * (_speed * Time.deltaTime);
+			_controller.Move(horizontalMotion + new Vector3(0.0f, _verticalVelocity, 0.0f) * Time.deltaTime);
+
+			if (!Grounded)
+			{
+				_distanceSinceLastFootstep = 0f;
+				return;
+			}
+
+			_distanceSinceLastFootstep += horizontalMotion.magnitude;
+			if (_distanceSinceLastFootstep >= FootstepDistance)
+			{
+				_distanceSinceLastFootstep -= FootstepDistance;
+				PlayFootstep();
+			}
+		}
+
+		private void PlayFootstep()
+		{
+			if (FootstepAudioClips == null || FootstepAudioClips.Length == 0)
+			{
+				return;
+			}
+
+			AudioClip footstepClip = FootstepAudioClips[Random.Range(0, FootstepAudioClips.Length)];
+			if (footstepClip != null)
+			{
+				AudioSource.PlayClipAtPoint(footstepClip, transform.TransformPoint(_controller.center), FootstepAudioVolume);
+			}
 		}
 
 		private void JumpAndGravity()
