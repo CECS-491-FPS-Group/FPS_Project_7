@@ -28,12 +28,6 @@ public class PlayerCameraSetup : NetworkBehaviour
     {
         base.OnStartClient();
 
-        if (base.IsOwner)
-        {
-            // Force FishNet to respect the Prefab's starting height of Y: 689
-            transform.position = new Vector3(0, 689f, 0);
-        }
-
         SetLocalControl(base.IsOwner);
 
         string devices = "none";
