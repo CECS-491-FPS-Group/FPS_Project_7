@@ -99,11 +99,9 @@ public class RoundTimer : MonoBehaviour
                 currentStateName = "Postgame";
                 break;
 
-            // if we're in the postgame, reload the scene
+            // Stop after postgame, keeping the scene and players alive.
             case gameStates.POSTGAME:
-                // this might need to be converted to a fishnet function
-                SceneManager.LoadScene("RoundImplementation");
-                startGame();
+                timerIsRunning = false;
                 break;
         }
     }
