@@ -9,7 +9,7 @@ public class MatchManager : NetworkBehaviour
     [SerializeField] private int totalRounds = 3;
     [SerializeField] private float roundLength = 300f;
     [SerializeField] private float intermissionLength = 15f;
-    [SerializeField] private float postMatchLength = 20f;
+    [SerializeField] private float postMatchLength = 15f;
 
     [Header("XP Settings")]
     [SerializeField] private int xpPerSoldierKill = 5;
@@ -76,6 +76,7 @@ public class MatchManager : NetworkBehaviour
         base.OnStartServer();
 
         currentRound.Value = 1;
+
         secondsRemaining.Value =
             Mathf.CeilToInt(roundLength);
 
@@ -191,6 +192,8 @@ public class MatchManager : NetworkBehaviour
         if (serverSecondsRemaining <= 0f)
         {
             secondsRemaining.Value = 0;
+
+            StartNewMatch();
         }
     }
 
@@ -281,6 +284,39 @@ public class MatchManager : NetworkBehaviour
             "Match finished. Results displayed for " +
             postMatchLength +
             " seconds."
+        );
+    }
+
+    private void StartNewMatch()
+    {
+        RespawnAllCharacters();
+
+        soldiersKilled.Value = 0;
+        playerDeaths.Value = 0;
+        totalXP.Value = 0;
+
+        currentRound.Value = 1;
+
+        matchActive.Value = true;
+        intermissionActive.Value = false;
+        matchFinished.Value = false;
+
+        serverSecondsRemaining =
+            roundLength;
+
+        secondsRemaining.Value =
+            Mathf.CeilToInt(
+                serverSecondsRemaining
+            );
+
+        lastDisplayedSecond =
+            secondsRemaining.Value;
+
+        SetAllCharactersFrozen(false);
+        ApplyDifficultyToAllSoldiers();
+
+        Debug.Log(
+            "New match started. Round 1."
         );
     }
 

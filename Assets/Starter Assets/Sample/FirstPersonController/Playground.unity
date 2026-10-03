@@ -890,7 +890,7 @@ MonoBehaviour:
   totalRounds: 3
   roundLength: 30
   intermissionLength: 15
-  postMatchLength: 20
+  postMatchLength: 15
   xpPerSoldierKill: 5
 --- !u!114 &578847908
 MonoBehaviour:
