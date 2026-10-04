@@ -3,8 +3,15 @@ using UnityEngine;
 
 public class MatchHUD : MonoBehaviour
 {
+    [Header("Round UI")]
     [SerializeField] private TMP_Text roundText;
     [SerializeField] private TMP_Text timerText;
+
+    [Header("Score UI")]
+    [SerializeField] private TMP_Text playerScoreText;
+    [SerializeField] private TMP_Text botsScoreText;
+
+    [Header("Center Message")]
     [SerializeField] private TMP_Text centerMessageText;
 
     private MatchManager matchManager;
@@ -28,6 +35,7 @@ public class MatchHUD : MonoBehaviour
         if (matchManager.MatchFinished)
         {
             SetNormalHudVisible(false);
+            SetScoreVisible(false);
             SetCenterMessageVisible(false);
             return;
         }
@@ -35,6 +43,7 @@ public class MatchHUD : MonoBehaviour
         if (matchManager.IntermissionActive)
         {
             SetNormalHudVisible(false);
+            SetScoreVisible(false);
             SetCenterMessageVisible(true);
 
             if (centerMessageText != null)
@@ -50,6 +59,7 @@ public class MatchHUD : MonoBehaviour
         }
 
         SetNormalHudVisible(true);
+        SetScoreVisible(true);
         SetCenterMessageVisible(false);
 
         if (roundText != null)
@@ -67,11 +77,23 @@ public class MatchHUD : MonoBehaviour
                     matchManager.SecondsRemaining
                 );
         }
+
+        if (playerScoreText != null)
+        {
+            playerScoreText.text =
+                "You: " +
+                matchManager.SoldiersKilled;
+        }
+
+        if (botsScoreText != null)
+        {
+            botsScoreText.text =
+                "Bots: " +
+                matchManager.PlayerDeaths;
+        }
     }
 
-    private void SetNormalHudVisible(
-        bool visible
-    )
+    private void SetNormalHudVisible(bool visible)
     {
         if (roundText != null)
             roundText.gameObject.SetActive(visible);
@@ -80,21 +102,24 @@ public class MatchHUD : MonoBehaviour
             timerText.gameObject.SetActive(visible);
     }
 
-    private void SetCenterMessageVisible(
-        bool visible
-    )
+    private void SetScoreVisible(bool visible)
+    {
+        if (playerScoreText != null)
+            playerScoreText.gameObject.SetActive(visible);
+
+        if (botsScoreText != null)
+            botsScoreText.gameObject.SetActive(visible);
+    }
+
+    private void SetCenterMessageVisible(bool visible)
     {
         if (centerMessageText != null)
         {
-            centerMessageText.gameObject.SetActive(
-                visible
-            );
+            centerMessageText.gameObject.SetActive(visible);
         }
     }
 
-    private string FormatTime(
-        int totalSeconds
-    )
+    private string FormatTime(int totalSeconds)
     {
         int minutes =
             totalSeconds / 60;

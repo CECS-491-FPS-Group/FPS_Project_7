@@ -49,14 +49,14 @@ public class ResultsUI : MonoBehaviour
         if (soldiersKilledText != null)
         {
             soldiersKilledText.text =
-                "Soldiers Killed: " +
+                "Total Kills: " +
                 matchManager.SoldiersKilled;
         }
 
         if (playerDeathsText != null)
         {
             playerDeathsText.text =
-                "Player Deaths: " +
+                "Deaths: " +
                 matchManager.PlayerDeaths;
         }
 
@@ -78,7 +78,7 @@ public class ResultsUI : MonoBehaviour
             if (seconds > 0)
             {
                 nextMatchText.text =
-                    "Wait for next match to start in " +
+                    "Next match starts in " +
                     seconds +
                     " sec";
             }
