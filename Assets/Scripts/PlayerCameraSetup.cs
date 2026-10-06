@@ -12,6 +12,10 @@ public class PlayerCameraSetup : NetworkBehaviour
     public AudioListener audioListener;
     public Canvas playerUI;
 
+    [Header("Third-person Visual")]
+    public Transform soldierVisual;
+    private Renderer[] _bodyRenderers;
+
     private PlayerInputComponent _playerInput;
     private StarterAssetsInputs _inputs;
     private FirstPersonController _controller;
@@ -21,7 +25,38 @@ public class PlayerCameraSetup : NetworkBehaviour
         _playerInput = GetComponent<PlayerInputComponent>();
         _inputs = GetComponent<StarterAssetsInputs>();
         _controller = GetComponent<FirstPersonController>();
+        SetupSoldierVisual();
         SetLocalControl(false);
+    }
+
+    private void SetupSoldierVisual()
+    {
+        if (soldierVisual == null) return;
+
+        foreach (Animator animator in soldierVisual.GetComponentsInChildren<Animator>(true))
+            animator.applyRootMotion = false;
+
+        _bodyRenderers = soldierVisual.GetComponentsInChildren<Renderer>(true);
+        CharacterController capsule = GetComponent<CharacterController>();
+        if (capsule != null && _bodyRenderers.Length > 0)
+        {
+            Bounds bounds = _bodyRenderers[0].bounds;
+            foreach (Renderer body in _bodyRenderers) bounds.Encapsulate(body.bounds);
+            if (bounds.size.y > 0.001f)
+            {
+                float scale = capsule.height * Mathf.Abs(transform.lossyScale.y) / bounds.size.y;
+                Vector3 feet = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+                Vector3 targetFeet = transform.TransformPoint(capsule.center - Vector3.up * capsule.height * 0.5f);
+                Vector3 scaledFeet = soldierVisual.position + (feet - soldierVisual.position) * scale;
+                soldierVisual.localScale *= scale;
+                soldierVisual.position += targetFeet - scaledFeet;
+            }
+        }
+
+        // Replace only the placeholder's appearance, preserving its collider.
+        Transform placeholder = transform.Find("Capsule");
+        if (placeholder != null && placeholder.TryGetComponent(out Renderer renderer))
+            renderer.enabled = false;
     }
 
     public override void OnStartClient()
@@ -67,5 +102,7 @@ public class PlayerCameraSetup : NetworkBehaviour
         if (playerCamera) playerCamera.enabled = enabled;
         if (audioListener) audioListener.enabled = enabled;
         if (playerUI) playerUI.enabled = enabled;
+        if (_bodyRenderers != null)
+            foreach (Renderer body in _bodyRenderers) body.enabled = !enabled;
     }
 }
