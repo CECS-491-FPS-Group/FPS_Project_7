@@ -11,19 +11,21 @@ public class DisplayTimeRemaining : MonoBehaviour
     {
         displayText = GetComponent<TextMeshProUGUI>();
         
-        // Dynamically reconnect to the scene object
-        if (timer == null) timer = GameObject.Find("RoundHandler");
-        if (timer != null) timerText = timer.GetComponent<RoundTimer>();
+        FindTimer();
     }
 
     void Update()
     {
-        // Safety check to prevent the infinite crash loop
-        if (!timerText) return;
-        
-        if (timerText.timerIsRunning)
-        {
-            displayText.text = timerText.currentStateName + "\n" + timerText.timeText;
-        }
+        if (!timerText) FindTimer();
+        if (!timerText || !displayText) return;
+
+        displayText.text = timerText.currentStateName + "\n" + timerText.timeText;
+    }
+
+    private void FindTimer()
+    {
+        // Accept either the RoundHandler parent or its Timer child as the reference.
+        if (timer == null) timer = GameObject.Find("RoundHandler");
+        if (timer != null) timerText = timer.GetComponentInChildren<RoundTimer>(true);
     }
 }

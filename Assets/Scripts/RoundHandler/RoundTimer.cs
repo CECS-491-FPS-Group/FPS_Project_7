@@ -1,108 +1,149 @@
-using System.Collections.Generic;
-using FishNet.Serializing.Helping;
-using Unity.VectorGraphics;
+using System;
+using FishNet;
+using FishNet.Broadcast;
+using FishNet.Managing;
+using FishNet.Transporting;
 using UnityEngine;
-using UnityEngine.Animations;
-using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
-
-// todo: reload this object on scene reload but NOT parent
 
 public class RoundTimer : MonoBehaviour
 {
-    public int preGameLength;
-    public int gameLength;
-    public int postGameLength;
-    // 20s pregame, 360s (5m) game, 10s postgame
-    [HideInInspector]
-    public enum gameStates
+    [Min(0)] public int preGameLength = 15;
+    [Min(0)] public int gameLength = 30;
+    [Min(0)] public int postGameLength = 15;
+
+    [Header("Passive Income")]
+    [Min(0)] public int passiveIncomeAmount = 50;
+    [Min(0.1f)] public float passiveIncomeInterval = 30f;
+
+    public enum gameStates { PREGAME = 0, GAME = 1, POSTGAME = 2 }
+
+    [HideInInspector] public bool timerIsRunning;
+    [HideInInspector] public string timeText;
+    [HideInInspector] public gameStates currentState;
+    [HideInInspector] public string currentStateName;
+
+    public struct RoundSnapshot : IBroadcast
     {
-        PREGAME = 0,
-        GAME = 1,
-        POSTGAME = 2
-    }
-    [HideInInspector]
-    public bool timerIsRunning;
-    [HideInInspector]
-    public string timeText;
-    [HideInInspector]
-    public gameStates currentState;
-    [HideInInspector]
-    public string currentStateName;
-    float timeRemaining;
-    
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        startGame();
+        public gameStates Phase;
+        public double Deadline;
+        public bool Running;
     }
 
-    // Update is called once per frame
-    void Update()
+    private NetworkManager _networkManager;
+    private double _deadline;
+    private double _nextSnapshotTime;
+    private bool _serverStartedRound;
+    private double _nextIncomeTime = double.PositiveInfinity;
+
+    private double ServerTime => _networkManager.TimeManager.TicksToTime(_networkManager.TimeManager.Tick);
+
+    private void Start()
     {
-        if (timerIsRunning)
+        timerIsRunning = false;
+        currentStateName = "Waiting";
+        timeText = "00:00";
+        _networkManager = InstanceFinder.NetworkManager;
+        if (_networkManager == null)
         {
-            if (timeRemaining > 0)
-            {
-                timeRemaining -= Time.deltaTime;
-                DisplayTime(timeRemaining);
-            }
-            else
-            {
-                updateGameState();
-            }
+            Debug.LogError("[RoundTimer] No NetworkManager found.", this);
+            enabled = false;
+            return;
         }
+
+        _networkManager.ClientManager.RegisterBroadcast<RoundSnapshot>(OnSnapshot);
     }
 
-    void startGame()
+    private void OnDestroy()
     {
+        if (_networkManager != null)
+            _networkManager.ClientManager.UnregisterBroadcast<RoundSnapshot>(OnSnapshot);
+    }
+
+    private void Update()
+    {
+        if (_networkManager == null) return;
+
+        double now = ServerTime;
+        if (_networkManager.IsServerStarted)
+        {
+            if (!_serverStartedRound)
+            {
+                _serverStartedRound = true;
+                BeginPhase(gameStates.PREGAME, now, preGameLength);
+            }
+
+            // Carry the deadline forward so a slow frame does not extend a phase.
+            while (timerIsRunning && now >= _deadline)
+            {
+                switch (currentState)
+                {
+                    case gameStates.PREGAME:
+                        BeginPhase(gameStates.GAME, _deadline, gameLength);
+                        break;
+                    case gameStates.GAME:
+                        BeginPhase(gameStates.POSTGAME, _deadline, postGameLength);
+                        break;
+                    case gameStates.POSTGAME:
+                        timerIsRunning = false;
+                        SendSnapshot();
+                        break;
+                }
+            }
+
+            // Phase transitions take precedence, including at the GAME end boundary.
+            if (timerIsRunning && currentState == gameStates.GAME && now >= _nextIncomeTime)
+            {
+                if (TrackPlayerCurrency.instance != null)
+                    TrackPlayerCurrency.instance.AddCurrencyToRegisteredPlayers(passiveIncomeAmount);
+
+                // One payout at most per frame; never burst-catch-up missed intervals.
+                _nextIncomeTime = now + Math.Max(0.1d, passiveIncomeInterval);
+            }
+
+            // Continue after stopping so late listeners also receive Postgame 00:00.
+            if (now >= _nextSnapshotTime) SendSnapshot();
+        }
+
+        double remaining = timerIsRunning ? Math.Max(0d, _deadline - now) : 0d;
+        int seconds = (int)Math.Ceiling(remaining);
+        timeText = string.Format("{0:00}:{1:00}", seconds / 60, seconds % 60);
+    }
+
+    private void BeginPhase(gameStates phase, double startTime, int duration)
+    {
+        SetPhase(phase);
+        _deadline = startTime + Math.Max(0, duration);
+        _nextIncomeTime = phase == gameStates.GAME
+            ? startTime + Math.Max(0.1d, passiveIncomeInterval)
+            : double.PositiveInfinity;
         timerIsRunning = true;
-        // start pregame when scene is loaded
-        currentState = gameStates.PREGAME;
-        currentStateName = "Pregame";
-        timeRemaining = preGameLength; 
+        SendSnapshot();
     }
 
-    // just doing a bit of floating point math every frame B) very cool and efficient
-    // prio 1 for optimization later
-    // just getting it to work for now lol
-    void DisplayTime(float timeToDisplay)
+    private void SetPhase(gameStates phase)
     {
-        timeToDisplay += 1;
-
-        float minutes = Mathf.FloorToInt(timeToDisplay / 60);
-        float seconds = Mathf.FloorToInt(timeToDisplay % 60);
-
-        timeText = string.Format("{0:00}:{1:00}", minutes, seconds);
+        currentState = phase;
+        currentStateName = phase == gameStates.PREGAME ? "Pregame" :
+            phase == gameStates.GAME ? "Game" : "Postgame";
     }
 
-    void updateGameState()
+    private void SendSnapshot()
     {
-        // this is a line just for testing the credit readout
-        // you won't be getting credits after every state like this
-        // not this many, anyway
-        GetComponentInParent<TrackPlayerCurrency>().testIncrementPlayerCredits();
-
-        switch (currentState)
+        _networkManager.ServerManager.Broadcast(new RoundSnapshot
         {
-            // if we're in the pregame, switch to main game
-            case gameStates.PREGAME:
-                timeRemaining = gameLength;
-                currentState = gameStates.GAME;
-                currentStateName = "Game";
-                break;
-            
-            // if we're in the main game, switch to postgame
-            case gameStates.GAME:
-                timeRemaining = postGameLength;
-                currentState = gameStates.POSTGAME;
-                currentStateName = "Postgame";
-                break;
+            Phase = currentState,
+            Deadline = _deadline,
+            Running = timerIsRunning
+        }, true, Channel.Reliable);
+        _nextSnapshotTime = ServerTime + 1d;
+    }
 
-            // Stop after postgame, keeping the scene and players alive.
-            case gameStates.POSTGAME:
-                timerIsRunning = false;
-                break;
-        }
+    private void OnSnapshot(RoundSnapshot snapshot, Channel channel)
+    {
+        // The Host uses its authoritative state, not delayed copies of its own messages.
+        if (_networkManager.IsServerStarted) return;
+        SetPhase(snapshot.Phase);
+        _deadline = snapshot.Deadline;
+        timerIsRunning = snapshot.Running;
     }
 }

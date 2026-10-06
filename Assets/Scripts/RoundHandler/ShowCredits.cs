@@ -1,38 +1,44 @@
-using UnityEngine;
+using FishNet.Object;
 using TMPro;
+using UnityEngine;
 
 public class ShowCredits : MonoBehaviour
 {
-    GameObject playerObject;
-    TextMeshProUGUI displayText;
     public GameObject roundHandler;
-    TrackPlayerCurrency currencyTracker;
+    private NetworkObject _player;
+    private TextMeshProUGUI _displayText;
+    private TrackPlayerCurrency _currencyTracker;
+    private bool _requested;
 
-    public static GameObject FindParentWithTag(GameObject childObject, string tag)
+    private void Awake()
     {
-        Transform t = childObject.transform;
-        while (t.parent != null)
+        _player = GetComponentInParent<NetworkObject>();
+        _displayText = GetComponent<TextMeshProUGUI>();
+    }
+
+    private void Update()
+    {
+        if (_displayText == null) return;
+        if (_player == null || !_player.IsClientInitialized || !_player.IsOwner)
         {
-            if (t.parent.tag == tag) return t.parent.gameObject;
-            t = t.parent.transform;
+            _displayText.text = string.Empty;
+            _requested = false;
+            return;
         }
-        return null;
-    }
 
-    void Start()
-    {
-        playerObject = FindParentWithTag(gameObject, "Player");
-        displayText = GetComponent<TextMeshProUGUI>();
-        
-        // Dynamically reconnect to the scene object
-        if (roundHandler == null) roundHandler = GameObject.Find("RoundHandler");
-        if (roundHandler != null) currencyTracker = roundHandler.GetComponent<TrackPlayerCurrency>();
-    }
+        if (_currencyTracker == null)
+        {
+            _requested = false;
+            _currencyTracker = roundHandler != null
+                ? roundHandler.GetComponent<TrackPlayerCurrency>() : TrackPlayerCurrency.instance;
+        }
+        if (_currencyTracker == null)
+        {
+            _displayText.text = string.Empty;
+            return;
+        }
 
-    void Update()
-    {
-        // Safety check to prevent the infinite crash loop
-        if (!currencyTracker || !playerObject) return;
-        displayText.text = "$" + currencyTracker.displayCredits(playerObject).ToString();
+        if (!_requested) _requested = _currencyTracker.RequestLocalBalance();
+        _displayText.text = _currencyTracker.HasLocalBalance ? "$" + _currencyTracker.LocalBalance : string.Empty;
     }
 }
