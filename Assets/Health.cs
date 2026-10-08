@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using StarterAssets;
 
 public class Health : MonoBehaviour
 {
@@ -21,6 +22,7 @@ public class Health : MonoBehaviour
     private bool matchFrozen;
 
     private RandomRespawnArea randomRespawnArea;
+    private PlayerBoosts playerBoosts;
 
     private void Awake()
     {
@@ -29,6 +31,9 @@ public class Health : MonoBehaviour
 
         randomRespawnArea =
             FindFirstObjectByType<RandomRespawnArea>();
+
+        playerBoosts =
+            GetComponentInParent<PlayerBoosts>();
     }
 
     public void TakeDamage(int damage)
@@ -41,8 +46,17 @@ public class Health : MonoBehaviour
         GameObject attacker
     )
     {
-        if (isDead || matchFrozen)
+        if (
+            isDead ||
+            matchFrozen ||
+            (
+                playerBoosts != null &&
+                playerBoosts.IsInvulnerable
+            )
+        )
+        {
             return;
+        }
 
         currentHp = Mathf.Max(
             0,

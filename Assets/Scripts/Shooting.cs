@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using StarterAssets;
 
 public class HitscanShooter : MonoBehaviour
 {
@@ -10,10 +11,14 @@ public class HitscanShooter : MonoBehaviour
     [SerializeField] private GameObject bloodEffectPrefab;
 
     private Camera cam;
+    private PlayerBoosts playerBoosts;
 
     private void Awake()
     {
         cam = GetComponent<Camera>();
+
+        playerBoosts =
+            GetComponentInParent<PlayerBoosts>();
     }
 
     private void Update()
@@ -54,8 +59,20 @@ public class HitscanShooter : MonoBehaviour
 
             if (health != null)
             {
+                int actualDamage =
+                    damage;
+
+                if (playerBoosts != null)
+                {
+                    actualDamage =
+                        Mathf.RoundToInt(
+                            damage *
+                            playerBoosts.DamageMultiplier
+                        );
+                }
+
                 health.TakeDamage(
-                    damage,
+                    actualDamage,
                     transform.root.gameObject
                 );
 
