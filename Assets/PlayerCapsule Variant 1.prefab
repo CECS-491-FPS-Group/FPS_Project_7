@@ -91,6 +91,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HitscanShooter
   damage: 40
   range: 100
+  bloodEffectPrefab: {fileID: 692219955226784958, guid: 92e583a52cde646a1949f7a83db07062, type: 3}
 --- !u!4 &2013700029042369884 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 9005220659476430818, guid: 2d3a85ecde41a8246a79669975912b74, type: 3}
@@ -113,12 +114,20 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -1449842966210500793, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      propertyPath: _initializedTimestamp
+      value: -8584103462445522248
+      objectReference: {fileID: 0}
+    - target: {fileID: -1449842966210500793, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: <PrefabId>k__BackingField
       value: 4
       objectReference: {fileID: 0}
     - target: {fileID: -1449842966210500793, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: <AssetPathHash>k__BackingField
       value: 7293770709239535224
+      objectReference: {fileID: 0}
+    - target: {fileID: 1240188883754520708, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      propertyPath: m_NeverAutoSwitchControlSchemes
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1240188883754520712, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: m_Name
@@ -127,6 +136,14 @@ PrefabInstance:
     - target: {fileID: 1240188883754520712, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1240188883754520719, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      propertyPath: Grounded
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1240188883754520719, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      propertyPath: GroundedOffset
+      value: -0.05
       objectReference: {fileID: 0}
     - target: {fileID: 1240188883754520719, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       propertyPath: GroundLayers.m_Bits
@@ -172,6 +189,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3285470575367376116, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      propertyPath: jump
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -182,6 +203,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1240188883754520712, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       insertIndex: -1
       addedObject: {fileID: 5365960641817711801}
+    - targetCorrespondingSourceObject: {fileID: 1240188883754520712, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -5209807786804038117}
   m_SourcePrefab: {fileID: 100100000, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
 --- !u!4 &3463833587857588541 stripped
 Transform:
@@ -209,4 +233,20 @@ MonoBehaviour:
   currentHp: 0
   respawnOnDeath: 1
   respawnDelay: 5
-  respawnPoint: {fileID: 0}
+  showRespawnUI: 1
+--- !u!114 &-5209807786804038117
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9143461172801206369}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58b32597a259f454b9ea8fb98d929878, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerBoosts
+  boostDuration: 20
+  speedMultiplier: 1.5
+  jumpMultiplier: 1.5
+  damageMultiplier: 2

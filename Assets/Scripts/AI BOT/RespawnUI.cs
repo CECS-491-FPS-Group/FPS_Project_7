@@ -26,3 +26,4 @@ public class RespawnUI : MonoBehaviour
             respawnPanel.SetActive(false);
     }
 }
+
