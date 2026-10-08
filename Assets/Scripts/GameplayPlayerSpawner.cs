@@ -191,7 +191,18 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
         Debug.Log($"[GameplayPlayerSpawner] Spawned player for client {connection.ClientId} in {scene.name} at {spawnPosition}.", this);
     }
 
-    private bool TryGetSpawnPosition(out Vector3 position)
+    public bool TryGetRespawnPosition(NetworkObject player, out Vector3 position)
+    {
+        position = default;
+        if (!_networkManager.IsServerStarted || player == null || !player.IsSpawned ||
+            !player.Owner.IsActive || !player.Owner.IsAuthenticated ||
+            !_players.TryGetValue(player.Owner, out NetworkObject registered) || registered != player ||
+            _terrain == null || !_terrain.IsGenerated || _terrain.gameObject.scene != player.gameObject.scene ||
+            !_terrainReady.TryGetValue(player.Owner, out int seed) || seed != _terrain.Seed) return false;
+        return TryGetSpawnPosition(out position, player);
+    }
+
+    private bool TryGetSpawnPosition(out Vector3 position, NetworkObject excludedPlayer = null)
     {
         position = default;
         CharacterController controller = playerPrefab.GetComponent<CharacterController>();
@@ -209,7 +220,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             bool separated = true;
             foreach (NetworkObject player in _players.Values)
             {
-                if (player == null || !player.IsSpawned) continue;
+                if (player == null || !player.IsSpawned || player == excludedPlayer) continue;
                 Vector3 delta = player.transform.position - candidate;
                 if (delta.x * delta.x + delta.z * delta.z < 16f)
                 {

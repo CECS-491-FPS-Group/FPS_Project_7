@@ -110,6 +110,15 @@ namespace StarterAssets
 			_fallTimeoutDelta = FallTimeout;
 		}
 
+		public void ResetMovementState()
+		{
+			_speed = 0f;
+			_verticalVelocity = 0f;
+			_rotationVelocity = 0f;
+			_jumpTimeoutDelta = JumpTimeout;
+			_fallTimeoutDelta = FallTimeout;
+		}
+
 		private void Update()
 		{
 			JumpAndGravity();

@@ -1,4 +1,5 @@
 using FishNet.Object;
+using FishNet.Component.Transforming;
 using StarterAssets;
 using UnityEngine;
 using PlayerInputComponent = UnityEngine.InputSystem.PlayerInput;
@@ -19,12 +20,15 @@ public class PlayerCameraSetup : NetworkBehaviour
     private PlayerInputComponent _playerInput;
     private StarterAssetsInputs _inputs;
     private FirstPersonController _controller;
+    private Health _health;
+    private bool _movementEnabled;
 
     private void Awake()
     {
         _playerInput = GetComponent<PlayerInputComponent>();
         _inputs = GetComponent<StarterAssetsInputs>();
         _controller = GetComponent<FirstPersonController>();
+        _health = GetComponent<Health>();
         SetupSoldierVisual();
         SetLocalControl(false);
     }
@@ -85,6 +89,42 @@ public class PlayerCameraSetup : NetworkBehaviour
 
     private void SetLocalControl(bool enabled)
     {
+        SetMovementControl(enabled && (_health == null || _health.CanAct));
+        if (playerCamera) playerCamera.enabled = enabled;
+        if (audioListener) audioListener.enabled = enabled;
+        if (playerUI) playerUI.enabled = enabled;
+        if (_bodyRenderers != null)
+            foreach (Renderer body in _bodyRenderers) body.enabled = !enabled;
+    }
+
+    private void Update()
+    {
+        bool allowed = IsClientInitialized && IsOwner && (_health == null || _health.CanAct);
+        if (allowed != _movementEnabled) SetMovementControl(allowed);
+    }
+
+    public bool ApplyRespawnPosition(Vector3 position)
+    {
+        if (!IsClientInitialized || !IsOwner) return false;
+        SetMovementControl(false);
+        CharacterController capsule = GetComponent<CharacterController>();
+        bool wasEnabled = capsule != null && capsule.enabled;
+        if (capsule != null) capsule.enabled = false;
+        transform.position = position;
+        if (_controller != null) _controller.ResetMovementState();
+        if (capsule != null) capsule.enabled = wasEnabled;
+        NetworkTransform networkTransform = GetComponent<NetworkTransform>();
+        if (networkTransform != null)
+        {
+            networkTransform.Teleport();
+            networkTransform.ForceSend();
+        }
+        return true;
+    }
+
+    private void SetMovementControl(bool enabled)
+    {
+        _movementEnabled = enabled;
         // Disabling PlayerInput also unpairs its devices. Do this before clearing
         // cached values because canceled input actions can update those values.
         if (_playerInput) _playerInput.enabled = false;
@@ -99,10 +139,5 @@ public class PlayerCameraSetup : NetworkBehaviour
 
         if (_playerInput) _playerInput.enabled = enabled;
         if (_controller) _controller.enabled = enabled;
-        if (playerCamera) playerCamera.enabled = enabled;
-        if (audioListener) audioListener.enabled = enabled;
-        if (playerUI) playerUI.enabled = enabled;
-        if (_bodyRenderers != null)
-            foreach (Renderer body in _bodyRenderers) body.enabled = !enabled;
     }
 }

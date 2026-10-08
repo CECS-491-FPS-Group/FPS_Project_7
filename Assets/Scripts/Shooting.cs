@@ -33,6 +33,7 @@ public class HitscanShooter : NetworkBehaviour
     private void LateUpdate()
     {
         if (!IsClientInitialized || !IsOwner || _camera == null || !_camera.isActiveAndEnabled) return;
+        if (_health == null || !_health.CanAct) return;
         if (_presentation != null) _presentation.PrepareAim(maxPitch);
         if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
             RequestShot(_camera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f)).direction);
@@ -47,7 +48,7 @@ public class HitscanShooter : NetworkBehaviour
             Reject("invalid ownership");
             return;
         }
-        if (_health == null || !_health.IsServerInitialized || _health.CurrentHealth <= 0)
+        if (_health == null || !_health.IsServerInitialized || !_health.CanAct)
         {
             Reject("shooter has no living server health");
             return;
@@ -111,7 +112,7 @@ public class HitscanShooter : NetworkBehaviour
         }
 
         int previousHp = victim.CurrentHealth;
-        victim.TakeDamage(damage, OwnerId);
+        victim.TakeDamage(damage, Owner);
         bool damagedPlayer = victim.CurrentHealth < previousHp;
         PresentAcceptedShot(Owner, damagedPlayer);
         if (damagedPlayer) PresentImpact(true, closest.point, closest.normal);

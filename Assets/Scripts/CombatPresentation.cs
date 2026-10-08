@@ -60,6 +60,14 @@ public sealed class CombatPresentation : MonoBehaviour
         if (_hud == null) return;
         _hud.gameObject.SetActive(true);
         _hpText.text = _health != null ? $"HP: {_health.CurrentHealth} / {_health.maxHp}" : "";
+        if (_health != null && !_health.CanAct)
+        {
+            _recoil = 0f;
+            _flashUntil = 0f;
+            if (_recoilPivot != null) _recoilPivot.localRotation = Quaternion.identity;
+            int remaining = Mathf.CeilToInt((float)_health.RespawnSecondsRemaining);
+            _hpText.text = remaining > 0 ? $"Dead - respawning in {remaining}s" : "Dead - waiting for spawn";
+        }
         _hitFlash.SetActive(Time.unscaledTime < _flashUntil);
     }
 
@@ -75,7 +83,7 @@ public sealed class CombatPresentation : MonoBehaviour
 
     public void AcceptedShot(bool damagedPlayer)
     {
-        if (!LocalOwner) return;
+        if (!LocalOwner || (_health != null && !_health.CanAct)) return;
         _recoil = Mathf.Min(_recoil + recoilKick, 6f);
         if (damagedPlayer) _flashUntil = Time.unscaledTime + hitFlashDuration;
     }
@@ -122,7 +130,7 @@ public sealed class CombatPresentation : MonoBehaviour
         rect.anchorMin = rect.anchorMax = Vector2.zero;
         rect.pivot = Vector2.zero;
         rect.anchoredPosition = new Vector2(24f, 24f);
-        rect.sizeDelta = new Vector2(260f, 45f);
+        rect.sizeDelta = new Vector2(420f, 45f);
     }
 
     private static void AddLine(string name, Vector2 size, float angle, Color color, Transform parent)
