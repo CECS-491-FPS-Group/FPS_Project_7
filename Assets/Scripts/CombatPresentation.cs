@@ -66,7 +66,8 @@ public sealed class CombatPresentation : MonoBehaviour
             _flashUntil = 0f;
             if (_recoilPivot != null) _recoilPivot.localRotation = Quaternion.identity;
             int remaining = Mathf.CeilToInt((float)_health.RespawnSecondsRemaining);
-            _hpText.text = remaining > 0 ? $"Dead - respawning in {remaining}s" : "Dead - waiting for spawn";
+            _hpText.text = _health.MatchEnded ? "Returning to lobby..." :
+                remaining > 0 ? $"Dead - respawning in {remaining}s" : "Dead - waiting for spawn";
         }
         _hitFlash.SetActive(Time.unscaledTime < _flashUntil);
     }

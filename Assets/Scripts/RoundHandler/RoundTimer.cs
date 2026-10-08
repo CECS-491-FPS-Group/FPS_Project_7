@@ -33,6 +33,7 @@ public class RoundTimer : MonoBehaviour
     private double _deadline;
     private double _nextSnapshotTime;
     private bool _serverStartedRound;
+    private bool _matchEndRequested;
     private double _nextIncomeTime = double.PositiveInfinity;
 
     private double ServerTime => _networkManager.TimeManager.TicksToTime(_networkManager.TimeManager.Tick);
@@ -85,7 +86,13 @@ public class RoundTimer : MonoBehaviour
                         break;
                     case gameStates.POSTGAME:
                         timerIsRunning = false;
+                        _nextIncomeTime = double.PositiveInfinity;
                         SendSnapshot();
+                        if (!_matchEndRequested)
+                        {
+                            _matchEndRequested = true;
+                            _networkManager.GetComponent<GameplayPlayerSpawner>().ReturnToLobby();
+                        }
                         break;
                 }
             }

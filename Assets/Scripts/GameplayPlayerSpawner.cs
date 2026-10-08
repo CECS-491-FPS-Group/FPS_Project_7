@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using FishNet.Broadcast;
 using FishNet.Connection;
@@ -13,6 +14,7 @@ using UnityEngine.SceneManagement;
 public sealed class GameplayPlayerSpawner : MonoBehaviour
 {
     private const string GameplaySceneName = "RoundImplementation";
+    private const string LobbySceneName = "LobbyScene_v1";
     private static readonly Vector2[] SpawnOffsets =
     {
         new Vector2(-4f, 0f), new Vector2(4f, 0f),
@@ -33,10 +35,12 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
     private readonly HashSet<NetworkConnection> _spawnAttempted = new();
     private TerrainGenerator _terrain;
     private bool _reportedTerrainReady;
+    private bool _returningToLobby;
 
     private void Awake()
     {
         _networkManager = GetComponent<NetworkManager>();
+        _networkManager.SceneManager.OnLoadEnd += OnSceneLoadEnd;
         _networkManager.SceneManager.OnClientPresenceChangeEnd += OnClientPresenceChangeEnd;
         _networkManager.SceneManager.OnClientLoadedStartScenes += OnClientLoadedStartScenes;
         _networkManager.ServerManager.OnRemoteConnectionState += OnRemoteConnectionState;
@@ -49,6 +53,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
     {
         if (_networkManager == null) return;
 
+        _networkManager.SceneManager.OnLoadEnd -= OnSceneLoadEnd;
         _networkManager.SceneManager.OnClientPresenceChangeEnd -= OnClientPresenceChangeEnd;
         _networkManager.SceneManager.OnClientLoadedStartScenes -= OnClientLoadedStartScenes;
         _networkManager.ServerManager.OnRemoteConnectionState -= OnRemoteConnectionState;
@@ -59,6 +64,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
 
     private void Update()
     {
+        if (_returningToLobby) return;
         Scene scene = UnityEngine.SceneManagement.SceneManager.GetSceneByName(GameplaySceneName);
         if (!scene.IsValid() || !scene.isLoaded)
         {
@@ -97,7 +103,9 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
 
     private void OnTerrainReady(NetworkConnection connection, TerrainReadyMessage message, Channel channel)
     {
-        if (!connection.IsActive || !connection.IsAuthenticated) return;
+        Scene scene = UnityEngine.SceneManagement.SceneManager.GetSceneByName(GameplaySceneName);
+        if (_returningToLobby || !scene.IsValid() || !scene.isLoaded ||
+            !connection.IsActive || !connection.IsAuthenticated) return;
         if (_terrainReady.ContainsKey(connection)) return;
         _terrainReady.Add(connection, message.Seed);
         Debug.Log($"[GameplayPlayerSpawner] Terrain ready for client {connection.ClientId} (seed {message.Seed}).", this);
@@ -148,7 +156,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
 
     private void TrySpawnPlayer(NetworkConnection connection, Scene scene)
     {
-        if (!_networkManager.IsServerStarted || !connection.IsActive || !connection.IsAuthenticated ||
+        if (_returningToLobby || !_networkManager.IsServerStarted || !connection.IsActive || !connection.IsAuthenticated ||
             !connection.LoadedStartScenes(true) || !scene.IsValid() || !scene.isLoaded ||
             scene.name != GameplaySceneName || !connection.Scenes.Contains(scene)) return;
 
@@ -194,7 +202,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
     public bool TryGetRespawnPosition(NetworkObject player, out Vector3 position)
     {
         position = default;
-        if (!_networkManager.IsServerStarted || player == null || !player.IsSpawned ||
+        if (_returningToLobby || !_networkManager.IsServerStarted || player == null || !player.IsSpawned ||
             !player.Owner.IsActive || !player.Owner.IsAuthenticated ||
             !_players.TryGetValue(player.Owner, out NetworkObject registered) || registered != player ||
             _terrain == null || !_terrain.IsGenerated || _terrain.gameObject.scene != player.gameObject.scene ||
@@ -248,6 +256,52 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
         return false;
     }
 
+    public void ReturnToLobby()
+    {
+        if (!_networkManager.IsServerStarted || _returningToLobby) return;
+        _returningToLobby = true;
+        foreach (NetworkObject player in _players.Values)
+            if (player != null && player.IsSpawned) player.GetComponent<Health>().EndMatch();
+        Debug.Log("[Match] Match ended; returning to lobby.", this);
+        StartCoroutine(ReturnToLobbyRoutine());
+    }
+
+    private IEnumerator ReturnToLobbyRoutine()
+    {
+        // Keep cameras/HUD alive briefly while the synchronized control lock arrives.
+        yield return new WaitForSecondsRealtime(1f);
+        if (!_networkManager.IsServerStarted) yield break;
+
+        // Unregister network objects before unloading their scene, as in the lobby->game path.
+        foreach (NetworkObject player in new List<NetworkObject>(_players.Values))
+            if (player != null && player.IsSpawned) _networkManager.ServerManager.Despawn(player);
+        ClearGameplayState();
+        var data = new SceneLoadData(LobbySceneName) { ReplaceScenes = ReplaceOption.All };
+        Debug.Log("[Match] Gameplay players despawned; loading LobbyScene_v1.", this);
+        _networkManager.SceneManager.LoadGlobalScenes(data);
+    }
+
+    private void OnSceneLoadEnd(SceneLoadEndEventArgs args)
+    {
+        foreach (Scene scene in args.LoadedScenes)
+        {
+            if (scene.name != LobbySceneName) continue;
+            // Runs locally on clients too, ensuring the next terrain must report readiness again.
+            ClearGameplayState();
+            _returningToLobby = false;
+            break;
+        }
+    }
+
+    private void ClearGameplayState()
+    {
+        _players.Clear();
+        _terrainReady.Clear();
+        _spawnAttempted.Clear();
+        _terrain = null;
+        _reportedTerrainReady = false;
+    }
+
     private void OnRemoteConnectionState(NetworkConnection connection, RemoteConnectionStateArgs args)
     {
         // FishNet despawns this connection's owned objects when it disconnects.
@@ -263,9 +317,9 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
     {
         if (args.ConnectionState == LocalConnectionState.Stopped)
         {
-            _players.Clear();
-            _terrainReady.Clear();
-            _spawnAttempted.Clear();
+            StopAllCoroutines();
+            ClearGameplayState();
+            _returningToLobby = false;
         }
     }
 }

@@ -11,6 +11,7 @@ public class Health : NetworkBehaviour
     [Min(0f)] public float respawnDelay = 5f;
     private readonly SyncVar<int> _currentHp = new SyncVar<int>();
     private readonly SyncVar<bool> _dead = new SyncVar<bool>();
+    private readonly SyncVar<bool> _matchEnded = new SyncVar<bool>();
     private readonly SyncVar<double> _respawnAt = new SyncVar<double>();
     private double _nextRespawnCheck;
     private uint _sequence;
@@ -21,7 +22,8 @@ public class Health : NetworkBehaviour
 
     public int CurrentHealth => _currentHp.Value;
     public bool IsDead => _dead.Value || CurrentHealth <= 0;
-    public bool CanAct => !IsDead && !_localPlacementPending;
+    public bool MatchEnded => _matchEnded.Value;
+    public bool CanAct => !MatchEnded && !IsDead && !_localPlacementPending;
     public double RespawnSecondsRemaining => IsDead
         ? Math.Max(0d, _respawnAt.Value - TimeManager.TicksToTime(TimeManager.Tick)) : 0d;
 
@@ -40,6 +42,7 @@ public class Health : NetworkBehaviour
         base.OnStartServer();
         _currentHp.Value = Mathf.Max(1, maxHp);
         _dead.Value = false;
+        _matchEnded.Value = false;
         _pendingSequence = 0;
     }
 
@@ -65,7 +68,7 @@ public class Health : NetworkBehaviour
     // Not an RPC. The shooter connection comes from the validated server shot.
     public void TakeDamage(int damage, NetworkConnection shooter)
     {
-        if (!IsServerInitialized || !IsSpawned || damage <= 0 || IsDead) return;
+        if (!IsServerInitialized || !IsSpawned || damage <= 0 || IsDead || MatchEnded) return;
         int previous = CurrentHealth;
         _currentHp.Value = Mathf.Max(0, previous - damage);
         Debug.Log($"[Combat] Damage shooter={shooter?.ClientId} victim={OwnerId} damage={damage} HP={previous}->{CurrentHealth}.", this);
@@ -82,9 +85,18 @@ public class Health : NetworkBehaviour
         }
     }
 
+    public void EndMatch()
+    {
+        if (!IsServerInitialized || !IsSpawned || MatchEnded) return;
+        _matchEnded.Value = true;
+        _pendingSequence = 0;
+        _nextRespawnCheck = double.PositiveInfinity;
+        _respawnAt.Value = 0d;
+    }
+
     private void Update()
     {
-        if (!IsServerInitialized || !IsSpawned || !_dead.Value || _pendingSequence != 0 ||
+        if (!IsServerInitialized || !IsSpawned || MatchEnded || !_dead.Value || _pendingSequence != 0 ||
             !Owner.IsActive || !Owner.IsAuthenticated) return;
         double now = TimeManager.TicksToTime(TimeManager.Tick);
         if (now < _nextRespawnCheck) return;
@@ -113,7 +125,7 @@ public class Health : NetworkBehaviour
     [TargetRpc]
     private void PlaceForRespawn(NetworkConnection target, uint token, Vector3 position)
     {
-        if (!IsOwner || token == 0 || token <= _localSequence) return;
+        if (!IsOwner || MatchEnded || token == 0 || token <= _localSequence) return;
         _localSequence = token;
         _localPlacementPending = true;
         PlayerCameraSetup controls = GetComponent<PlayerCameraSetup>();
@@ -125,7 +137,7 @@ public class Health : NetworkBehaviour
     [ServerRpc(RequireOwnership = true)]
     private void AcknowledgeRespawn(uint token, NetworkConnection sender = null)
     {
-        if (!IsServerInitialized || !IsSpawned || sender == null || sender != Owner ||
+        if (!IsServerInitialized || !IsSpawned || MatchEnded || sender == null || sender != Owner ||
             !sender.IsActive || !sender.IsAuthenticated || !_dead.Value ||
             token == 0 || token != _pendingSequence) return;
 
@@ -141,7 +153,7 @@ public class Health : NetworkBehaviour
     [TargetRpc]
     private void CompleteRespawn(NetworkConnection target, uint token)
     {
-        if (IsOwner && token == _localSequence) _localPlacementPending = false;
+        if (IsOwner && !MatchEnded && token == _localSequence) _localPlacementPending = false;
     }
 
     private void OnHealthChanged(int previous, int next, bool asServer)
