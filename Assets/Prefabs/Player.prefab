@@ -640,6 +640,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1240188883754520712, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7184396025148763021}
+    - targetCorrespondingSourceObject: {fileID: 1240188883754520712, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7138264910053721801}
   m_SourcePrefab: {fileID: 100100000, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
 --- !u!1 &3796551342132589644 stripped
 GameObject:
@@ -818,3 +821,24 @@ MonoBehaviour:
   _addedNetworkObject: {fileID: 5649512760357634947}
   _networkObjectCache: {fileID: 0}
   maxHp: 100
+--- !u!114 &7138264910053721801
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3796551342132589644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 49e8e97dd6134a419eb2a721862b4a1c, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::CombatPresentation
+  playerCamera: {fileID: 7510059297596374553}
+  playerCanvas: {fileID: 3665626450902390564}
+  bloodImpact: {fileID: 692219955226784958, guid: 92e583a52cde646a1949f7a83db07062, type: 3}
+  solidImpact: {fileID: 5785806130056180167, guid: 221b90aea6d0a8346a0fdc2e2db913e2, type: 3}
+  recoilKick: 1.5
+  recoilReturnSpeed: 8
+  hitFlashDuration: 0.15
+  impactLifetime: 4
+  maxImpacts: 16

@@ -3,6 +3,7 @@ using FishNet.Object;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+[DefaultExecutionOrder(100)] // Sample aim after Starter Assets applies mouse look.
 public class HitscanShooter : NetworkBehaviour
 {
     [Min(1)] public int damage = 40;
@@ -13,12 +14,14 @@ public class HitscanShooter : NetworkBehaviour
 
     private Camera _camera;
     private Health _health;
+    private CombatPresentation _presentation;
     private double _nextServerShotTime;
 
     private void Awake()
     {
         _camera = GetComponent<Camera>();
         _health = GetComponentInParent<Health>();
+        _presentation = GetComponentInParent<CombatPresentation>();
     }
 
     public override void OnStartServer()
@@ -30,6 +33,7 @@ public class HitscanShooter : NetworkBehaviour
     private void LateUpdate()
     {
         if (!IsClientInitialized || !IsOwner || _camera == null || !_camera.isActiveAndEnabled) return;
+        if (_presentation != null) _presentation.PrepareAim(maxPitch);
         if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
             RequestShot(_camera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f)).direction);
     }
@@ -92,12 +96,37 @@ public class HitscanShooter : NetworkBehaviour
         }
 
         Debug.Log($"[Combat] Accepted shot shooter={OwnerId} hit={(closest.collider != null ? closest.collider.name : "miss")}.", this);
-        if (closest.collider == null) return;
+        if (closest.collider == null)
+        {
+            PresentAcceptedShot(Owner, false);
+            return;
+        }
         Health victim = closest.collider.GetComponentInParent<Health>();
         if (victim == null || victim == _health || !victim.IsSpawned ||
-            !victim.CompareTag("Player") || !victim.Owner.IsActive || victim.Owner == Owner) return;
+            !victim.CompareTag("Player") || !victim.Owner.IsActive || victim.Owner == Owner)
+        {
+            PresentAcceptedShot(Owner, false);
+            if (victim == null) PresentImpact(false, closest.point, closest.normal);
+            return;
+        }
 
+        int previousHp = victim.CurrentHealth;
         victim.TakeDamage(damage, OwnerId);
+        bool damagedPlayer = victim.CurrentHealth < previousHp;
+        PresentAcceptedShot(Owner, damagedPlayer);
+        if (damagedPlayer) PresentImpact(true, closest.point, closest.normal);
+    }
+
+    [TargetRpc]
+    private void PresentAcceptedShot(NetworkConnection target, bool damagedPlayer)
+    {
+        if (_presentation != null) _presentation.AcceptedShot(damagedPlayer);
+    }
+
+    [ObserversRpc(BufferLast = false, RunLocally = false)]
+    private void PresentImpact(bool blood, Vector3 point, Vector3 normal)
+    {
+        if (_presentation != null) _presentation.ShowImpact(blood, point, normal);
     }
 
     private void Reject(string reason)
