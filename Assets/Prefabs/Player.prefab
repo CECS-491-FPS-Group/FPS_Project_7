@@ -643,6 +643,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1240188883754520712, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7138264910053721801}
+    - targetCorrespondingSourceObject: {fileID: 1240188883754520712, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7138264910053721802}
   m_SourcePrefab: {fileID: 100100000, guid: 3eb45008253d7524aa9c7cbd84b6f394, type: 3}
 --- !u!1 &3796551342132589644 stripped
 GameObject:
@@ -790,7 +793,7 @@ PrefabInstance:
     - target: {fileID: 9500000, guid: fcb334eb247ae3e488abb081c847cf09, type: 3}
       propertyPath: m_Controller
       value:
-      objectReference: {fileID: 9100000, guid: 4bfaff702826b874a9569f181d4eb77c, type: 2}
+      objectReference: {fileID: 9100000, guid: b14af3b3269944d892a5fdd4bdbb7063, type: 2}
     - target: {fileID: 9500000, guid: fcb334eb247ae3e488abb081c847cf09, type: 3}
       propertyPath: m_ApplyRootMotion
       value: 0
@@ -842,3 +845,21 @@ MonoBehaviour:
   hitFlashDuration: 0.15
   impactLifetime: 4
   maxImpacts: 16
+--- !u!114 &7138264910053721802
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3796551342132589644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8db19c616fbb4c90b07abb4c16d44e23, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::SoldierAnimation
+  soldierVisual: {fileID: 7034218650321984012}
+  startSpeed: 0.2
+  stopSpeed: 0.1
+  smoothingTime: 0.12
+  referenceRunSpeed: 4
+  teleportDistance: 3
