@@ -1284,6 +1284,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HitscanShooter
   damage: 40
   range: 100
+  gunshotClip: {fileID: 8300000, guid: 0330762d2b3c8d641bfe11ad89b7e196, type: 3}
+  gunshotVolume: 1
 --- !u!4 &2017265704 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 400048, guid: 47c000e8e166f14429b339a7adc36151, type: 3}

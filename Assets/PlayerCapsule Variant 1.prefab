@@ -92,6 +92,8 @@ MonoBehaviour:
   damage: 40
   range: 100
   bloodEffectPrefab: {fileID: 692219955226784958, guid: 92e583a52cde646a1949f7a83db07062, type: 3}
+  gunshotClip: {fileID: 8300000, guid: 0330762d2b3c8d641bfe11ad89b7e196, type: 3}
+  gunshotVolume: 1
 --- !u!4 &2013700029042369884 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 9005220659476430818, guid: 2d3a85ecde41a8246a79669975912b74, type: 3}

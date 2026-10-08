@@ -2,15 +2,19 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using StarterAssets;
 
+[RequireComponent(typeof(AudioSource))]
 public class HitscanShooter : MonoBehaviour
 {
     public int damage = 40;
     public float range = 100f;
+    public AudioClip gunshotClip;
+    [Range(0f, 1f)] public float gunshotVolume = 1f;
 
     [Header("Effects")]
     [SerializeField] private GameObject bloodEffectPrefab;
 
     private Camera cam;
+    private AudioSource audioSource;
     private PlayerBoosts playerBoosts;
 
     private void Awake()
@@ -19,6 +23,17 @@ public class HitscanShooter : MonoBehaviour
 
         playerBoosts =
             GetComponentInParent<PlayerBoosts>();
+        if (cam == null)
+        {
+            cam = Camera.main;
+        }
+
+        audioSource = GetComponent<AudioSource>();
+
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+        }
     }
 
     private void Update()
@@ -34,6 +49,16 @@ public class HitscanShooter : MonoBehaviour
 
     private void Shoot()
     {
+        if (cam == null)
+        {
+            return;
+        }
+
+        if (gunshotClip != null)
+        {
+            audioSource.PlayOneShot(gunshotClip, gunshotVolume);
+        }
+
         Vector3 crosshairPosition =
             new Vector3(
                 Screen.width / 2f,
