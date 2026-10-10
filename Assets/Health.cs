@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using FishNet;
 using StarterAssets;
 
 public class Health : MonoBehaviour
@@ -14,6 +15,12 @@ public class Health : MonoBehaviour
     public bool respawnOnDeath = true;
     public float respawnDelay = 5f;
     public bool showRespawnUI = true;
+
+    [Header("Boost Drop")]
+    [SerializeField] private GameObject boostPickupPrefab;
+
+    [SerializeField, Range(0f, 1f)]
+    private float boostDropChance = 1f;
 
     public bool IsDead => isDead;
 
@@ -82,6 +89,18 @@ public class Health : MonoBehaviour
 
         isDead = true;
 
+        // Remove any active player boost when the player dies.
+        if (playerBoosts != null)
+        {
+            playerBoosts.ClearBoost();
+        }
+
+        // Only soldiers drop boosts.
+        if (GetComponentInParent<BotAI>() != null)
+        {
+            SpawnBoostPickup();
+        }
+
         MatchManager matchManager =
             FindFirstObjectByType<MatchManager>();
 
@@ -108,6 +127,45 @@ public class Health : MonoBehaviour
         {
             Destroy(gameObject);
         }
+    }
+
+    private void SpawnBoostPickup()
+    {
+        if (
+            boostPickupPrefab == null ||
+            !InstanceFinder.IsServerStarted
+        )
+        {
+            return;
+        }
+
+        if (Random.value > boostDropChance)
+            return;
+
+        Vector3 spawnPosition =
+            transform.position +
+            Vector3.up * 0.75f;
+
+        GameObject spawnedPickup =
+            Instantiate(
+                boostPickupPrefab,
+                spawnPosition,
+                Quaternion.identity
+            );
+
+        BoostPickup pickup =
+            spawnedPickup.GetComponent<BoostPickup>();
+
+        if (pickup != null)
+        {
+            pickup.boostType =
+                (PlayerBoosts.BoostType)
+                Random.Range(1, 5);
+        }
+
+        InstanceFinder.ServerManager.Spawn(
+            spawnedPickup
+        );
     }
 
     private IEnumerator RespawnRoutine()
@@ -200,6 +258,12 @@ public class Health : MonoBehaviour
     {
         matchFrozen = frozen;
 
+        // Remove boosts during intermission or match end.
+        if (frozen && playerBoosts != null)
+        {
+            playerBoosts.ClearBoost();
+        }
+
         bool enableBehaviours =
             !frozen &&
             !isDead;
@@ -228,6 +292,11 @@ public class Health : MonoBehaviour
     public void ForceRespawnForRound()
     {
         StopAllCoroutines();
+
+        if (playerBoosts != null)
+        {
+            playerBoosts.ClearBoost();
+        }
 
         RespawnUI respawnUI =
             FindFirstObjectByType<RespawnUI>();
