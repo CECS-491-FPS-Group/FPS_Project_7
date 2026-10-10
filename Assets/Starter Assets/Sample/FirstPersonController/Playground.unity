@@ -1842,7 +1842,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8385840083131036862, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       propertyPath: boostDropChance
-      value: 0.5
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8385840083131036862, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       propertyPath: boostPickupPrefab
@@ -2199,7 +2199,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8385840083131036862, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       propertyPath: boostDropChance
-      value: 0.5
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8385840083131036862, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       propertyPath: boostPickupPrefab

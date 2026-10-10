@@ -1,6 +1,7 @@
 using UnityEngine;
 using FishNet.Object;
 using FishNet.Object.Synchronizing;
+using StarterAssets;
 
 [RequireComponent(typeof(NetworkObject))]
 public class MatchManager : NetworkBehaviour
@@ -38,6 +39,9 @@ public class MatchManager : NetworkBehaviour
     private readonly SyncVar<int> totalXP =
         new SyncVar<int>();
 
+    private readonly SyncVar<int> killStreak =
+        new SyncVar<int>();
+
     public int CurrentRound =>
         currentRound.Value;
 
@@ -61,6 +65,9 @@ public class MatchManager : NetworkBehaviour
 
     public int TotalXP =>
         totalXP.Value;
+
+    public int KillStreak =>
+        killStreak.Value;
 
     public int XPPerSoldierKill =>
         xpPerSoldierKill;
@@ -87,6 +94,7 @@ public class MatchManager : NetworkBehaviour
         soldiersKilled.Value = 0;
         playerDeaths.Value = 0;
         totalXP.Value = 0;
+        killStreak.Value = 0;
 
         serverSecondsRemaining =
             roundLength;
@@ -192,7 +200,6 @@ public class MatchManager : NetworkBehaviour
         if (serverSecondsRemaining <= 0f)
         {
             secondsRemaining.Value = 0;
-
             StartNewMatch();
         }
     }
@@ -294,6 +301,7 @@ public class MatchManager : NetworkBehaviour
         soldiersKilled.Value = 0;
         playerDeaths.Value = 0;
         totalXP.Value = 0;
+        killStreak.Value = 0;
 
         currentRound.Value = 1;
 
@@ -411,13 +419,38 @@ public class MatchManager : NetworkBehaviour
         )
         {
             soldiersKilled.Value++;
+            totalXP.Value += xpPerSoldierKill;
+            killStreak.Value++;
 
-            totalXP.Value +=
-                xpPerSoldierKill;
+            if (killStreak.Value % 5 == 0)
+            {
+                PlayerBoosts playerBoosts =
+                    killer.GetComponentInParent<PlayerBoosts>();
+
+                if (playerBoosts != null)
+                {
+                    PlayerBoosts.BoostType randomBoost =
+                        (PlayerBoosts.BoostType)Random.Range(
+                            1,
+                            5
+                        );
+
+                    playerBoosts.ApplyBoost(
+                        randomBoost
+                    );
+
+                    Debug.Log(
+                        "Killstreak reward: " +
+                        randomBoost
+                    );
+                }
+            }
 
             Debug.Log(
                 "Soldier killed. Total kills: " +
                 soldiersKilled.Value +
+                ". Kill streak: " +
+                killStreak.Value +
                 ". Total XP: " +
                 totalXP.Value
             );
@@ -429,9 +462,11 @@ public class MatchManager : NetworkBehaviour
         )
         {
             playerDeaths.Value++;
+            killStreak.Value = 0;
 
             Debug.Log(
-                "Player death recorded. Total deaths: " +
+                "Player death recorded. " +
+                "Kill streak reset. Total deaths: " +
                 playerDeaths.Value
             );
         }

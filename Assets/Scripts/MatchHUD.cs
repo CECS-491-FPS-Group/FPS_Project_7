@@ -3,16 +3,10 @@ using UnityEngine;
 
 public class MatchHUD : MonoBehaviour
 {
-    [Header("Round UI")]
     [SerializeField] private TMP_Text roundText;
     [SerializeField] private TMP_Text timerText;
-
-    [Header("Score UI")]
-    [SerializeField] private TMP_Text playerScoreText;
-    [SerializeField] private TMP_Text botsScoreText;
-
-    [Header("Center Message")]
     [SerializeField] private TMP_Text centerMessageText;
+    [SerializeField] private TMP_Text killStreakText;
 
     private MatchManager matchManager;
 
@@ -20,6 +14,9 @@ public class MatchHUD : MonoBehaviour
     {
         if (centerMessageText != null)
             centerMessageText.gameObject.SetActive(false);
+
+        if (killStreakText != null)
+            killStreakText.gameObject.SetActive(false);
     }
 
     private void Update()
@@ -35,7 +32,6 @@ public class MatchHUD : MonoBehaviour
         if (matchManager.MatchFinished)
         {
             SetNormalHudVisible(false);
-            SetScoreVisible(false);
             SetCenterMessageVisible(false);
             return;
         }
@@ -43,23 +39,11 @@ public class MatchHUD : MonoBehaviour
         if (matchManager.IntermissionActive)
         {
             SetNormalHudVisible(false);
-            SetScoreVisible(false);
             SetCenterMessageVisible(true);
-
-            if (centerMessageText != null)
-            {
-                centerMessageText.text =
-                    "Next round starts in " +
-                    FormatTime(
-                        matchManager.SecondsRemaining
-                    );
-            }
-
             return;
         }
 
         SetNormalHudVisible(true);
-        SetScoreVisible(true);
         SetCenterMessageVisible(false);
 
         if (roundText != null)
@@ -78,48 +62,62 @@ public class MatchHUD : MonoBehaviour
                 );
         }
 
-        if (playerScoreText != null)
+        if (killStreakText != null)
         {
-            playerScoreText.text =
-                "You: " +
-                matchManager.SoldiersKilled;
-        }
+            bool hasKillStreak =
+                matchManager.KillStreak > 0;
 
-        if (botsScoreText != null)
-        {
-            botsScoreText.text =
-                "Bots: " +
-                matchManager.PlayerDeaths;
+            killStreakText.gameObject.SetActive(
+                hasKillStreak
+            );
+
+            if (hasKillStreak)
+            {
+                killStreakText.text =
+                    "Kill Streak: " +
+                    matchManager.KillStreak;
+            }
         }
     }
 
-    private void SetNormalHudVisible(bool visible)
+    private void SetNormalHudVisible(
+        bool visible
+    )
     {
         if (roundText != null)
             roundText.gameObject.SetActive(visible);
 
         if (timerText != null)
             timerText.gameObject.SetActive(visible);
+
+        if (!visible && killStreakText != null)
+            killStreakText.gameObject.SetActive(false);
     }
 
-    private void SetScoreVisible(bool visible)
-    {
-        if (playerScoreText != null)
-            playerScoreText.gameObject.SetActive(visible);
-
-        if (botsScoreText != null)
-            botsScoreText.gameObject.SetActive(visible);
-    }
-
-    private void SetCenterMessageVisible(bool visible)
+    private void SetCenterMessageVisible(
+        bool visible
+    )
     {
         if (centerMessageText != null)
         {
-            centerMessageText.gameObject.SetActive(visible);
+            centerMessageText.gameObject.SetActive(
+                visible
+            );
+
+            if (visible)
+            {
+                centerMessageText.text =
+                    "Next round starts in " +
+                    FormatTime(
+                        matchManager.SecondsRemaining
+                    );
+            }
         }
     }
 
-    private string FormatTime(int totalSeconds)
+    private string FormatTime(
+        int totalSeconds
+    )
     {
         int minutes =
             totalSeconds / 60;
