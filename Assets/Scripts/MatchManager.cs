@@ -15,62 +15,28 @@ public class MatchManager : NetworkBehaviour
     [Header("XP Settings")]
     [SerializeField] private int xpPerSoldierKill = 5;
 
-    private readonly SyncVar<int> currentRound =
-        new SyncVar<int>();
+    private readonly SyncVar<int> currentRound = new SyncVar<int>();
+    private readonly SyncVar<int> secondsRemaining = new SyncVar<int>();
+    private readonly SyncVar<bool> matchActive = new SyncVar<bool>();
+    private readonly SyncVar<bool> intermissionActive = new SyncVar<bool>();
+    private readonly SyncVar<bool> matchFinished = new SyncVar<bool>();
 
-    private readonly SyncVar<int> secondsRemaining =
-        new SyncVar<int>();
+    private readonly SyncVar<int> soldiersKilled = new SyncVar<int>();
+    private readonly SyncVar<int> playerDeaths = new SyncVar<int>();
+    private readonly SyncVar<int> totalXP = new SyncVar<int>();
+    private readonly SyncVar<int> killStreak = new SyncVar<int>();
 
-    private readonly SyncVar<bool> matchActive =
-        new SyncVar<bool>();
+    public int CurrentRound => currentRound.Value;
+    public int SecondsRemaining => secondsRemaining.Value;
+    public bool MatchActive => matchActive.Value;
+    public bool IntermissionActive => intermissionActive.Value;
+    public bool MatchFinished => matchFinished.Value;
 
-    private readonly SyncVar<bool> intermissionActive =
-        new SyncVar<bool>();
-
-    private readonly SyncVar<bool> matchFinished =
-        new SyncVar<bool>();
-
-    private readonly SyncVar<int> soldiersKilled =
-        new SyncVar<int>();
-
-    private readonly SyncVar<int> playerDeaths =
-        new SyncVar<int>();
-
-    private readonly SyncVar<int> totalXP =
-        new SyncVar<int>();
-
-    private readonly SyncVar<int> killStreak =
-        new SyncVar<int>();
-
-    public int CurrentRound =>
-        currentRound.Value;
-
-    public int SecondsRemaining =>
-        secondsRemaining.Value;
-
-    public bool MatchActive =>
-        matchActive.Value;
-
-    public bool IntermissionActive =>
-        intermissionActive.Value;
-
-    public bool MatchFinished =>
-        matchFinished.Value;
-
-    public int SoldiersKilled =>
-        soldiersKilled.Value;
-
-    public int PlayerDeaths =>
-        playerDeaths.Value;
-
-    public int TotalXP =>
-        totalXP.Value;
-
-    public int KillStreak =>
-        killStreak.Value;
-
-    public int XPPerSoldierKill =>
-        xpPerSoldierKill;
+    public int SoldiersKilled => soldiersKilled.Value;
+    public int PlayerDeaths => playerDeaths.Value;
+    public int TotalXP => totalXP.Value;
+    public int KillStreak => killStreak.Value;
+    public int XPPerSoldierKill => xpPerSoldierKill;
 
     private float serverSecondsRemaining;
     private int lastDisplayedSecond;
@@ -83,9 +49,7 @@ public class MatchManager : NetworkBehaviour
         base.OnStartServer();
 
         currentRound.Value = 1;
-
-        secondsRemaining.Value =
-            Mathf.CeilToInt(roundLength);
+        secondsRemaining.Value = Mathf.CeilToInt(roundLength);
 
         matchActive.Value = true;
         intermissionActive.Value = false;
@@ -96,11 +60,8 @@ public class MatchManager : NetworkBehaviour
         totalXP.Value = 0;
         killStreak.Value = 0;
 
-        serverSecondsRemaining =
-            roundLength;
-
-        lastDisplayedSecond =
-            secondsRemaining.Value;
+        serverSecondsRemaining = roundLength;
+        lastDisplayedSecond = secondsRemaining.Value;
 
         SetAllCharactersFrozen(false);
         ApplyDifficultyToAllSoldiers();
@@ -121,30 +82,19 @@ public class MatchManager : NetworkBehaviour
             return;
         }
 
-        if (
-            !matchActive.Value &&
-            !intermissionActive.Value
-        )
-        {
+        if (!matchActive.Value && !intermissionActive.Value)
             return;
-        }
 
-        serverSecondsRemaining -=
-            Time.deltaTime;
-
+        serverSecondsRemaining -= Time.deltaTime;
         UpdateDisplayedSeconds();
 
         if (serverSecondsRemaining > 0f)
             return;
 
         if (intermissionActive.Value)
-        {
             StartNextRound();
-        }
         else if (matchActive.Value)
-        {
             EndCurrentRound();
-        }
     }
 
     private void UpdateDisplayedSeconds()
@@ -152,49 +102,30 @@ public class MatchManager : NetworkBehaviour
         int newDisplayedSecond =
             Mathf.Max(
                 0,
-                Mathf.CeilToInt(
-                    serverSecondsRemaining
-                )
+                Mathf.CeilToInt(serverSecondsRemaining)
             );
 
-        if (
-            newDisplayedSecond ==
-            lastDisplayedSecond
-        )
-        {
+        if (newDisplayedSecond == lastDisplayedSecond)
             return;
-        }
 
-        lastDisplayedSecond =
-            newDisplayedSecond;
-
-        secondsRemaining.Value =
-            newDisplayedSecond;
+        lastDisplayedSecond = newDisplayedSecond;
+        secondsRemaining.Value = newDisplayedSecond;
     }
 
     private void UpdatePostMatchCountdown()
     {
-        serverSecondsRemaining -=
-            Time.deltaTime;
+        serverSecondsRemaining -= Time.deltaTime;
 
         int newDisplayedSecond =
             Mathf.Max(
                 0,
-                Mathf.CeilToInt(
-                    serverSecondsRemaining
-                )
+                Mathf.CeilToInt(serverSecondsRemaining)
             );
 
-        if (
-            newDisplayedSecond !=
-            lastDisplayedSecond
-        )
+        if (newDisplayedSecond != lastDisplayedSecond)
         {
-            lastDisplayedSecond =
-                newDisplayedSecond;
-
-            secondsRemaining.Value =
-                newDisplayedSecond;
+            lastDisplayedSecond = newDisplayedSecond;
+            secondsRemaining.Value = newDisplayedSecond;
         }
 
         if (serverSecondsRemaining <= 0f)
@@ -206,10 +137,7 @@ public class MatchManager : NetworkBehaviour
 
     private void EndCurrentRound()
     {
-        if (
-            currentRound.Value >=
-            totalRounds
-        )
+        if (currentRound.Value >= totalRounds)
         {
             FinishMatch();
             return;
@@ -218,16 +146,11 @@ public class MatchManager : NetworkBehaviour
         matchActive.Value = false;
         intermissionActive.Value = true;
 
-        serverSecondsRemaining =
-            intermissionLength;
-
+        serverSecondsRemaining = intermissionLength;
         secondsRemaining.Value =
-            Mathf.CeilToInt(
-                serverSecondsRemaining
-            );
+            Mathf.CeilToInt(serverSecondsRemaining);
 
-        lastDisplayedSecond =
-            secondsRemaining.Value;
+        lastDisplayedSecond = secondsRemaining.Value;
 
         SetAllCharactersFrozen(true);
 
@@ -243,20 +166,14 @@ public class MatchManager : NetworkBehaviour
         RespawnAllCharacters();
 
         currentRound.Value++;
-
         matchActive.Value = true;
         intermissionActive.Value = false;
 
-        serverSecondsRemaining =
-            roundLength;
-
+        serverSecondsRemaining = roundLength;
         secondsRemaining.Value =
-            Mathf.CeilToInt(
-                serverSecondsRemaining
-            );
+            Mathf.CeilToInt(serverSecondsRemaining);
 
-        lastDisplayedSecond =
-            secondsRemaining.Value;
+        lastDisplayedSecond = secondsRemaining.Value;
 
         SetAllCharactersFrozen(false);
         ApplyDifficultyToAllSoldiers();
@@ -274,16 +191,11 @@ public class MatchManager : NetworkBehaviour
         intermissionActive.Value = false;
         matchFinished.Value = true;
 
-        serverSecondsRemaining =
-            postMatchLength;
-
+        serverSecondsRemaining = postMatchLength;
         secondsRemaining.Value =
-            Mathf.CeilToInt(
-                serverSecondsRemaining
-            );
+            Mathf.CeilToInt(serverSecondsRemaining);
 
-        lastDisplayedSecond =
-            secondsRemaining.Value;
+        lastDisplayedSecond = secondsRemaining.Value;
 
         SetAllCharactersFrozen(true);
 
@@ -304,28 +216,20 @@ public class MatchManager : NetworkBehaviour
         killStreak.Value = 0;
 
         currentRound.Value = 1;
-
         matchActive.Value = true;
         intermissionActive.Value = false;
         matchFinished.Value = false;
 
-        serverSecondsRemaining =
-            roundLength;
-
+        serverSecondsRemaining = roundLength;
         secondsRemaining.Value =
-            Mathf.CeilToInt(
-                serverSecondsRemaining
-            );
+            Mathf.CeilToInt(serverSecondsRemaining);
 
-        lastDisplayedSecond =
-            secondsRemaining.Value;
+        lastDisplayedSecond = secondsRemaining.Value;
 
         SetAllCharactersFrozen(false);
         ApplyDifficultyToAllSoldiers();
 
-        Debug.Log(
-            "New match started. Round 1."
-        );
+        Debug.Log("New match started. Round 1.");
     }
 
     private void ApplyFreezeStateOnThisClient()
@@ -342,17 +246,13 @@ public class MatchManager : NetworkBehaviour
             return;
         }
 
-        localFreezeState =
-            shouldFreeze;
-
+        localFreezeState = shouldFreeze;
         localFreezeStateInitialized = true;
 
         SetAllCharactersFrozen(shouldFreeze);
     }
 
-    private void SetAllCharactersFrozen(
-        bool frozen
-    )
+    private void SetAllCharactersFrozen(bool frozen)
     {
         Health[] healthObjects =
             FindObjectsByType<Health>(
@@ -362,9 +262,7 @@ public class MatchManager : NetworkBehaviour
         foreach (Health health in healthObjects)
         {
             if (health != null)
-            {
                 health.SetMatchFrozen(frozen);
-            }
         }
     }
 
@@ -378,9 +276,7 @@ public class MatchManager : NetworkBehaviour
         foreach (Health health in healthObjects)
         {
             if (health != null)
-            {
                 health.ForceRespawnForRound();
-            }
         }
     }
 
@@ -389,21 +285,11 @@ public class MatchManager : NetworkBehaviour
         GameObject killer
     )
     {
-        if (!IsServerInitialized)
-            return;
-
-        if (victim == null)
+        if (!IsServerInitialized || victim == null)
             return;
 
         BotAI victimBot =
             victim.GetComponentInParent<BotAI>();
-
-        bool victimIsPlayer =
-            victim.CompareTag("Player");
-
-        bool killerIsPlayer =
-            killer != null &&
-            killer.CompareTag("Player");
 
         BotAI killerBot = null;
 
@@ -413,10 +299,18 @@ public class MatchManager : NetworkBehaviour
                 killer.GetComponentInParent<BotAI>();
         }
 
-        if (
-            victimBot != null &&
-            killerIsPlayer
-        )
+        bool victimIsPlayer =
+            victim.CompareTag("Player") ||
+            victim.transform.root.CompareTag("Player");
+
+        bool killerIsPlayer =
+            killer != null &&
+            (
+                killer.CompareTag("Player") ||
+                killer.transform.root.CompareTag("Player")
+            );
+
+        if (victimBot != null && killerIsPlayer)
         {
             soldiersKilled.Value++;
             totalXP.Value += xpPerSoldierKill;
@@ -430,14 +324,9 @@ public class MatchManager : NetworkBehaviour
                 if (playerBoosts != null)
                 {
                     PlayerBoosts.BoostType randomBoost =
-                        (PlayerBoosts.BoostType)Random.Range(
-                            1,
-                            5
-                        );
+                        (PlayerBoosts.BoostType)Random.Range(1, 5);
 
-                    playerBoosts.ApplyBoost(
-                        randomBoost
-                    );
+                    playerBoosts.ApplyBoost(randomBoost);
 
                     Debug.Log(
                         "Killstreak reward: " +
@@ -447,26 +336,18 @@ public class MatchManager : NetworkBehaviour
             }
 
             Debug.Log(
-                "Soldier killed. Total kills: " +
-                soldiersKilled.Value +
-                ". Kill streak: " +
-                killStreak.Value +
-                ". Total XP: " +
-                totalXP.Value
+                "Player score increased: " +
+                soldiersKilled.Value
             );
         }
 
-        if (
-            victimIsPlayer &&
-            killerBot != null
-        )
+        if (victimIsPlayer && killerBot != null)
         {
             playerDeaths.Value++;
             killStreak.Value = 0;
 
             Debug.Log(
-                "Player death recorded. " +
-                "Kill streak reset. Total deaths: " +
+                "Bot score increased: " +
                 playerDeaths.Value
             );
         }

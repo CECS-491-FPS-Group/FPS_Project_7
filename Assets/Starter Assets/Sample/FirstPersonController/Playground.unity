@@ -1842,7 +1842,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8385840083131036862, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       propertyPath: boostDropChance
-      value: 1
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 8385840083131036862, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       propertyPath: boostPickupPrefab
@@ -1980,9 +1980,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MatchHUD
   roundText: {fileID: 508730108}
   timerText: {fileID: 0}
-  playerScoreText: {fileID: 0}
-  botsScoreText: {fileID: 0}
   centerMessageText: {fileID: 1657743725}
+  killStreakText: {fileID: 0}
 --- !u!114 &1298337213
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2199,7 +2198,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8385840083131036862, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       propertyPath: boostDropChance
-      value: 1
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 8385840083131036862, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       propertyPath: boostPickupPrefab

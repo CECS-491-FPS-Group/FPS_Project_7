@@ -8,6 +8,10 @@ public class MatchHUD : MonoBehaviour
     [SerializeField] private TMP_Text centerMessageText;
     [SerializeField] private TMP_Text killStreakText;
 
+    [Header("Live Score")]
+    [SerializeField] private TMP_Text playerScoreText;
+    [SerializeField] private TMP_Text botScoreText;
+
     private MatchManager matchManager;
 
     private void Awake()
@@ -62,6 +66,20 @@ public class MatchHUD : MonoBehaviour
                 );
         }
 
+        if (playerScoreText != null)
+        {
+            playerScoreText.text =
+                "You: " +
+                matchManager.SoldiersKilled;
+        }
+
+        if (botScoreText != null)
+        {
+            botScoreText.text =
+                "Bot: " +
+                matchManager.PlayerDeaths;
+        }
+
         if (killStreakText != null)
         {
             bool hasKillStreak =
@@ -80,9 +98,7 @@ public class MatchHUD : MonoBehaviour
         }
     }
 
-    private void SetNormalHudVisible(
-        bool visible
-    )
+    private void SetNormalHudVisible(bool visible)
     {
         if (roundText != null)
             roundText.gameObject.SetActive(visible);
@@ -90,19 +106,21 @@ public class MatchHUD : MonoBehaviour
         if (timerText != null)
             timerText.gameObject.SetActive(visible);
 
+        if (playerScoreText != null)
+            playerScoreText.gameObject.SetActive(visible);
+
+        if (botScoreText != null)
+            botScoreText.gameObject.SetActive(visible);
+
         if (!visible && killStreakText != null)
             killStreakText.gameObject.SetActive(false);
     }
 
-    private void SetCenterMessageVisible(
-        bool visible
-    )
+    private void SetCenterMessageVisible(bool visible)
     {
         if (centerMessageText != null)
         {
-            centerMessageText.gameObject.SetActive(
-                visible
-            );
+            centerMessageText.gameObject.SetActive(visible);
 
             if (visible)
             {
@@ -115,15 +133,10 @@ public class MatchHUD : MonoBehaviour
         }
     }
 
-    private string FormatTime(
-        int totalSeconds
-    )
+    private string FormatTime(int totalSeconds)
     {
-        int minutes =
-            totalSeconds / 60;
-
-        int seconds =
-            totalSeconds % 60;
+        int minutes = totalSeconds / 60;
+        int seconds = totalSeconds % 60;
 
         return minutes.ToString("00") +
                ":" +
