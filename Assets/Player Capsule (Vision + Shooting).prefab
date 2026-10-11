@@ -1,0 +1,350 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &4710465112796332097
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8182665079173085330}
+  - component: {fileID: 5707067722242108103}
+  m_Layer: 0
+  m_Name: Assault Rifle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8182665079173085330
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4710465112796332097}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5702104005446641750}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5707067722242108103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4710465112796332097}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2eb5d0905acda64bb3c869fbbbc0702, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HitscanShooter
+  damage: 20
+  range: 100
+  isAutomatic: 1
+  fireRate: 15
+  isShotgun: 0
+  pelletsPerShot: 8
+  hipSpread: 1.5
+  scopedSpread: 0.2
+  bloomPerShot: 0.4
+  maxBloom: 4
+  bloomRecoveryDelay: 0.15
+  bloomRecoveryRate: 8
+  scopedBloomMultiplier: 0.5
+  firstShotAccurate: 1
+  magazineSize: 30
+  reloadTime: 3
+  recoilAmount: 8
+  canScope: 0
+  scopeZoom: 1
+  scopeTransitionSpeed: 12
+  hitMarker: {fileID: 4724461779606514509, guid: 3ee41655cbe230d4398da0ef5618e184, type: 3}
+  maxHitMarkers: 8
+  hitMarkerMinDistance: 0.1
+--- !u!1 &4732219762754882448
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6208916436898385921}
+  - component: {fileID: 8324865052202982251}
+  m_Layer: 0
+  m_Name: Shotgun
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6208916436898385921
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4732219762754882448}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5702104005446641750}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8324865052202982251
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4732219762754882448}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2eb5d0905acda64bb3c869fbbbc0702, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HitscanShooter
+  damage: 40
+  range: 100
+  isAutomatic: 0
+  fireRate: 10
+  isShotgun: 1
+  pelletsPerShot: 8
+  hipSpread: 1.5
+  scopedSpread: 0.2
+  bloomPerShot: 0.4
+  maxBloom: 4
+  bloomRecoveryDelay: 0.15
+  bloomRecoveryRate: 8
+  scopedBloomMultiplier: 0.5
+  firstShotAccurate: 1
+  magazineSize: 12
+  reloadTime: 2
+  recoilAmount: 20
+  canScope: 0
+  scopeZoom: 1
+  scopeTransitionSpeed: 12
+  hitMarker: {fileID: 4724461779606514509, guid: 3ee41655cbe230d4398da0ef5618e184, type: 3}
+  maxHitMarkers: 8
+  hitMarkerMinDistance: 0.1
+--- !u!1 &6077211246191985300
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6594597565398284088}
+  - component: {fileID: 4469243958953632411}
+  - component: {fileID: 62676106364324506}
+  m_Layer: 0
+  m_Name: Sniper
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6594597565398284088
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6077211246191985300}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5702104005446641750}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4469243958953632411
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6077211246191985300}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2eb5d0905acda64bb3c869fbbbc0702, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HitscanShooter
+  damage: 50
+  range: 100
+  isAutomatic: 0
+  fireRate: 1
+  isShotgun: 0
+  pelletsPerShot: 8
+  hipSpread: 1.5
+  scopedSpread: 0.2
+  bloomPerShot: 0.4
+  maxBloom: 4
+  bloomRecoveryDelay: 0.15
+  bloomRecoveryRate: 8
+  scopedBloomMultiplier: 0.5
+  firstShotAccurate: 1
+  magazineSize: 5
+  reloadTime: 5
+  recoilAmount: 50
+  canScope: 1
+  scopeZoom: 2
+  scopeTransitionSpeed: 12
+  hitMarker: {fileID: 4724461779606514509, guid: 3ee41655cbe230d4398da0ef5618e184, type: 3}
+  maxHitMarkers: 8
+  hitMarkerMinDistance: 0.1
+--- !u!114 &62676106364324506
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6077211246191985300}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1aefc255e72d354ebc7b14143c2319a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ProjectileShooter
+  projectilePrefab: {fileID: 4981384571661608029, guid: 62e1632724050204fb2b02c26f2ba0bf, type: 3}
+  projectileSpeed: 25
+  fireRate: 2
+  recoilAmount: 1
+--- !u!1001 &6112485168708652298
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 302602946835337134, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: WasActiveDuringEdit
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 302602946835337134, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: _initializedTimestamp
+      value: -8584170233094396544
+      objectReference: {fileID: 0}
+    - target: {fileID: 302602946835337134, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: <PrefabId>k__BackingField
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 302602946835337134, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: <AssetPathHash>k__BackingField
+      value: 5533215400509018610
+      objectReference: {fileID: 0}
+    - target: {fileID: 8480218529504961243, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8480218529504961243, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8480218529504961243, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8480218529504961243, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8480218529504961243, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8480218529504961243, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8480218529504961243, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8480218529504961243, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8480218529504961243, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8480218529504961243, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9143461172801206369, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      propertyPath: m_Name
+      value: Player Capsule (Vision + Shooting)
+      objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 2638558713666364244, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+    - {fileID: 5210088843784290946, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+    m_RemovedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 2013700029042369884, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8182665079173085330}
+    - targetCorrespondingSourceObject: {fileID: 2013700029042369884, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6208916436898385921}
+    - targetCorrespondingSourceObject: {fileID: 2013700029042369884, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6594597565398284088}
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 9143461172801206369, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3936029486076200304}
+    - targetCorrespondingSourceObject: {fileID: 9143461172801206369, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1843711691557920817}
+  m_SourcePrefab: {fileID: 100100000, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+--- !u!1 &3042165735055783275 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 9143461172801206369, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+  m_PrefabInstance: {fileID: 6112485168708652298}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &3936029486076200304
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3042165735055783275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1ba6af784db8dd04f9342649012c0ee1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerVision
+  mouseSensitivity: 0.1
+  recoilRecoverySpeed: 8
+--- !u!114 &1843711691557920817
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3042165735055783275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8c5930d7528e58242ae1cb1703ffb887, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeaponHolster
+  weapons:
+  - {fileID: 4710465112796332097}
+  - {fileID: 4732219762754882448}
+  - {fileID: 6077211246191985300}
+--- !u!4 &5702104005446641750 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2013700029042369884, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+  m_PrefabInstance: {fileID: 6112485168708652298}
+  m_PrefabAsset: {fileID: 0}
