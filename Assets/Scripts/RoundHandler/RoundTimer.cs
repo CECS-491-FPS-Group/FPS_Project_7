@@ -52,6 +52,7 @@ public class RoundTimer : MonoBehaviour
         }
 
         _networkManager.ClientManager.RegisterBroadcast<RoundSnapshot>(OnSnapshot);
+        if (GetComponent<MatchScoreboard>() == null) gameObject.AddComponent<MatchScoreboard>();
     }
 
     private void OnDestroy()

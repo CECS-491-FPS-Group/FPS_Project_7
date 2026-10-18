@@ -22,6 +22,10 @@ public sealed class CombatPresentation : MonoBehaviour
     private Transform _recoilPivot;
     private RectTransform _hud;
     private TMP_Text _hpText;
+    private TMP_Text _ammoText;
+    private GameObject _scoreboardPanel;
+    private TMP_Text _scoreboardText;
+    private HitscanShooter _weapon;
     private GameObject _hitFlash;
     private float _recoil;
     private float _flashUntil;
@@ -33,6 +37,7 @@ public sealed class CombatPresentation : MonoBehaviour
     {
         _player = GetComponent<NetworkObject>();
         _health = GetComponent<Health>();
+        _weapon = GetComponentInChildren<HitscanShooter>(true);
         if (playerCamera != null)
         {
             Transform cameraTransform = playerCamera.transform;
@@ -59,6 +64,14 @@ public sealed class CombatPresentation : MonoBehaviour
         if (_hud == null) BuildHud();
         if (_hud == null) return;
         _hud.gameObject.SetActive(true);
+        bool showScores = UnityEngine.InputSystem.Keyboard.current != null &&
+            UnityEngine.InputSystem.Keyboard.current.tabKey.isPressed;
+        _scoreboardPanel.SetActive(showScores);
+        if (showScores) _scoreboardText.text = MatchScoreboard.Instance != null
+            ? MatchScoreboard.Instance.DisplayText : "Waiting for scoreboard...";
+        _ammoText.text = _weapon == null ? "" : $"Ammo: {_weapon.CurrentAmmo} / {_weapon.magazineSize}";
+        if (_weapon != null && _weapon.IsReloading && _health != null && _health.CanAct)
+            _ammoText.text += $"  Reloading... {_weapon.ReloadSecondsRemaining:0.0}s";
         _hpText.text = _health != null ? $"HP: {_health.CurrentHealth} / {_health.maxHp}" : "";
         if (_health != null && !_health.CanAct)
         {
@@ -132,6 +145,28 @@ public sealed class CombatPresentation : MonoBehaviour
         rect.pivot = Vector2.zero;
         rect.anchoredPosition = new Vector2(24f, 24f);
         rect.sizeDelta = new Vector2(420f, 45f);
+        _ammoText = Instantiate(_hpText, _hud);
+        _ammoText.name = "AmmoText";
+        _ammoText.rectTransform.anchoredPosition = new Vector2(24f, 74f);
+        _ammoText.rectTransform.sizeDelta = new Vector2(600f, 45f);
+        _scoreboardPanel = new GameObject("Scoreboard", typeof(RectTransform), typeof(Image));
+        _scoreboardPanel.transform.SetParent(_hud, false);
+        Image background = _scoreboardPanel.GetComponent<Image>();
+        background.color = new Color(0f, 0f, 0f, 0.85f);
+        background.raycastTarget = false;
+        RectTransform panelRect = (RectTransform)_scoreboardPanel.transform;
+        panelRect.anchorMin = panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+        panelRect.sizeDelta = new Vector2(640f, 300f);
+        _scoreboardText = Instantiate(_hpText, panelRect);
+        _scoreboardText.name = "ScoreboardText";
+        _scoreboardText.richText = false; // Display the literal <Host> label.
+        _scoreboardText.fontSize = 24f;
+        _scoreboardText.alignment = TextAlignmentOptions.TopLeft;
+        _scoreboardText.rectTransform.anchorMin = Vector2.zero;
+        _scoreboardText.rectTransform.anchorMax = Vector2.one;
+        _scoreboardText.rectTransform.offsetMin = new Vector2(20f, 20f);
+        _scoreboardText.rectTransform.offsetMax = new Vector2(-20f, -20f);
+        _scoreboardPanel.SetActive(false);
     }
 
     private static void AddLine(string name, Vector2 size, float angle, Color color, Transform parent)

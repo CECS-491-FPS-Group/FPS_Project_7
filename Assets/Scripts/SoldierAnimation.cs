@@ -19,18 +19,55 @@ public sealed class SoldierAnimation : MonoBehaviour
     private float _speed;
     private bool _moving;
     private bool _hasSample;
+    private int _shootLayer = -1;
+    private bool _shooting;
+    private static readonly int ShootState = Animator.StringToHash("Upper Body.Shoot");
+    private static readonly int RestState = Animator.StringToHash("Upper Body.Rest");
 
     private void Awake()
     {
         _health = GetComponent<Health>();
         if (soldierVisual != null) _animator = soldierVisual.GetComponentInChildren<Animator>(true);
-        if (_animator != null) _animator.applyRootMotion = false;
+        if (_animator != null)
+        {
+            _animator.applyRootMotion = false;
+            _shootLayer = _animator.GetLayerIndex("Upper Body");
+        }
     }
 
     private void OnEnable() => ResetSample();
+    private void OnDisable() => ClearShooting();
+
+    public void PlayAcceptedShot()
+    {
+        if (!isActiveAndEnabled || _animator == null || _shootLayer < 0 ||
+            (_health != null && !_health.CanAct)) return;
+        // Restart even during automatic fire. Only the masked visual layer is affected.
+        _animator.Play(ShootState, _shootLayer, 0f);
+        _shooting = true;
+    }
+
+    private void ClearShooting()
+    {
+        _shooting = false;
+        if (_animator == null || _shootLayer < 0) return;
+        _animator.SetLayerWeight(_shootLayer, 0f);
+        if (_animator.isActiveAndEnabled) _animator.Play(RestState, _shootLayer, 0f);
+    }
+
+    private void UpdateShooting()
+    {
+        if (!_shooting || _shootLayer < 0) return;
+        AnimatorStateInfo state = _animator.GetCurrentAnimatorStateInfo(_shootLayer);
+        float target = state.fullPathHash == ShootState && state.normalizedTime >= 0.75f ? 0f : 1f;
+        float weight = Mathf.MoveTowards(_animator.GetLayerWeight(_shootLayer), target, Time.deltaTime * 12f);
+        _animator.SetLayerWeight(_shootLayer, weight);
+        if (target == 0f && weight <= 0f) ClearShooting();
+    }
 
     private void ResetSample()
     {
+        ClearShooting();
         _previousPosition = transform.position;
         _speed = 0f;
         _moving = false;
@@ -53,6 +90,7 @@ public sealed class SoldierAnimation : MonoBehaviour
             return;
         }
         if (Time.deltaTime <= 0f) return;
+        UpdateShooting();
 
         float measured = new Vector2(delta.x, delta.z).magnitude / Time.deltaTime;
         _speed = Mathf.Lerp(_speed, measured,

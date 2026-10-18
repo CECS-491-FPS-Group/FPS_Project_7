@@ -74,6 +74,7 @@ public class Health : NetworkBehaviour
         Debug.Log($"[Combat] Damage shooter={shooter?.ClientId} victim={OwnerId} damage={damage} HP={previous}->{CurrentHealth}.", this);
         if (previous > 0 && CurrentHealth == 0)
         {
+            if (MatchScoreboard.Instance != null) MatchScoreboard.Instance.RecordDeath(Owner, shooter);
             _dead.Value = true;
             _respawnAt.Value = TimeManager.TicksToTime(TimeManager.Tick) + Mathf.Max(0f, respawnDelay);
             _nextRespawnCheck = _respawnAt.Value;
