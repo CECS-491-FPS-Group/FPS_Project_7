@@ -4,6 +4,9 @@ using FishNet.Transporting;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Globalization;
+using System.Net;
+using System.Net.Sockets;
 
 [DisallowMultipleComponent]
 public sealed class LobbyConnection : MonoBehaviour
@@ -11,6 +14,7 @@ public sealed class LobbyConnection : MonoBehaviour
     [Header("UI References")]
     [Tooltip("This was previously the IP field. It is now the 6-character lobby-code field.")]
     public TMP_InputField ipInputField;
+    [SerializeField] private TMP_InputField lanHostInputField;
     [SerializeField] private TMP_Text statusText;
 
     [Header("Room visibility")]
@@ -35,6 +39,21 @@ public sealed class LobbyConnection : MonoBehaviour
     {
         // Start runs after every object's Awake, so FishNet's managers are ready.
         SubscribeToNetworkEvents();
+
+        if (statusText == null && lanHostInputField != null)
+        {
+            statusText = Instantiate(lanHostInputField.textComponent, lanHostInputField.transform.parent);
+            statusText.name = "ConnectionStatus";
+            statusText.text = string.Empty;
+            statusText.fontSize = 14f;
+            statusText.color = Color.white;
+            statusText.raycastTarget = false;
+            statusText.alignment = TextAlignmentOptions.Center;
+            RectTransform rect = statusText.rectTransform;
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(0f, -275f);
+            rect.sizeDelta = new Vector2(440f, 52f);
+        }
 
         if (publicLobbyToggle != null)
             publicLobbyToggle.onValueChanged.AddListener(OnPublicLobbyToggleChanged);
@@ -97,7 +116,40 @@ public sealed class LobbyConnection : MonoBehaviour
 
     public void JoinGame()
     {
+        string endpoint = lanHostInputField == null ? string.Empty : lanHostInputField.text.Trim();
+        if (!string.IsNullOrEmpty(endpoint))
+        {
+            SubscribeToNetworkEvents();
+            if (!_subscribed || !CanStartConnection()) return;
+            if (!TryParseLanEndpoint(endpoint, out string address, out ushort port))
+            {
+                SetStatus("Enter an IPv4 address, optionally followed by :port (1-65535).");
+                return;
+            }
+            BeginJoin(new LocalLobbyRecord { address = address, port = port, code = string.Empty });
+            return;
+        }
         JoinByCode(ipInputField == null ? string.Empty : ipInputField.text);
+    }
+
+    private static bool TryParseLanEndpoint(string input, out string address, out ushort port)
+    {
+        address = string.Empty;
+        port = 7770;
+        string[] parts = input.Trim().Split(':');
+        if (parts.Length > 2 || (parts.Length == 2 &&
+            (!ushort.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out port) || port == 0))) return false;
+        string[] octets = parts[0].Split('.');
+        if (octets.Length != 4) return false;
+        foreach (string octet in octets)
+            if (octet.Length == 0 || octet.Length > 3 ||
+                (octet.Length > 1 && octet[0] == '0') ||
+                !byte.TryParse(octet, NumberStyles.None, CultureInfo.InvariantCulture, out _)) return false;
+        if (!IPAddress.TryParse(parts[0], out IPAddress ip) || ip.AddressFamily != AddressFamily.InterNetwork) return false;
+        byte[] bytes = ip.GetAddressBytes();
+        if (bytes[0] == 0 || bytes[0] >= 224) return false;
+        address = ip.ToString();
+        return true;
     }
 
     public void JoinByCode(string enteredCode)
@@ -124,10 +176,15 @@ public sealed class LobbyConnection : MonoBehaviour
         if (ipInputField != null)
             ipInputField.SetTextWithoutNotify(normalizedCode);
 
+        BeginJoin(room);
+    }
+
+    private void BeginJoin(LocalLobbyRecord room)
+    {
         LocalLobbySession.BeginJoining(room);
 
         _joiningClient = true;
-        SetStatus($"Joining room {room.code}...");
+        SetStatus(string.IsNullOrEmpty(room.code) ? $"Connecting to {room.address}:{room.port}..." : $"Joining room {room.code}...");
 
         if (!InstanceFinder.ClientManager.StartConnection(room.address, (ushort)room.port))
         {
@@ -176,6 +233,10 @@ public sealed class LobbyConnection : MonoBehaviour
         {
             _waitingForHostServer = false;
 
+            var transport = InstanceFinder.NetworkManager.TransportManager.Transport;
+            string bind = transport.GetServerBindAddress(IPAddressType.IPv4);
+            Debug.Log($"[LAN] Host listening on {(string.IsNullOrEmpty(bind) ? "0.0.0.0 (all IPv4 interfaces)" : bind)}:{transport.GetPort()}. Use this PC's LAN IPv4 address on remote clients.");
+
             // The server owns this port now, so it is safe to connect its host client.
             bool hostClientRequestAccepted = InstanceFinder.ClientManager.StartConnection(
                 LocalLobbySession.Address,
@@ -193,7 +254,7 @@ public sealed class LobbyConnection : MonoBehaviour
                 return;
             }
 
-            SetStatus($"Room {LocalLobbySession.LobbyCode} created.");
+            SetStatus($"Room {LocalLobbySession.LobbyCode} created. Port: {LocalLobbySession.Port}.");
 
             if (!_lobbySceneLoadRequested)
             {
@@ -222,14 +283,18 @@ public sealed class LobbyConnection : MonoBehaviour
             _joiningClient = false;
 
             if (!LocalLobbySession.IsHosting)
-                SetStatus($"Connected to room {LocalLobbySession.LobbyCode}.");
+                SetStatus(string.IsNullOrEmpty(LocalLobbySession.LobbyCode)
+                    ? $"Connected to {LocalLobbySession.Address}:{LocalLobbySession.Port}."
+                    : $"Connected to room {LocalLobbySession.LobbyCode}.");
         }
         else if (args.ConnectionState == LocalConnectionState.Stopped && _joiningClient)
         {
             _joiningClient = false;
             string failedCode = LocalLobbySession.LobbyCode;
+            string failedEndpoint = $"{LocalLobbySession.Address}:{LocalLobbySession.Port}";
             LocalLobbySession.Clear();
-            SetStatus($"Could not connect to room {failedCode}. Refresh and try again.");
+            SetStatus(string.IsNullOrEmpty(failedCode) ? $"Could not connect to {failedEndpoint}. Check address, port and firewall."
+                : $"Could not connect to room {failedCode}. Refresh and try again.");
         }
     }
 
