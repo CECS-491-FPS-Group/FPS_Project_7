@@ -69,11 +69,13 @@ public class Health : NetworkBehaviour
     public void TakeDamage(int damage, NetworkConnection shooter)
     {
         if (!IsServerInitialized || !IsSpawned || damage <= 0 || IsDead || MatchEnded) return;
+        if (MatchBoosts.Instance != null && MatchBoosts.Instance.Invulnerable(Owner)) return;
         int previous = CurrentHealth;
         _currentHp.Value = Mathf.Max(0, previous - damage);
         Debug.Log($"[Combat] Damage shooter={shooter?.ClientId} victim={OwnerId} damage={damage} HP={previous}->{CurrentHealth}.", this);
         if (previous > 0 && CurrentHealth == 0)
         {
+            if (MatchBoosts.Instance != null) MatchBoosts.Instance.Clear(Owner);
             if (MatchScoreboard.Instance != null) MatchScoreboard.Instance.RecordDeath(Owner, shooter);
             _dead.Value = true;
             _respawnAt.Value = TimeManager.TicksToTime(TimeManager.Tick) + Mathf.Max(0f, respawnDelay);
@@ -90,6 +92,7 @@ public class Health : NetworkBehaviour
     {
         if (!IsServerInitialized || !IsSpawned || MatchEnded) return;
         _matchEnded.Value = true;
+        if (MatchBoosts.Instance != null) MatchBoosts.Instance.Clear(Owner);
         _pendingSequence = 0;
         _nextRespawnCheck = double.PositiveInfinity;
         _respawnAt.Value = 0d;

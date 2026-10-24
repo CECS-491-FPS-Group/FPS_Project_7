@@ -22,6 +22,9 @@ public class PlayerCameraSetup : NetworkBehaviour
     private FirstPersonController _controller;
     private Health _health;
     private bool _movementEnabled;
+    private Collider[] _deathColliders;
+    private bool[] _collisionBeforeDeath;
+    private bool _collisionSuppressed;
 
     private void Awake()
     {
@@ -29,6 +32,7 @@ public class PlayerCameraSetup : NetworkBehaviour
         _inputs = GetComponent<StarterAssetsInputs>();
         _controller = GetComponent<FirstPersonController>();
         _health = GetComponent<Health>();
+        if (GetComponent<ApprovedMovementBoost>() == null) gameObject.AddComponent<ApprovedMovementBoost>();
         SetupSoldierVisual();
         SetLocalControl(false);
     }
@@ -93,14 +97,48 @@ public class PlayerCameraSetup : NetworkBehaviour
         if (playerCamera) playerCamera.enabled = enabled;
         if (audioListener) audioListener.enabled = enabled;
         if (playerUI) playerUI.enabled = enabled;
-        if (_bodyRenderers != null)
-            foreach (Renderer body in _bodyRenderers) body.enabled = !enabled;
+        UpdateBodyVisibility();
     }
 
     private void Update()
     {
+        UpdateDeathCollision();
         bool allowed = IsClientInitialized && IsOwner && (_health == null || _health.CanAct);
         if (allowed != _movementEnabled) SetMovementControl(allowed);
+        UpdateBodyVisibility();
+    }
+
+    private void UpdateDeathCollision()
+    {
+        if (_health == null || (!IsServerInitialized && !IsClientInitialized)) return;
+        if (_health.IsDead)
+        {
+            if (!_collisionSuppressed)
+            {
+                // Capture after FishNet configures the remote CharacterController.
+                _deathColliders = GetComponentsInChildren<Collider>(true);
+                _collisionBeforeDeath = new bool[_deathColliders.Length];
+                for (int i = 0; i < _deathColliders.Length; i++)
+                    _collisionBeforeDeath[i] = _deathColliders[i].enabled;
+                _collisionSuppressed = true;
+            }
+            foreach (Collider collider in _deathColliders)
+                if (collider != null) collider.enabled = false;
+        }
+        else if (_collisionSuppressed)
+        {
+            for (int i = 0; i < _deathColliders.Length; i++)
+                if (_deathColliders[i] != null) _deathColliders[i].enabled = _collisionBeforeDeath[i];
+            _collisionSuppressed = false;
+        }
+    }
+
+    private void UpdateBodyVisibility()
+    {
+        bool visible = IsClientInitialized && !IsOwner && (_health == null || !_health.IsDead);
+        if (_bodyRenderers != null)
+            foreach (Renderer body in _bodyRenderers)
+                if (body != null && body.enabled != visible) body.enabled = visible;
     }
 
     public bool ApplyRespawnPosition(Vector3 position)

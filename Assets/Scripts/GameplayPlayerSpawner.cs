@@ -18,7 +18,11 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
     private static readonly Vector2[] SpawnOffsets =
     {
         new Vector2(-4f, 0f), new Vector2(4f, 0f),
-        new Vector2(0f, -4f), new Vector2(0f, 4f)
+        new Vector2(0f, -4f), new Vector2(0f, 4f),
+        new Vector2(-8f, -8f), new Vector2(8f, -8f),
+        new Vector2(-8f, 8f), new Vector2(8f, 8f),
+        new Vector2(-12f, 0f), new Vector2(12f, 0f),
+        new Vector2(0f, -12f), new Vector2(0f, 12f)
     };
 
     public struct TerrainReadyMessage : IBroadcast
@@ -33,6 +37,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
     private NetworkManager _networkManager;
     private readonly Dictionary<NetworkConnection, int> _terrainReady = new();
     private readonly HashSet<NetworkConnection> _spawnAttempted = new();
+    private readonly Dictionary<NetworkConnection, float> _spawnRetryAt = new();
     private TerrainGenerator _terrain;
     private bool _reportedTerrainReady;
     private bool _returningToLobby;
@@ -134,6 +139,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             _players.Remove(args.Connection);
             _terrainReady.Remove(args.Connection);
             _spawnAttempted.Remove(args.Connection);
+            _spawnRetryAt.Remove(args.Connection);
             if (player != null && player.IsSpawned)
                 _networkManager.ServerManager.Despawn(player);
         }
@@ -164,26 +170,33 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             return;
 
         if (_terrain == null || _terrain.gameObject.scene != scene || !_terrain.IsGenerated ||
-            !_terrainReady.TryGetValue(connection, out int clientSeed) || !_spawnAttempted.Add(connection)) return;
+            !_terrainReady.TryGetValue(connection, out int clientSeed) || _spawnAttempted.Contains(connection)) return;
+        if (_spawnRetryAt.TryGetValue(connection, out float retryAt) && Time.unscaledTime < retryAt) return;
 
         if (clientSeed != _terrain.Seed)
         {
+            _spawnAttempted.Add(connection);
             Debug.LogError($"[GameplayPlayerSpawner] Terrain seed mismatch for client {connection.ClientId}; player not spawned.", this);
             return;
         }
 
         if (playerPrefab == null)
         {
+            _spawnAttempted.Add(connection);
             Debug.LogError("[GameplayPlayerSpawner] No player prefab is assigned.", this);
             return;
         }
 
         if (!TryGetSpawnPosition(out Vector3 spawnPosition))
         {
-            Debug.LogError($"[GameplayPlayerSpawner] No valid terrain spawn among the four centre candidates for client {connection.ClientId}; player not spawned.", this);
+            if (!_spawnRetryAt.ContainsKey(connection))
+                Debug.LogWarning($"[GameplayPlayerSpawner] Waiting for a free terrain-safe spawn for client {connection.ClientId}.", this);
+            _spawnRetryAt[connection] = Time.unscaledTime + 1f;
             return;
         }
 
+        _spawnRetryAt.Remove(connection);
+        _spawnAttempted.Add(connection);
         NetworkObject player = Instantiate(playerPrefab, spawnPosition, playerPrefab.transform.rotation);
         _players[connection] = player;
         _networkManager.ServerManager.Spawn(player, connection, scene);
@@ -298,6 +311,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
         _players.Clear();
         _terrainReady.Clear();
         _spawnAttempted.Clear();
+        _spawnRetryAt.Clear();
         _terrain = null;
         _reportedTerrainReady = false;
     }
@@ -310,6 +324,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             _players.Remove(connection);
             _terrainReady.Remove(connection);
             _spawnAttempted.Remove(connection);
+            _spawnRetryAt.Remove(connection);
         }
     }
 

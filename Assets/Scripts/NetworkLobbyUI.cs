@@ -103,7 +103,7 @@ public class NetworkLobbyUI : NetworkBehaviour
     {
         if (connection == null || !connection.IsAuthenticated) return;
         if (_playerIds.IndexOf(connection.ClientId) >= 0) return;
-        if (_playerIds.Count >= maximumPlayers) return;
+        if (_playerIds.Count >= maximumPlayers) { connection.Disconnect(true); return; }
 
         string playerName = connection.IsLocalClient ? $"<Host> Player {connection.ClientId}" : $"Player {connection.ClientId}";
 
@@ -259,13 +259,14 @@ public class NetworkLobbyUI : NetworkBehaviour
 
     public void ReadyUpClicked()
     {
-        CmdToggleReady(LocalConnection);
+        CmdToggleReady();
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void CmdToggleReady(NetworkConnection caller)
+    public void CmdToggleReady(NetworkConnection caller = null)
     {
-        if (_transitionInProgress) return;
+        // FishNet injects the authenticated sender; clients cannot name another roster entry.
+        if (_transitionInProgress || caller == null || !caller.IsActive || !caller.IsAuthenticated) return;
         int index = _playerIds.IndexOf(caller.ClientId);
         if (index != -1)
         {

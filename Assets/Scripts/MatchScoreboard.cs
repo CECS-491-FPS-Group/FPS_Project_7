@@ -27,6 +27,8 @@ public sealed class MatchScoreboard : MonoBehaviour
     private bool _receivedSnapshot;
     private float _nextRequest;
     public string DisplayText { get; private set; } = "Waiting for scoreboard...";
+    public string PlayerNamesText { get; private set; } = "PLAYERS\n\nWaiting...";
+    public string PlayerStatsText { get; private set; } = "KILLS / DEATHS";
 
     private void Awake()
     {
@@ -120,8 +122,16 @@ public sealed class MatchScoreboard : MonoBehaviour
     private void OnSnapshot(Snapshot snapshot, Channel channel)
     {
         var text = new StringBuilder("PLAYER                         KILLS   DEATHS\n");
+        var names = new StringBuilder("PLAYERS\n\n");
+        var stats = new StringBuilder("KILLS / DEATHS\n\n");
         foreach (Row row in snapshot.Rows ?? System.Array.Empty<Row>())
+        {
             text.Append(row.Name).Append("     ").Append(row.Kills).Append("     ").Append(row.Deaths).Append('\n');
+            names.Append(row.Name).Append('\n');
+            stats.Append(row.Kills).Append(" / ").Append(row.Deaths).Append('\n');
+        }
+        PlayerNamesText = names.ToString();
+        PlayerStatsText = stats.ToString();
         DisplayText = text.ToString();
         _receivedSnapshot = true;
     }
