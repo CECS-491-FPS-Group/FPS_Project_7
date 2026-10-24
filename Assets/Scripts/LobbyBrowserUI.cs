@@ -20,21 +20,26 @@ public sealed class LobbyBrowserUI : MonoBehaviour
         new List<LobbyRoomRowUI>();
 
     private float _nextRefreshTime;
+    private LanLobbyDiscovery _discovery;
 
     private void OnEnable()
     {
+        _discovery?.Dispose();
+        _discovery = new LanLobbyDiscovery(false);
         _nextRefreshTime = 0f;
         RefreshRooms();
     }
 
     private void Update()
     {
+        _discovery?.Poll();
         if (Time.unscaledTime >= _nextRefreshTime)
             RefreshRooms();
     }
 
     public void RefreshRooms()
     {
+        _discovery?.Request();
         _nextRefreshTime = Time.unscaledTime + automaticRefreshSeconds;
 
         if (roomListContent == null || roomRowPrefab == null)
@@ -46,12 +51,7 @@ public sealed class LobbyBrowserUI : MonoBehaviour
                 out List<LocalLobbyRecord> rooms,
                 out string error))
         {
-            SetStatus(error);
-
-            if (emptyRoomsMessage != null)
-                emptyRoomsMessage.SetActive(true);
-
-            return;
+            rooms = new List<LocalLobbyRecord>();
         }
 
         for (int i = 0; i < rooms.Count; i++)
@@ -61,11 +61,41 @@ public sealed class LobbyBrowserUI : MonoBehaviour
             _spawnedRows.Add(row);
         }
 
-        if (emptyRoomsMessage != null)
-            emptyRoomsMessage.SetActive(rooms.Count == 0);
+        foreach (LocalLobbyRecord room in _discovery?.GetRooms() ?? new List<LocalLobbyRecord>())
+        {
+            // The local registry already represents same-PC hosts. Remote hosts
+            // are keyed by endpoint, never by lobby code alone.
+            if (rooms.Exists(local => local.code == room.code && local.port == room.port && IsLocalAddress(room.address))) continue;
+            LobbyRoomRowUI row = Instantiate(roomRowPrefab, roomListContent);
+            row.Configure(room, ignored =>
+            {
+                if (lobbyCodeInput != null) lobbyCodeInput.SetTextWithoutNotify(room.code);
+                if (lobbyConnection != null) lobbyConnection.JoinDiscoveredRoom(room);
+            });
+            _spawnedRows.Add(row);
+        }
 
-        SetStatus(string.Empty);
+        if (emptyRoomsMessage != null)
+            emptyRoomsMessage.SetActive(_spawnedRows.Count == 0);
+
+        SetStatus(!string.IsNullOrEmpty(error) ? error : _discovery?.Error ?? string.Empty);
     }
+
+    private static bool IsLocalAddress(string address)
+    {
+        if (System.Net.IPAddress.TryParse(address, out var ip) && System.Net.IPAddress.IsLoopback(ip)) return true;
+        try
+        {
+            foreach (var adapter in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+                foreach (var local in adapter.GetIPProperties().UnicastAddresses)
+                    if (local.Address.ToString() == address) return true;
+        }
+        catch (System.Net.NetworkInformation.NetworkInformationException) { }
+        return false;
+    }
+
+    private void OnDisable() { _discovery?.Dispose(); _discovery = null; ClearRows(); }
+    private void OnApplicationQuit() { _discovery?.Dispose(); }
 
     public void JoinEnteredCode()
     {

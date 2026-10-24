@@ -194,6 +194,21 @@ public sealed class LobbyConnection : MonoBehaviour
         }
     }
 
+    public void JoinDiscoveredRoom(LocalLobbyRecord room)
+    {
+        SubscribeToNetworkEvents();
+        if (!_subscribed || !CanStartConnection() || room == null) return;
+        if (!TryParseLanEndpoint(room.address + ":" + room.port, out string address, out ushort port))
+        {
+            SetStatus("Invalid discovered lobby endpoint.");
+            return;
+        }
+        LocalLobbyRecord target = room.Copy();
+        target.address = address;
+        target.port = port;
+        BeginJoin(target);
+    }
+
     private void SubscribeToNetworkEvents()
     {
         if (_subscribed)
