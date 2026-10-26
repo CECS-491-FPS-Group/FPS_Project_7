@@ -112,6 +112,7 @@ public class Health : NetworkBehaviour
         _sequence++;
         if (_sequence == 0) _sequence++;
         _pendingSequence = _sequence;
+        GetComponent<SpeedHackDetector>()?.AuthorizeServerRespawn(_pendingSequence);
         SetServerPosition(_respawnPosition);
         Debug.Log($"[Respawn] Server placing player {OwnerId} at {_respawnPosition}, token={_pendingSequence}.", this);
         PlaceForRespawn(Owner, _pendingSequence, _respawnPosition);
@@ -147,6 +148,7 @@ public class Health : NetworkBehaviour
 
         SetServerPosition(_respawnPosition);
         _pendingSequence = 0;
+        GetComponent<SpeedHackDetector>()?.CompleteServerRespawn(token);
         _currentHp.Value = Mathf.Max(1, maxHp);
         _dead.Value = false;
         _respawnAt.Value = 0d;

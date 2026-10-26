@@ -44,6 +44,21 @@ public sealed class MatchBoosts : MonoBehaviour
         connection != null && _effects.TryGetValue(connection, out Effect effect) && effect.Type == kind && effect.Expires > Now;
     public bool Invulnerable(NetworkConnection connection) => Has(connection, Kind.Shield);
     public float DamageMultiplier(NetworkConnection connection) => Has(connection, Kind.Damage) ? 2f : 1f;
+    // Uses this server's effect dictionary and deadline; never the client snapshot/LocalKind.
+    public bool ServerHasSpeedBoost(NetworkConnection connection) => Has(connection, Kind.Speed);
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    // Repeatable power-up compatibility tests from the host Inspector. No grant RPC is exposed.
+    public void DevelopmentGrantBoost(NetworkConnection connection, Kind kind)
+    {
+        if (_manager == null || !_manager.IsServerStarted || connection == null ||
+            !connection.IsActive || !connection.IsAuthenticated || !_timer.timerIsRunning ||
+            _timer.currentState != RoundTimer.gameStates.GAME || kind == Kind.None) return;
+        _effects[connection] = new Effect { ClientId = connection.ClientId, Type = kind, Expires = Now + 8d };
+        _nextSnapshot = 0d;
+        Debug.Log($"[Boost TEST] Server granted {kind} to connection {connection.ClientId} for 8s.", this);
+    }
+#endif
     public Kind LocalKind
     {
         get
