@@ -1,8 +1,10 @@
-# Reporting-only movement observer
+# Movement observer (ReportOnly by default)
 
 Implemented on `feature/anti-cheat-complete`, starting from `63532e1`.
-This chunk observes server-side replicated XZ movement. It never corrects positions,
-disconnects clients, detects vertical movement, or performs file-integrity checks.
+This observes server-side replicated XZ movement. It never corrects positions,
+detects vertical movement, or performs file-integrity checks. Optional server
+Disconnect mode for sustained evidence now exists; defaults remain ReportOnly.
+See [AntiCheatEnforcement.md](AntiCheatEnforcement.md) for configuration and tests.
 
 ## Wiring and authority
 
@@ -53,6 +55,7 @@ uses the sprint ceiling even when a client appears to be walking.
 - A sampled displacement above `sampleBudget * 1.10 + 12m + samplePeakLimit * .35s`
   reports immediately and rebases. It does not charge that teleport into later
   sustained windows, and it does not clear previously accumulated suspicion.
+  Displacement evidence cannot trigger enforcement, even at the suspicion cap.
 - NaN/Infinity in XZ reports and invalidates the baseline until a finite position
   arrives. No Y coordinate is evaluated.
 - A server frame gap longer than one second, or a nonpositive interval, discards
@@ -82,7 +85,24 @@ the measurement, suspicion, XZ, and number of suppressed reports. Warnings are c
 at one every five seconds **per player**, across all rules. Measurement continues
 while logging is throttled. State is constant-sized; no unbounded evidence list exists.
 
-## Editor + standalone runtime test procedure (must still be run)
+Optional server enforcement evaluates each fresh sustained-speed result before log
+throttling, at a configurable threshold default 8, bounded 5–10 (reporting starts at
+4; cap remains 10). Non-overlapping window elapsed time still drives accumulation
+and decay. A single displacement/invalid position cannot disconnect. Spawn/death/
+respawn, boosts/tails and match resets are unchanged. Local-host violations are
+reported without disconnect. Enforcement runtime/host-safety tests remain pending.
+
+## Windows basic smoke evidence supplied after implementation
+
+The user performed the Windows two-player smoke using `Desktop/DevelopmentBuild`
+(Mono). Startup entries: owner 0/object 1 and owner 1/object 2, limits 6/9.
+Remote owner 1 produced sustained-horizontal-speed reports at roughly 34-35m over
+about 2s against roughly 16m allowed; F8 produced displacement reports around 30m.
+The user reports the basic test seemed to work. The full boost, respawn, match-cycle,
+three-player, late-join and latency matrix below remains pending. No threshold or
+enforcement changes were made; movement observation stays report-only.
+
+## Editor + standalone runtime test procedure (full matrix still pending)
 
 1. Let Unity import/recompile. Open the gameplay prefab and confirm its root has one
    enabled `SpeedHackDetector` override. NetworkTransform should still be client
@@ -92,7 +112,7 @@ while logging is throttled. State is constant-sized; no unbounded evidence list 
    through the existing lobby flow. For LAN, use the existing LAN hosting option and
    the host address. Start the match normally.
 3. In the host Console, enable warnings, disable Collapse, and filter `[Movement AC]`.
-   Expect one `report-only started` entry for each of the three players, with distinct
+   Expect one `observer started` entry for each of the three players, with distinct
    owner/object IDs and limits 6/9. Wait at least two seconds after spawn.
 4. Identify each runtime player root on the **host** using its NetworkObject owner ID
    or the startup log's clickable context. On that player's SpeedHackDetector component,
@@ -156,8 +176,10 @@ development-enabled even when connecting to a release client.
   settings, and release-vs-development test-control exclusion in compiled metadata.
 - `git diff --check` passed. No FishNet vendor code or static-integrity code changed.
 
-No Unity Play Mode, real network session, platform build, or latency test has been run
-by this implementation session. The runtime table above is acceptance work still needed.
+The original implementation session did not run Unity Play Mode/network/player tests.
+Subsequently the Windows Editor import/compilation/FishNet processing was inspected,
+and the user supplied the basic two-player evidence above. This does not establish
+the remaining runtime table or latency tests as passed.
 
 To repeat the pure measurement checks on this Mac from the project root:
 

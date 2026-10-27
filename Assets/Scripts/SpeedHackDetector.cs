@@ -2,7 +2,7 @@ using FishNet.Connection;
 using FishNet.Object;
 using UnityEngine;
 
-// Observes the server's replicated position. Never corrects a transform or disconnects anyone.
+// Observes the server's replicated position; optional server policy handles sustained abuse.
 [DisallowMultipleComponent]
 public sealed class SpeedHackDetector : NetworkBehaviour
 {
@@ -28,7 +28,7 @@ public sealed class SpeedHackDetector : NetworkBehaviour
         _suppressedLogs = 0;
         _graceUntil = Now + SpawnGrace;
         ResetBaseline(Now);
-        Debug.Log($"[Movement AC] report-only started owner={OwnerId} object={ObjectId} " +
+        Debug.Log($"[Movement AC] observer started owner={OwnerId} object={ObjectId} " +
             $"baseLimit={ApprovedMovementLimits.SprintSpeed:F1} boostedLimit=" +
             $"{ApprovedMovementLimits.SprintSpeed * ApprovedMovementLimits.SpeedMultiplier:F1}m/s.", this);
     }
@@ -91,14 +91,21 @@ public sealed class SpeedHackDetector : NetworkBehaviour
         HorizontalMovementObservation.Evidence? result =
             _observation.Observe(now, position.x, position.z, GetServerHorizontalSpeed());
         if (!result.HasValue) return;
+        var evidence = result.Value;
+        // Evaluate each fresh, non-overlapping result even while warning output is throttled.
+        // Displacements and invalid coordinates cannot qualify for dynamic enforcement.
+        var policy = NetworkManager.GetComponent<FileAntiCheat>();
+        if (policy != null)
+            policy.EvaluateDynamic(Owner, evidence.Rule, _observation.Suspicion,
+                $"object={ObjectId} rule={evidence.Rule} distance={evidence.Distance:F2}m allowance={evidence.Allowance:F2}m " +
+                $"elapsed={evidence.Elapsed:F2}s suspicion={_observation.Suspicion:F2} uptime={now:F2}");
         if (now < _nextLog)
         {
             if (_suppressedLogs < int.MaxValue) _suppressedLogs++;
             return;
         }
         _nextLog = now + LogInterval;
-        var evidence = result.Value;
-        Debug.LogWarning($"[Movement AC] report-only owner={OwnerId} object={ObjectId} " +
+        Debug.LogWarning($"[Movement AC] observed owner={OwnerId} object={ObjectId} " +
             $"serverUptime={now:F2} rule={evidence.Rule} distance={evidence.Distance:F2}m " +
             $"allowance={evidence.Allowance:F2}m elapsed={evidence.Elapsed:F2}s " +
             $"approvedLimit={GetServerHorizontalSpeed():F2}m/s budgetPeakLimit={evidence.Speed:F2}m/s " +

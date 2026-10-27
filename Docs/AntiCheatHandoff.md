@@ -7,9 +7,9 @@
 - Unity: **6000.3.8f1**; FishNet is vendored in this repository.
 - Friday goal: substantially complete both **Dynamic Anti-Cheat** (server gameplay
   detection) and **Static Anti-Cheat** (defined client/build file integrity).
-- Current delivery: reporting-only horizontal movement observer. **Runtime validation
-  is pending.** This handoff/commit step adds no further implementation and does not
-  start Static Anti-Cheat.
+- Current delivery: horizontal movement observer plus the small
+  Windows Mono build-file integrity system, both defaulting to ReportOnly, described in
+  [StaticIntegrity.md](StaticIntegrity.md). Static runtime validation is pending.
 
 See [MovementObserver.md](MovementObserver.md) for measurement details, formulas,
 full acceptance steps, and the Mac command for repeating deterministic checks.
@@ -91,7 +91,8 @@ counts and bounded state. All decisions use actual monotonic server elapsed time
 Known limitations: reporting occurs after transforms are accepted/smoothed. Modest
 speed advantages and loops between samples can be missed; delivery backlogs can
 look suspicious. Invalid movement can still affect shots and pickup proximity.
-There is no vertical/fly/aim detector, correction, kick or ban. Existing respawn has
+There is no vertical/fly/aim detector, correction or ban. Optional sustained-speed
+disconnect policy now exists; see AntiCheatEnforcement.md. Existing respawn has
 no acknowledgment timeout: a non-acknowledging player stays dead. Late stale transform
 delivery after the grace deadline needs testing. Future approved teleports/recovery
 need explicit bounded server hooks; the older TerrainSpawnPlacer is not attached.
@@ -134,18 +135,25 @@ merely to prepare documentation and commit.
 
 ### User-supplied runtime results
 
-The user stated that multiplayer integration was functional before this chunk.
-**No observer runtime test results have been supplied in this conversation.**
-Do not interpret the earlier baseline multiplayer status, historical commit messages,
-or deterministic checks as observer/boost/respawn acceptance passes.
+Windows two-player movement smoke test was performed and supplied by the user:
+startup owner 0/object 1 and owner 1/object 2, base/boosted limits 6/9;
+remote owner 1 sustained-horizontal-speed reports at roughly 34-35m over 2s
+against roughly 16m allowed; F8 horizontal-displacement reports around 30m.
+The user reports the basic test seemed to work. This is supplied runtime evidence,
+not an independently observed full acceptance pass. The inspected build is
+`Desktop/DevelopmentBuild`, Windows Mono. Do not mark boost transitions, respawns,
+match cycles, isolation, late join, or latency as passed from this smoke test.
 
 ### Still pending
 
-Unity import and compilation, FishNet IL postprocessing, Windows/macOS player builds,
-Editor Play Mode, real networking, power-up/respawn compatibility, three-player
-isolation, match cycles, late join, latency and release-build input exclusion in use.
+For the movement change, this Windows Editor log showed successful Unity import,
+compilation and FishNet IL postprocessing; the user supplied the Windows two-player
+smoke results above. Full power-up/respawn compatibility, three-player isolation,
+match cycles, late join, latency, macOS builds/runtime, and release input exclusion
+in use remain pending. The new static-integrity changes need fresh Unity import,
+FishNet processing, player builds, and runtime tests; see StaticIntegrity.md.
 
-## First action on Windows: fetch, then two-player smoke test
+## Original Windows movement smoke procedure (basic results recorded above)
 
 From this repository in PowerShell, first inspect `git status`. Preserve any local
 work; do not reset or discard it. With a clean/safely preserved working tree:
@@ -191,7 +199,70 @@ post-anomaly recovery; match return/restart; late join where supported; network
 delay/bursts; host-vs-remote behavior; and non-development builds. Do not tune from
 one clean local run or treat these pending tests as passed.
 
-## Next implementation after runtime review: Static Anti-Cheat
+## Static Anti-Cheat continuation
+
+### Latest bounded chunk: optional enforcement
+
+The user reports successful Desktop manifest generation, **not runtime static
+verification**. Offline inspection found the Desktop manifest valid for all three
+current DevelopmentBuild files, with an identical client descriptor. Default
+`<project>/IntegrityServer/approved.json` was missing; no manifest environment override
+was found in the inspected process/user/machine environment. No approved server load
+is established. The known-good Desktop copy was left untouched. Do not commit machine
+deployment paths or manifests. A fresh build from the enforcement code needs a new
+separately named manifest; preserve the old build/manifest pair.
+
+`FileAntiCheat` now exposes independent server Static/Dynamic Mode fields, both
+ReportOnly by default, plus a dynamic threshold defaulting to 8 (effective 5–10,
+report threshold 4, cap 10). Optional server-start environment overrides and exact
+Windows test steps are in [AntiCheatEnforcement.md](AntiCheatEnforcement.md).
+No client policy RPC exists. Static enforcement permits only validated, on-time
+HashMismatch/MissingRequiredFile; unreadable and all other failure categories stay
+log-only. Late startup status persists through rechecks. Dynamic enforcement uses
+only fresh sustained-speed windows at threshold; displacement/invalid positions
+never qualify, and measurement allowances/lifecycle behavior are unchanged.
+
+The connection session guards disconnect once across both systems, logs before
+FishNet Disconnect(false), and exempts the local host with HostReportOnly. Existing
+roster/match/disconnect handlers are preserved. A player-hosted server trusts its host.
+No new network messages or prefab changes were added in the enforcement chunk;
+rebuild all clients to exercise current code and generate a matching clean manifest.
+
+Executed this chunk: 31 integrity and 33 movement deterministic checks; compiler
+checks for Editor/development/release symbols and Editor tool. Runtime static
+verification, enforcement, host safety, disconnect cleanup and boost/respawn/match
+regression are pending. Leave enforcement off until ReportOnly runtime tests pass.
+
+### Initial static implementation context
+
+The user authorized static implementation after reviewing the limited movement smoke
+results. `FileAntiCheat` now runs via authenticated connection broadcasts on the
+existing persistent NetworkManager, installed by GameplayPlayerSpawner. Its old
+dummy-file creation, self-baselining, and disconnect code are removed. No prefab
+inheritance/GUID, movement, combat, or FishNet vendor changes were made.
+
+New files: `Assets/Scripts/BuildIntegrity.cs` (+meta),
+`Assets/Scripts/Editor/BuildIntegrityManifestTool.cs` (+folder/script metadata),
+`Tests/BuildIntegrityChecks.cs`, and `Docs/StaticIntegrity.md`.
+`IntegrityServer/` is ignored as local deployment configuration.
+
+See [StaticIntegrity.md](StaticIntegrity.md) for exact Windows build, generation,
+trusted server installation, clean startup and after-load F9 tamper/missing-file
+recheck steps. Rebuild all test clients for the added broadcast protocol; this
+chunk adds no NetworkBehaviour or prefab modifications. Keep the trusted server
+copy separate from the client tamper directory. Only one approved Windows/Mono
+build is needed for the demonstration; macOS layout is structured but unverified,
+and IL2CPP is unsupported by this first schema.
+
+Executed: 19 real C# policy/hash checks, Editor/development/release compiler checks,
+Editor menu compilation, and F9 release metadata exclusion checks. Static Unity
+import, FishNet broadcast generation, builds and multiplayer demonstrations remain
+pending. The older cached release response file omitted existing scripts; release
+compiler validation used the current development source/reference list without
+DEVELOPMENT_BUILD. No static runtime pass is claimed.
+
+The original static design context (the later explicit enforcement authorization
+above supersedes its no-disconnect restriction) was:
 
 Implement versioned **platform/backend-specific file-integrity manifests generated
 from final known-good builds**. Identify build version, target platform, scripting

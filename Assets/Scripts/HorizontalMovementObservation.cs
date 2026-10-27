@@ -12,6 +12,13 @@ internal sealed class HorizontalMovementObservation
     internal const double TransitionSeconds = 1d;
     internal const double MaxFrameGap = 1d;
     internal const double ReportSuspicion = 4d;
+    internal const double MaxSuspicion = 10d;
+
+    internal static double EnforcementThreshold(double configured)
+        => !Finite(configured) ? 8d : Math.Max(ReportSuspicion + 1d, Math.Min(MaxSuspicion, configured));
+
+    internal static bool CanEnforce(string rule, double suspicion, double configuredThreshold)
+        => rule == "sustained-horizontal-speed" && suspicion >= EnforcementThreshold(configuredThreshold);
 
     internal struct Evidence
     {
@@ -100,7 +107,7 @@ internal sealed class HorizontalMovementObservation
 
         double limit = _windowBudget * SpeedMargin + DistanceSlack + _windowMaxSpeed * BurstSeconds;
         bool excessive = _windowDistance > limit;
-        Suspicion = excessive ? Math.Min(10d, Suspicion + _windowTime) : Math.Max(0d, Suspicion - _windowTime);
+        Suspicion = excessive ? Math.Min(MaxSuspicion, Suspicion + _windowTime) : Math.Max(0d, Suspicion - _windowTime);
         Evidence? result = excessive && Suspicion >= ReportSuspicion
             ? MakeEvidence("sustained-horizontal-speed", _windowDistance, limit, _windowTime, _windowMaxSpeed)
             : (Evidence?)null;

@@ -104,4 +104,5 @@ Assets/Firebase/Plugins/
 /[Aa]ssets/Unity.VisualScripting.Generated/VisualScripting.Core/Property Providers.meta
 
 # Auto-generated scenes by play mode tests
+/IntegrityServer/
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*

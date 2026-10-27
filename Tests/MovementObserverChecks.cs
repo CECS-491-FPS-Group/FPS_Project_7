@@ -94,6 +94,33 @@ internal static class MovementObserverChecks
 
             // Every frame after an identical timestamp must reacquire, not divide by zero.
             Check("nonpositive elapsed time reacquires safely", !observation.Observe(8.75d, 2000d, 0d, BaseSpeed).HasValue);
+            Check("enforcement default above report threshold and reachable",
+                HorizontalMovementObservation.EnforcementThreshold(8d) > HorizontalMovementObservation.ReportSuspicion &&
+                HorizontalMovementObservation.EnforcementThreshold(8d) <= HorizontalMovementObservation.MaxSuspicion);
+            Check("unsafe enforcement thresholds bounded",
+                HorizontalMovementObservation.EnforcementThreshold(0d) == 5d &&
+                HorizontalMovementObservation.EnforcementThreshold(100d) == 10d &&
+                HorizontalMovementObservation.EnforcementThreshold(double.NaN) == 8d);
+            Check("displacement and invalid positions cannot enforce even at cap",
+                !HorizontalMovementObservation.CanEnforce("horizontal-displacement", 10d, 8d) &&
+                !HorizontalMovementObservation.CanEnforce("invalid-horizontal-position", 10d, 8d));
+            var enforcement = new HorizontalMovementObservation();
+            enforcement.Reset(0d, 0d, 0d);
+            int eligibleWindows = 0;
+            for (int i = 1; i <= 32; i++)
+            {
+                var result = enforcement.Observe(i * .25d, i * 4.5d, 0d, BaseSpeed);
+                if (result.HasValue && HorizontalMovementObservation.CanEnforce(result.Value.Rule, enforcement.Suspicion, 8d)) eligibleWindows++;
+                if (i < 32 && eligibleWindows != 0) throw new Exception("Early enforcement before 8 elapsed evidence seconds");
+            }
+            Check("four disjoint excessive windows reach default once", eligibleWindows == 1 && enforcement.Suspicion == 8d);
+            for (int i = 33; i <= 40; i++) enforcement.Observe(i * .25d, i * 4.5d, 0d, BaseSpeed);
+            Check("enforcement upper threshold reachable at suspicion cap", enforcement.Suspicion == 10d &&
+                HorizontalMovementObservation.CanEnforce("sustained-horizontal-speed", enforcement.Suspicion, 10d));
+            for (int i = 41; i <= 48; i++) enforcement.Observe(i * .25d, 180d, 0d, BaseSpeed);
+            Check("elapsed clean window decays capped suspicion", enforcement.Suspicion == 8d);
+            enforcement.Reset(12d, 180d, 0d);
+            Check("lifecycle reset removes enforcement eligibility", !HorizontalMovementObservation.CanEnforce("sustained-horizontal-speed", enforcement.Suspicion, 8d));
             Console.WriteLine(_passed + " movement measurement checks passed.");
             return 0;
         }
