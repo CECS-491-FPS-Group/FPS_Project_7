@@ -159,14 +159,16 @@ Do not use the trusted server deployment directory as a client tamper-test direc
 
 ## Validation status
 
-The user successfully generated the Desktop approved.json from DevelopmentBuild.
+Historical initial setup: the user successfully generated the Desktop approved.json from DevelopmentBuild.
 Offline inspection found all three hashes match and the client descriptor is identical.
 The default server manifest installation was absent; no override was found in the
 inspected environment. The Desktop copy was preserved, not regenerated or installed.
 Subsequently the user supplied clean remote startup Verified, ReportOnly tamper/
 recovery passes, and a successful static server disconnect. The disconnected client
-remained in stale UI. The new local menu/message recovery is still pending runtime
-validation; see [DisconnectRecovery.md](DisconnectRecovery.md). Follow
+initially remained in stale UI. The user has since reported the instructed recovery
+tests passed, with screenshots reported to confirm the static MainMenu explanation
+and startup rejection when reconnecting with the still-modified file. These are
+manual user-tested results, not automated checks; see [DisconnectRecovery.md](DisconnectRecovery.md). Follow
 [AntiCheatEnforcement.md](AntiCheatEnforcement.md) for the current rebuild/install and
 ReportOnly-first enforcement test sequence.
 
@@ -177,7 +179,18 @@ and digest roundtrip); compiler checks against installed Unity references for Ed
 development player, release player, and Editor menu; release metadata inspection for
 F9 exclusion. These are not Unity integration tests.
 
-Pending: Unity import and FishNet-generated broadcast serialization for this change,
-fresh Windows development/release builds, clean/mismatch/missing/client-manifest tamper
-runtime demonstrations, deadlines/reconnects/rechecks, gameplay regression smoke, and
-all macOS validation. No static runtime pass is claimed.
+Current workflow: keep `Desktop/Builds/AC02-Clean` untouched; tamper only its separate
+`AC02-Test` copy. The matching archive is `Desktop/Builds/Manifests/approved-AC02.json`;
+the trusted server copy is `<project>/IntegrityServer/approved.json`, identical at
+inspection (build ID `96d48de44b8e41b2aeae868704157912`). Both client descriptors
+identify that build. With AC02-Test closed, all three checked SHA-256 hashes matched
+the installed trusted manifest; globalgamemanagers also matched its preserved backup
+byte-for-byte. No outstanding tamper required a restore write. No clean files,
+manifests or baseline were modified. Windows is preferred for continued tests.
+
+User-tested passes now include clean startup, ReportOnly tamper/recovery, static
+after-load mismatch enforcement and explanation, and modified-file startup rejection.
+The recovery checklist is reported passed in aggregate. Remaining categories are not
+implied passed: separately unreported missing/unreadable/unsupported/malformed/late/
+configuration scenarios, broader latency/race stress, release runtime checks, and all
+macOS validation. No compromised-client attestation guarantee is claimed.

@@ -3,8 +3,10 @@
 Both systems default to **ReportOnly**. Leave them there until their report-only
 runtime tests pass. The user subsequently supplied clean startup verification and
 ReportOnly tamper/recovery passes, plus successful static/dynamic server disconnects.
-Disconnected-client UI remained stale. The new client recovery implementation and
-its runtime validation are described in [DisconnectRecovery.md](DisconnectRecovery.md).
+Disconnected-client UI was initially stale. The user now reports the instructed
+recovery tests passed, specifically confirming static/dynamic MainMenu explanations
+and startup rejection of a still-modified client. These are user-tested manual
+results, separate from automated checks; see [DisconnectRecovery.md](DisconnectRecovery.md).
 This chunk adds policy to existing evidence, not new detectors.
 
 ## Configuration
@@ -66,7 +68,8 @@ FishNet `NetworkConnection.Disconnect(false)`. The installed API marks the conne
 disconnecting and flushes pending data before transport closure; it does not wait
 for client acknowledgment. No ServerManager.StopConnection call is used. Existing
 disconnect callbacks still clean up roster, scores, currency, owned objects and
-integrity sessions. This runtime behavior still needs testing.
+integrity sessions. The instructed recovery checklist is now user-reported passed;
+this does not establish exhaustive latency/stress or unreported boost coverage.
 
 The actual local host connection is **never disconnected** by either policy.
 Qualifying violations log `action=HostReportOnly` once per connection, while normal
@@ -78,10 +81,12 @@ disconnect-recovery chunk adds a fixed one-byte targeted server notice before
 Disconnect(false), using FishNet's built-in ~100ms/two-tick graceful interval. It
 requires no acknowledgment. The client independently recovers on connection stop
 and shows a retained/dismissible reason or a generic fallback on its local MainMenu.
-See DisconnectRecovery.md; this new behavior still requires runtime tests.
+See DisconnectRecovery.md for the user-reported targeted runtime passes and remaining
+coverage. Both committed modes still default to ReportOnly (`FileAntiCheat.cs:22–23`).
 
 ## Manifest inspection and installation status
 
+The following is historical initial setup; the current AC02 setup is below.
 At implementation inspection, `Desktop/approved.json` was a valid schema-1
 Windows/Mono manifest matching all three selected files of `Desktop/DevelopmentBuild`.
 Its client descriptor was identical. The known-good Desktop manifest was preserved.
@@ -94,6 +99,16 @@ The default trusted location is `IntegrityServer/approved.json` beside `Assets` 
 the Editor, or beside the executable for a Windows server. Alternatively the server
 uses the path in `FPS_INTEGRITY_MANIFEST`. It loads once at server start. Keep it
 separate from client tamper copies and outside Assets. Do not commit deployments.
+
+Current AC02 setup: untouched `Desktop/Builds/AC02-Clean`, separate `AC02-Test`,
+archived `Desktop/Builds/Manifests/approved-AC02.json`, and matching trusted
+`<project>/IntegrityServer/approved.json`. The archive and installed copy are
+byte-identical, build ID `96d48de44b8e41b2aeae868704157912`; no override was present
+in the inspected process environment. The closed test client already matched its
+original backup and all three approved hashes at end-of-day inspection. No baseline
+was regenerated and no clean build or manifest was modified. See AntiCheatHandoff.md
+for the workflow; Windows is currently preferred. Earlier example paths below are
+illustrative; use the matching AC02 pair or a new separately approved clean rebuild.
 
 ## Windows test sequence
 
@@ -172,7 +187,15 @@ non-overlapping evidence timing, cap/decay and lifecycle reset. Editor, developm
 player, release-symbol player and Editor-tool compiler checks passed against local
 Unity references with existing warnings. No vendor/scene/prefab changes.
 
-Pending: Unity import/FishNet processing for this chunk, actual development/release
-builds, static ReportOnly verification, all enforcement/disconnect/host-safety tests,
-disconnect UI/roster/match regression, boosts/respawns, latency and macOS validation.
-Neither successful manifest generation nor offline hash matching is a runtime pass.
+User-tested separately: clean startup, ReportOnly tamper/recovery, static lobby kick
+with MainMenu reason, startup rejection of the still-modified file, dynamic kick
+above threshold 8 with MainMenu reason, and the instructed recovery checklist.
+No agent-observed runtime pass is claimed. Current source-message test assertions
+need updating after the user's intentional copy edits; the end-of-day notice-test
+rerun fails on its old exact fallback expectation (see AntiCheatHandoff.md).
+
+Pending: unreported boost/boosted-respawn regressions, broader latency/burst/race
+stress, release-player runtime exclusion, unreported static failure categories, and
+macOS validation. Neither generation nor offline hash matching alone is a runtime pass.
+Mac Touch Bar F-key controls were inconvenient; alternate development controls are
+optional future work. Defaults remain ReportOnly despite isolated enforcement tests.

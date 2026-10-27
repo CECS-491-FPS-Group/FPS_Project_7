@@ -1,6 +1,19 @@
 # Disconnect reason and local menu recovery
 
-## Observed before this change
+## Current user-tested status — 2026-10-27
+
+The user reports the instructed disconnect-recovery tests passed. User-reported
+screenshots specifically confirm static hash-mismatch enforcement with its MainMenu
+explanation, startup rejection when reconnecting with the still-modified file,
+dynamic sustained-speed enforcement above threshold 8, and its MainMenu explanation.
+The broader prescribed recovery checklist is reported passed in aggregate; no
+independent agent runtime observation or per-edge-case logs are claimed. Unreported
+power-up regressions, wider latency/stress coverage and macOS remain pending.
+
+Windows is preferred for continued testing. AC02 clean/test/manifest setup, current
+restored-file verification and the next-session checklist are in AntiCheatHandoff.md.
+
+## Historical observations before recovery was implemented
 
 User-supplied runtime evidence:
 
@@ -62,11 +75,17 @@ No host manager is torn down by unexpected local-client loss while its server ru
 
 The notice is a small runtime uGUI panel using TMP and MainMenu's existing InputSystem
 EventSystem, with a Dismiss button and keyboard selection. No manual UI/scene/prefab
-wiring. Exact messages:
+wiring. Current messages (including user-edited copy):
 
-- Static: "Disconnected: game file integrity check failed. Restore the original game files and try again."
+- Static: "Disconnected: game file integrity check failed. Restore the original game files and try again. You CHEATER!"
 - Dynamic: "Disconnected: movement exceeded the server's allowed limits."
-- No/unknown reason: "Connection to the server was lost."
+- No/unknown reason: "Connection to the server was lost. You CHEATER!"
+
+Edit static/dynamic/fallback text in `Assets/Scripts/DisconnectNoticeState.cs` at
+lines **10 / 11 / 12**, respectively. Edit the visible **Dismiss** label in
+`Assets/Scripts/ClientDisconnectRecovery.cs:146` (line 136 is only the object name).
+The fallback can also appear for ordinary transport loss; its text is not evidence
+of cheating. Text changes require a new client build and matching clean manifest.
 
 Reason state survives local scene changes, then clears on dismissal or a new connection
 attempt (including failed attempts). Repeated stops cannot start duplicate loads;
@@ -80,7 +99,7 @@ may stop its own server; an anti-cheat kick never does. Application quit suppres
 recovery. No automatic reconnect. ReportOnly defaults and trusted local-host exemption
 are unchanged.
 
-## Build and manual tests (pending)
+## Build and manual test procedure (targeted checklist user-reported passed)
 
 Rebuild **host and every test client**: the targeted Notice broadcast and recovery
 code are new. No new NetworkBehaviours or GUID/prefab changes. Generate a fresh
@@ -117,9 +136,19 @@ Preserve earlier clean builds/manifests; do not regenerate from a tampered copy.
    sending a kick notice, stopping its server, or removing any remote client. Reset
    both modes to ReportOnly after isolated enforcement tests.
 
-Executed: Editor/development/release-symbol and Editor-tool compiler checks; 18 pure
+Historically executed: Editor/development/release-symbol and Editor-tool compiler checks; 18 pure
 notice-state checks (exact messages, missing/unknown/unauthenticated reasons, repeated
 callbacks, scene persistence, dismissal, attempts and intentional leaves); existing
 31 integrity and 33 movement checks passed. Release metadata still excludes F7/F8/F9.
 These do **not** execute Unity scene loading, FishNet-generated serialization, UI
-interaction or real disconnects. All manual tests above remain pending for this change.
+interaction or real disconnects. The user has now reported the instructed recovery
+checklist passed, with the specific screenshot-supported scenarios listed above.
+Do not treat that as exhaustive network-delay/race or unreported power-up coverage.
+
+End-of-day checks: AC02-Test was closed, globalgamemanagers matched the retained
+original backup, and all three selected files matched the installed trusted AC02
+manifest. No restore write or baseline regeneration was needed. The notice suite
+was rerun against current source: it compiles but fails the old exact fallback-text
+expectation after the user's playful suffix change. Preserve the copy; update the
+test expectations next session. Earlier 18-check success is historical, not a current
+pass. No gameplay or test source was changed for this documentation-only handoff.

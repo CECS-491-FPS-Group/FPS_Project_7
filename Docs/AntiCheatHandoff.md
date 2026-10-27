@@ -1,6 +1,133 @@
 # Anti-cheat continuation handoff
 
-## Branch, scope and Friday goal
+## End-of-day handoff — 2026-10-27 (current status)
+
+Windows is currently the preferred testing environment. Unity 6000.3.8f1, Windows
+Mono; branch `feature/anti-cheat-complete`, current code commit `fe0f922`. The source,
+new script metadata, recovery tests and custom message text are already committed.
+This end-of-day update changes documentation only; no features/gameplay changes,
+manifest regeneration, AGENTS.md edits, staging, commits or pushes by the agent.
+
+### Current architecture and completed behavior
+
+- Movement remains owner-driven/client-authoritative NetworkTransform. Server
+  gameplay authority and the existing lobby/match/respawn architecture are preserved.
+- SpeedHackDetector observes server-replicated XZ positions. Approved limits are
+  selected from server boost state, including the bounded Speed transition tail.
+  Actual elapsed, non-overlapping windows drive suspicion (reports at 4, cap 10).
+  Optional sustained-speed disconnect threshold defaults to 8, constrained to 5–10.
+  Displacement alone never disconnects. Spawn/death/respawn/match exceptions remain.
+- FileAntiCheat on the persistent manager loads a developer-deployed manifest and
+  compares bounded, connection-attributed reports for Assembly-CSharp.dll,
+  globalgamemanagers and resources.assets. Only validated, on-time hash mismatch or
+  missing-file evidence is eligible for static disconnect. Unsupported/unreadable/
+  malformed/late/missing-report/configuration failures stay log-only.
+- Static and Dynamic independently default to **ReportOnly in committed source**
+  (`FileAntiCheat.cs:22–23`). Inspector/runtime or server environment overrides can
+  enable Disconnect; they are not client RPC settings. Local host stays exempt.
+- Enforcement queues a targeted fixed reason code, then uses installed FishNet
+  Disconnect(false): immediate IsActive=false, queued output flushed, transport close
+  after about 100ms/minimum two ticks. No ACK, ban, correction or global match reset.
+  Existing remote-stop callbacks update roster, scores/currency and owned objects.
+- ClientDisconnectRecovery retains a reason, drains in-flight FishNet scene work,
+  destroys the old client-only manager, clears session state, and loads MainMenu
+  locally with fresh manager, cursor and dismissible TMP/uGUI notice. Intentional
+  leave/quit is separate; dismissal/new attempts clear old reasons. No UI wiring.
+
+### User-tested manual results (not automated or agent-observed runtime passes)
+
+The user reports completing the instructed disconnect-recovery tests successfully.
+This is an aggregate manual checklist pass, not an independently captured result for
+every edge case. User-reported screenshots specifically confirm:
+
+| Scenario | Reported result |
+| --- | --- |
+| Clean remote startup / Editor host | Verified / EditorSkipped (not a verified build) |
+| ReportOnly after-load tamper and original-file recovery | Passed |
+| Static after-load hash mismatch | Enforcement stopped remote connection; usable MainMenu explanation |
+| Reconnect while selected file still modified | Startup mismatch rejection confirmed |
+| Dynamic sustained speed above suspicion threshold 8 | Remote enforcement confirmed (earlier evidence 8.07) |
+| Dynamic disconnect recovery | MainMenu explanation confirmed |
+| Instructed recovery checklist | User reports passed; covers local UI/session recovery and prescribed cleanup/rejoin/leave checks |
+
+Earlier static Id 1 and dynamic Id 2 server-stop logs succeeded while client UI
+remained stale; those failures predate the recovery change. They are no longer the
+latest recovery status. Do not extend this manual coverage to unreported power-up
+regressions, broader latency/burst/stress tests, or macOS.
+
+### AC02 clean/test/manifest workflow and stop state
+
+- `Desktop/Builds/AC02-Clean` is the untouched known-good build. Run tamper tests on
+  its separate copy `Desktop/Builds/AC02-Test`; never regenerate the baseline from it.
+- Archive: `Desktop/Builds/Manifests/approved-AC02.json`. Installed trusted server
+  copy: `<project>/IntegrityServer/approved.json` (ignored deployment directory).
+  Both copies are byte-identical at end-of-day inspection. No manifest override was
+  present in the inspected process environment. Server loads configuration at start;
+  an independently launched process may have its own environment.
+- AC02 identity: `96d48de44b8e41b2aeae868704157912`, schema 1, Windows/Mono. Both
+  clean/test client descriptors identify that build. Selected paths are under
+  `Project FPS 7_Data`: `Managed/Assembly-CSharp.dll`, `globalgamemanagers`,
+  `resources.assets`. Verify them against the trusted copy, not client expected hashes.
+- The standalone was closed at inspection. AC02-Test's globalgamemanagers already
+  matched its preserved original backup byte-for-byte (249,844 bytes), so no further
+  restoration write was needed. All three test files SHA-256 matched the installed
+  trusted AC02 manifest. Clean build, descriptors, manifests and backups were not changed.
+- Backup retained outside test build at
+  `Desktop/Builds/AC02-TamperBackups/20261027-222103-b0a8ac8b/globalgamemanagers.original`.
+  Future rebuilds need a new completed-clean-build manifest and matching clients;
+  do not expect independently rebuilt binaries to match AC02 hashes.
+
+### Text editing locations (current source)
+
+| Visible text | Source |
+| --- | --- |
+| Static disconnect message | `Assets/Scripts/DisconnectNoticeState.cs:10` |
+| Dynamic disconnect message | `Assets/Scripts/DisconnectNoticeState.cs:11` |
+| Missing/unknown-reason fallback | `Assets/Scripts/DisconnectNoticeState.cs:12` |
+| Visible Dismiss button label | `Assets/Scripts/ClientDisconnectRecovery.cs:146` |
+
+The user's playful static/fallback additions (`You CHEATER!`) are preserved. The
+fallback also covers ordinary connection loss; it does not establish cheating.
+`ClientDisconnectRecovery.cs:136` names the button object; line 146 edits visible text.
+Client message edits require rebuilding clients to appear in their UI; they also
+change Assembly-CSharp.dll, so generate a new clean-build manifest for that rebuild.
+
+### Automated checks versus remaining work
+
+Historical implementation checks: compiler checks for Editor/development/release
+symbols and Editor tool; 31 integrity, 33 movement and 18 notice-state checks passed
+before the user's message-copy edits. Release metadata excluded F7/F8/F9.
+Today: committed ReportOnly defaults inspected, restored-file/three-file manifest
+comparisons passed, and documentation diff checked. The current notice suite compiles
+but fails its old exact fallback-text assertion (`unauthenticated reason ignored`)
+because the fallback now includes the user's suffix. Tests/source were left unchanged;
+this is not a fresh 18-check pass. Update exact-copy expectations next session.
+
+Remaining: unreported Speed expiry/replacement/other-boost combat and boosted-respawn
+regressions; broader latency/backlog and scene-race stress; missing/unreadable/late/
+malformed/configuration static cases where not separately reported; release-player
+runtime controls exclusion; macOS builds/runtime. Static reports can be falsified by
+a malicious client: this is not trusted remote attestation. Dynamic detection is
+horizontal observation after replication/smoothing, with conservative tolerances;
+it misses some modest advantages/loops and does not detect fly/aim/runtime injection.
+The player-hosted model trusts its host; reason delivery is best-effort.
+
+Mac Touch Bar F-key controls were inconvenient. Alternate development-only controls
+are optional future work, not implemented or required before continuing Windows tests.
+
+### Next-session checklist
+
+1. Inspect branch/status and preserve local work; confirm server modes/overrides.
+2. Align notice-test exact strings with the intentional copy, then rerun relevant checks.
+3. Reuse the verified AC02 pair for existing-build tests, or rebuild all participants
+   and generate/install a separately versioned clean manifest if code/text changes.
+4. Prioritize unreported clean boost/respawn regressions on Windows with ReportOnly.
+5. Record specific latency/error/release cases next; leave macOS coverage pending.
+6. Keep test copies restored and artifacts outside Git; the user commits/pushes.
+
+## Historical implementation context (statuses below are superseded above)
+
+### Branch, scope and Friday goal
 
 - Branch: `feature/anti-cheat-complete`.
 - Implementation base: `63532e17b425058c9bdd078da9f4d75dab27b6e6` (`63532e1`, LAN discovery test).

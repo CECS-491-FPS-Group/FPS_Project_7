@@ -90,7 +90,11 @@ throttling, at a configurable threshold default 8, bounded 5–10 (reporting sta
 4; cap remains 10). Non-overlapping window elapsed time still drives accumulation
 and decay. A single displacement/invalid position cannot disconnect. Spawn/death/
 respawn, boosts/tails and match resets are unchanged. Local-host violations are
-reported without disconnect. Enforcement runtime/host-safety tests remain pending.
+reported without disconnect. The user has now reported dynamic enforcement above
+threshold 8 and its MainMenu explanation, plus the instructed disconnect-recovery
+checklist as passed. This is user-tested manual evidence, separate from automated
+measurement checks; broader network stress and unreported power-up regressions remain
+pending. No detection threshold or gameplay code changed for the end-of-day handoff.
 
 ## Windows basic smoke evidence supplied after implementation
 
@@ -100,7 +104,23 @@ Remote owner 1 produced sustained-horizontal-speed reports at roughly 34-35m ove
 about 2s against roughly 16m allowed; F8 produced displacement reports around 30m.
 The user reports the basic test seemed to work. The full boost, respawn, match-cycle,
 three-player, late-join and latency matrix below remains pending. No threshold or
-enforcement changes were made; movement observation stays report-only.
+enforcement changes were made during that original smoke test. Current committed
+policy defaults remain ReportOnly, with opt-in enforcement described above.
+
+## Latest Windows manual results and remaining coverage
+
+The user reports the recovery tests passed and screenshots confirm sustained-speed
+disconnect above threshold 8 and the movement MainMenu explanation. Earlier server
+evidence was suspicion 8.07, threshold 8, followed by remote-stop; client recovery
+was subsequently tested after the fix. The user-reported recovery checklist pass
+must not be generalized into unreported Speed expiry/replacement, Shield/Damage/Jump,
+boosted-respawn, broader latency/burst/stress or macOS passes.
+
+Windows is currently preferred. Mac Touch Bar F-key controls were inconvenient;
+alternative development-only controls are optional future work, not implemented.
+AC02 clean/test/trusted-manifest workflow and the short next-session checklist are
+maintained in AntiCheatHandoff.md. Historical 33 deterministic movement checks passed;
+they were not rerun merely for this documentation update.
 
 ## Editor + standalone runtime test procedure (full matrix still pending)
 
