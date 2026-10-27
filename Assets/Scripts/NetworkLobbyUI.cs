@@ -101,7 +101,7 @@ public class NetworkLobbyUI : NetworkBehaviour
 
     private void TryAddPlayer(NetworkConnection connection)
     {
-        if (connection == null || !connection.IsAuthenticated) return;
+        if (connection == null || !connection.IsActive || !connection.IsAuthenticated) return;
         if (_playerIds.IndexOf(connection.ClientId) >= 0) return;
         if (_playerIds.Count >= maximumPlayers) { connection.Disconnect(true); return; }
 
@@ -134,6 +134,7 @@ public class NetworkLobbyUI : NetworkBehaviour
             _playerReady.RemoveAt(playerIndex);
         }
         _playerPings.Remove(connection.ClientId);
+        UpdateUI(); // Recompute ready/start eligibility from the final remaining roster.
     }
 
     private void RefreshLocalHostEntry()
@@ -159,7 +160,7 @@ public class NetworkLobbyUI : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     private void ReportPingServerRpc(int pingMs, NetworkConnection sender = null)
     {
-        if (sender == null) return;
+        if (sender == null || !sender.IsActive || !sender.IsAuthenticated) return;
         int playerIndex = _playerIds.IndexOf(sender.ClientId);
         if (playerIndex < 0) return;
 
@@ -282,7 +283,7 @@ public class NetworkLobbyUI : NetworkBehaviour
         bool hasPlayers = false;
         foreach (NetworkConnection connection in ServerManager.Clients.Values)
         {
-            if (!connection.IsAuthenticated) continue;
+            if (!connection.IsActive || !connection.IsAuthenticated) continue;
             int index = _playerIds.IndexOf(connection.ClientId);
             if (index < 0 || index >= _playerReady.Count || !_playerReady[index]) return;
             hasPlayers = true;

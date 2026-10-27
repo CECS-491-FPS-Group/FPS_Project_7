@@ -1,7 +1,10 @@
 # Optional server enforcement
 
 Both systems default to **ReportOnly**. Leave them there until their report-only
-runtime tests pass. Static runtime verification has **not** been demonstrated.
+runtime tests pass. The user subsequently supplied clean startup verification and
+ReportOnly tamper/recovery passes, plus successful static/dynamic server disconnects.
+Disconnected-client UI remained stale. The new client recovery implementation and
+its runtime validation are described in [DisconnectRecovery.md](DisconnectRecovery.md).
 This chunk adds policy to existing evidence, not new detectors.
 
 ## Configuration
@@ -70,10 +73,12 @@ Qualifying violations log `action=HostReportOnly` once per connection, while nor
 evidence reporting continues. A player-hosted server assumes a trusted host; this
 does not protect players against a malicious server operator.
 
-The existing lobby status UI is scene-specific and supplies no persistent targeted
-disconnect-reason channel during gameplay. This chunk uses server evidence/action
-logs and the existing connection-close behavior, without a new client message or
-acknowledgment flow. No reason display is promised on the disconnected client.
+The scene-specific lobby status UI did not recover established clients. The subsequent
+disconnect-recovery chunk adds a fixed one-byte targeted server notice before
+Disconnect(false), using FishNet's built-in ~100ms/two-tick graceful interval. It
+requires no acknowledgment. The client independently recovers on connection stop
+and shows a retained/dismissible reason or a generic fallback on its local MainMenu.
+See DisconnectRecovery.md; this new behavior still requires runtime tests.
 
 ## Manifest inspection and installation status
 

@@ -265,8 +265,16 @@ public sealed class FileAntiCheat : MonoBehaviour
         }
         session.enforcementHandled = true; // Shared by static/dynamic; cleared by existing connection cleanup.
         Debug.LogWarning($"[AC Policy] owner={sender.ClientId} category={category} action=Disconnect evidence={evidence}");
-        // Existing FishNet API: false flushes pending reliable data, with no client ACK wait.
-        sender.Disconnect(false);
+        // Queue only a fixed server-originated code to this connection. Installed FishNet
+        // flushes this tick and closes after ~100ms/minimum two ticks; IsActive becomes
+        // false immediately, so gameplay requests are rejected during that interval.
+        try
+        {
+            _manager.ServerManager.Broadcast(sender, new ClientDisconnectRecovery.Notice {
+                Reason = category == "StaticIntegrity" ? DisconnectNoticeState.Integrity : DisconnectNoticeState.Movement
+            }, true, Channel.Reliable);
+        }
+        finally { sender.Disconnect(false); } // Best effort; no ACK, never skip disconnect.
     }
 
     private static void Log(NetworkConnection sender, string kind, string result)

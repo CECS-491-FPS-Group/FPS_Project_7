@@ -163,7 +163,10 @@ The user successfully generated the Desktop approved.json from DevelopmentBuild.
 Offline inspection found all three hashes match and the client descriptor is identical.
 The default server manifest installation was absent; no override was found in the
 inspected environment. The Desktop copy was preserved, not regenerated or installed.
-Runtime static verification has **not** been demonstrated. Follow
+Subsequently the user supplied clean remote startup Verified, ReportOnly tamper/
+recovery passes, and a successful static server disconnect. The disconnected client
+remained in stale UI. The new local menu/message recovery is still pending runtime
+validation; see [DisconnectRecovery.md](DisconnectRecovery.md). Follow
 [AntiCheatEnforcement.md](AntiCheatEnforcement.md) for the current rebuild/install and
 ReportOnly-first enforcement test sequence.
 

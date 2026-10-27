@@ -79,6 +79,7 @@ public sealed class LobbyConnection : MonoBehaviour
         if (!CanStartConnection())
             return;
 
+        ClientDisconnectRecovery.ClearForAttempt();
         bool createPublicRoom = IsPublicLobbySelected();
 
         if (!LocalLobbyRegistry.TryReserveRoom(
@@ -181,6 +182,7 @@ public sealed class LobbyConnection : MonoBehaviour
 
     private void BeginJoin(LocalLobbyRecord room)
     {
+        ClientDisconnectRecovery.ClearForAttempt();
         LocalLobbySession.BeginJoining(room);
 
         _joiningClient = true;
@@ -327,6 +329,7 @@ public sealed class LobbyConnection : MonoBehaviour
 
     private bool CanStartConnection()
     {
+        if (ClientDisconnectRecovery.InProgress) return false;
         if (_waitingForHostServer || _joiningClient ||
             InstanceFinder.ServerManager.Started ||
             InstanceFinder.ClientManager.Started)

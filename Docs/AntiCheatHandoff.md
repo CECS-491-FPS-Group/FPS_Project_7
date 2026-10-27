@@ -9,7 +9,9 @@
   detection) and **Static Anti-Cheat** (defined client/build file integrity).
 - Current delivery: horizontal movement observer plus the small
   Windows Mono build-file integrity system, both defaulting to ReportOnly, described in
-  [StaticIntegrity.md](StaticIntegrity.md). Static runtime validation is pending.
+  [StaticIntegrity.md](StaticIntegrity.md). Clean static runtime and ReportOnly
+  tamper/recovery passed per the user; server disconnects succeeded, but the new
+  disconnected-client menu/message recovery remains pending runtime validation.
 
 See [MovementObserver.md](MovementObserver.md) for measurement details, formulas,
 full acceptance steps, and the Mac command for repeating deterministic checks.
@@ -201,7 +203,38 @@ one clean local run or treat these pending tests as passed.
 
 ## Static Anti-Cheat continuation
 
-### Latest bounded chunk: optional enforcement
+### Latest runtime evidence and disconnect recovery chunk
+
+The user subsequently supplied clean remote startup Verified (owner 1), local Editor
+EditorSkipped (owner 0), and a passing ReportOnly after-load tamper/recovery test.
+Static lobby enforcement logged HashMismatch -> Disconnect -> remote Id 1 stopped;
+dynamic gameplay enforcement logged suspicion 8.07, threshold 8 -> Disconnect ->
+remote Id 2 stopped. Host continued and later returned to lobby without that player.
+These establish successful server disconnects. The disconnected standalone remained
+in stale lobby UI or a frozen gameplay view; usable client recovery was **not passed**.
+Immediate host roster behavior and a second clean client were not established.
+
+The current chunk sends a targeted fixed-code server notice before the existing
+FishNet graceful disconnect, reusing its ~100ms/minimum-two-tick delivery interval.
+Disconnecting immediately makes IsActive false; existing gameplay request guards and
+strengthened lobby guards reject inactive senders. ClientDisconnectRecovery installs
+once, retains/dismisses the reason, drains current FishNet scene work, disposes the old
+client-only manager, clears session state and loads MainMenu locally. Runtime TMP/UI
+notice requires no manual wiring. Explicit menu return is an intentional leave.
+Existing server roster/despawn/match paths and host exemption are preserved.
+
+See [DisconnectRecovery.md](DisconnectRecovery.md) for inspected FishNet APIs, changed
+paths, exact messages, rebuild/manifest instructions and the pending manual matrix.
+Host and all clients require rebuilding for the new Notice broadcast; generate a
+matching manifest only from the clean final rebuild. No installed or Desktop manifest
+or external test file was changed in this implementation chunk.
+
+Executed: compiler checks and 18 notice-state / 31 integrity / 33 movement checks.
+Pending: Unity import/FishNet processing, fresh builds, targeted delivery, local scene
+recovery/UI/cursor, reconnect/races, ordinary leave, host/second-client survival and
+prompt roster/owned-player cleanup. Do not infer these passes from server-stop logs.
+
+### Earlier bounded chunk: optional enforcement
 
 The user reports successful Desktop manifest generation, **not runtime static
 verification**. Offline inspection found the Desktop manifest valid for all three

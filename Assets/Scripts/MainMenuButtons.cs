@@ -21,6 +21,6 @@ public class MainMenuButtons : MonoBehaviour
 
     public void OpenMainMenu()
     {
-        SceneManager.LoadScene("MainMenu");
+        ClientDisconnectRecovery.ReturnToMenu();
     }
 }
