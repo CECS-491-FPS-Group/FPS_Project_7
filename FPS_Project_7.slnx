@@ -3,10 +3,13 @@
   <Project Path="FishNet.Runtime.csproj" />
   <Project Path="GameKit.Dependencies.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
+  <Project Path="PlayFab.csproj" />
+  <Project Path="PlayFabEditorExtensions.csproj" />
   <Project Path="Unity.FishNet.Codegen.csproj" />
   <Project Path="FishNet.Demos.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="Unity.StarterAssets.Editor.csproj" />
   <Project Path="Unity.StarterAssets.csproj" />
+  <Project Path="PlayFabSDKEditor.csproj" />
   <Project Path="URPWizard.csproj" />
 </Solution>
