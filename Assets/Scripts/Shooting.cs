@@ -92,7 +92,7 @@ public class HitscanShooter : MonoBehaviour
 
         if (gunshotClip != null)
         {
-            audioSource.PlayOneShot(gunshotClip, gunshotVolume);
+            audioSource.PlayOneShot(gunshotClip, gunshotVolume * GameAudioSettings.SfxVolume);
         }
 
         Vector3 crosshairPosition = new Vector3(

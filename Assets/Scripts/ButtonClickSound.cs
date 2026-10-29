@@ -80,7 +80,7 @@ public class ButtonClickSound : MonoBehaviour
     {
         if (audioSource != null && clickClip != null)
         {
-            audioSource.PlayOneShot(clickClip, clickVolume);
+            audioSource.PlayOneShot(clickClip, clickVolume * GameAudioSettings.SfxVolume);
         }
     }
 }

@@ -21,9 +21,19 @@ public class LobbyMusicManager : MonoBehaviour
         audioSource = GetComponent<AudioSource>();
         audioSource.loop = true;
         audioSource.playOnAwake = true;
+        ApplyVolume();
         audioSource.Play();
 
         SceneManager.sceneLoaded += OnSceneLoaded;
+        GameAudioSettings.Changed += ApplyVolume;
+    }
+
+    private void ApplyVolume()
+    {
+        if (audioSource != null)
+        {
+            audioSource.volume = GameAudioSettings.MusicVolume;
+        }
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -38,5 +48,6 @@ public class LobbyMusicManager : MonoBehaviour
     private void OnDestroy()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
+        GameAudioSettings.Changed -= ApplyVolume;
     }
 }
