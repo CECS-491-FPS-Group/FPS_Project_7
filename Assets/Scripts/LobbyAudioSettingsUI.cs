@@ -9,7 +9,20 @@ public class LobbyAudioSettingsUI : MonoBehaviour
     private const string LobbySceneName = "LobbyScene_v1";
     private const float RowSpacing = 50f;
 
+    // AfterSceneLoad only fires for the first scene, so also listen for later scene loads.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Register()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        AutoCreate();
+    }
+
+    private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        AutoCreate();
+    }
+
     private static void AutoCreate()
     {
         if (SceneManager.GetActiveScene().name != LobbySceneName || FindFirstObjectByType<LobbyAudioSettingsUI>() != null)
