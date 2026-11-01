@@ -17,9 +17,11 @@ public class TrackPlayerCurrency : MonoBehaviour
     public struct BalanceRequest : IBroadcast { }
     public struct BalanceSnapshot : IBroadcast { public int Balance; }
 
-    private readonly Dictionary<NetworkConnection, int> _balances = new();
+    private readonly Dictionary<string, int> _balances = new();
+    private readonly Dictionary<NetworkConnection, string> _tokensByConnection = new();
     private readonly Dictionary<NetworkConnection, Action<NetworkObject>> _subscriptions = new();
     private NetworkManager _networkManager;
+    private RejoinIdentityManager _identityManager;
     private bool _listening;
 
     private void Awake()
@@ -43,6 +45,11 @@ public class TrackPlayerCurrency : MonoBehaviour
         _networkManager.ServerManager.OnRemoteConnectionState += OnRemoteConnectionState;
         _networkManager.ServerManager.OnServerConnectionState += OnServerConnectionState;
         _networkManager.ClientManager.OnClientConnectionState += OnClientConnectionState;
+        _identityManager = _networkManager.GetComponent<RejoinIdentityManager>();
+        if (_identityManager != null)
+            _identityManager.ServerIdentityRegistered += OnServerIdentityRegistered;
+        else
+            Debug.LogError("[Currency] RejoinIdentityManager is missing.", this);
         _listening = true;
 
         if (_networkManager.IsServerStarted)
@@ -57,11 +64,26 @@ public class TrackPlayerCurrency : MonoBehaviour
 
     private void Subscribe(NetworkConnection connection)
     {
-        if (!connection.IsActive || !connection.IsAuthenticated || _subscriptions.ContainsKey(connection)) return;
-        Action<NetworkObject> handler = player => RegisterPlayer(connection, player);
-        _subscriptions.Add(connection, handler);
-        connection.OnObjectAdded += handler;
+        if (!connection.IsActive || !connection.IsAuthenticated) return;
+        if (!_subscriptions.ContainsKey(connection))
+        {
+            Action<NetworkObject> handler = player => RegisterPlayer(connection, player);
+            _subscriptions.Add(connection, handler);
+            connection.OnObjectAdded += handler;
+        }
         foreach (NetworkObject player in connection.Objects) RegisterPlayer(connection, player);
+    }
+
+    private void OnServerIdentityRegistered(
+        NetworkConnection connection,
+        string playerToken,
+        bool isReturningPlayer)
+    {
+        if (connection == null || string.IsNullOrWhiteSpace(playerToken)) return;
+        _tokensByConnection[connection] = playerToken;
+        if (!_balances.ContainsKey(playerToken))
+            _balances.Add(playerToken, 0);
+        Subscribe(connection);
     }
 
     private static bool IsGameplayPlayer(NetworkObject player)
@@ -73,11 +95,15 @@ public class TrackPlayerCurrency : MonoBehaviour
     private void RegisterPlayer(NetworkConnection connection, NetworkObject player)
     {
         if (!_networkManager.IsServerStarted || !connection.IsActive || !connection.IsAuthenticated ||
-            !connection.Objects.Contains(player) || !IsGameplayPlayer(player) || _balances.ContainsKey(connection)) return;
+            !connection.Objects.Contains(player) || !IsGameplayPlayer(player) ||
+            !TryGetPlayerToken(connection, out string playerToken)) return;
 
-        _balances.Add(connection, 0);
-        Debug.Log($"[Currency] Server registered connection {connection.ClientId} with balance 0.", this);
-        SendBalance(connection);
+        if (!_balances.ContainsKey(playerToken))
+        {
+            _balances.Add(playerToken, 0);
+            Debug.Log($"[Currency] Server registered connection {connection.ClientId} with balance 0.", this);
+        }
+        SendBalance(connection, playerToken);
     }
 
     public bool RequestLocalBalance()
@@ -95,8 +121,9 @@ public class TrackPlayerCurrency : MonoBehaviour
         foreach (NetworkObject player in connection.Objects)
         {
             if (!IsGameplayPlayer(player)) continue;
-            if (!_balances.ContainsKey(connection)) RegisterPlayer(connection, player);
-            else SendBalance(connection);
+            if (!TryGetPlayerToken(connection, out string playerToken)) return;
+            if (!_balances.ContainsKey(playerToken)) RegisterPlayer(connection, player);
+            else SendBalance(connection, playerToken);
             return;
         }
     }
@@ -106,13 +133,14 @@ public class TrackPlayerCurrency : MonoBehaviour
     {
         if (_networkManager == null || !_networkManager.IsServerStarted ||
             connection == null || !connection.IsActive || !connection.IsAuthenticated ||
-            !_balances.TryGetValue(connection, out int oldBalance) ||
+            !TryGetPlayerToken(connection, out string playerToken) ||
+            !_balances.TryGetValue(playerToken, out int oldBalance) ||
             amount <= 0 || oldBalance > int.MaxValue - amount) return false;
 
         int newBalance = oldBalance + amount;
-        _balances[connection] = newBalance;
+        _balances[playerToken] = newBalance;
         Debug.Log($"[Currency] Server connection {connection.ClientId}: {oldBalance} + {amount} = {newBalance}.", this);
-        SendBalance(connection);
+        SendBalance(connection, playerToken);
         return true;
     }
 
@@ -121,16 +149,35 @@ public class TrackPlayerCurrency : MonoBehaviour
     {
         if (_networkManager == null || !_networkManager.IsServerStarted) return;
 
-        // AddCurrency updates dictionary values, so iterate a snapshot of its keys.
-        var connections = new List<NetworkConnection>(_balances.Keys);
+        // Only currently connected players receive passive income.
+        var connections = new List<NetworkConnection>(_tokensByConnection.Keys);
         foreach (NetworkConnection connection in connections)
             AddCurrency(connection, amount);
     }
 
-    private void SendBalance(NetworkConnection connection)
+    private void SendBalance(NetworkConnection connection, string playerToken)
     {
         _networkManager.ServerManager.Broadcast(connection,
-            new BalanceSnapshot { Balance = _balances[connection] }, true, Channel.Reliable);
+            new BalanceSnapshot { Balance = _balances[playerToken] }, true, Channel.Reliable);
+    }
+
+    private bool TryGetPlayerToken(NetworkConnection connection, out string playerToken)
+    {
+        if (connection != null &&
+            _tokensByConnection.TryGetValue(connection, out playerToken))
+        {
+            return true;
+        }
+
+        if (_identityManager != null &&
+            _identityManager.TryGetPlayerToken(connection, out playerToken))
+        {
+            _tokensByConnection[connection] = playerToken;
+            return true;
+        }
+
+        playerToken = string.Empty;
+        return false;
     }
 
     private void OnBalanceSnapshot(BalanceSnapshot snapshot, Channel channel)
@@ -150,7 +197,7 @@ public class TrackPlayerCurrency : MonoBehaviour
             connection.OnObjectAdded -= handler;
             _subscriptions.Remove(connection);
         }
-        _balances.Remove(connection);
+        _tokensByConnection.Remove(connection);
     }
 
     private void OnServerConnectionState(ServerConnectionStateArgs args)
@@ -164,6 +211,7 @@ public class TrackPlayerCurrency : MonoBehaviour
             subscription.Key.OnObjectAdded -= subscription.Value;
         _subscriptions.Clear();
         _balances.Clear();
+        _tokensByConnection.Clear();
     }
 
     private void OnClientConnectionState(ClientConnectionStateArgs args)
@@ -183,6 +231,8 @@ public class TrackPlayerCurrency : MonoBehaviour
             _networkManager.ServerManager.OnRemoteConnectionState -= OnRemoteConnectionState;
             _networkManager.ServerManager.OnServerConnectionState -= OnServerConnectionState;
             _networkManager.ClientManager.OnClientConnectionState -= OnClientConnectionState;
+            if (_identityManager != null)
+                _identityManager.ServerIdentityRegistered -= OnServerIdentityRegistered;
         }
         ClearServerState();
         if (instance == this) instance = null;

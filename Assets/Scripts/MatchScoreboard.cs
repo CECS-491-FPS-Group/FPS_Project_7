@@ -21,8 +21,10 @@ public sealed class MatchScoreboard : MonoBehaviour
     public struct Snapshot : IBroadcast { public Row[] Rows; }
     public struct SnapshotRequest : IBroadcast { }
 
-    private readonly Dictionary<NetworkConnection, Row> _scores = new();
+    private readonly Dictionary<string, Row> _scores = new();
+    private readonly Dictionary<NetworkConnection, string> _tokensByConnection = new();
     private NetworkManager _manager;
+    private RejoinIdentityManager _identityManager;
     private bool _listening;
     private bool _receivedSnapshot;
     private float _nextRequest;
@@ -42,9 +44,14 @@ public sealed class MatchScoreboard : MonoBehaviour
         _manager = InstanceFinder.NetworkManager;
         if (_manager == null) return;
         _manager.ClientManager.RegisterBroadcast<Snapshot>(OnSnapshot);
+        _manager.ClientManager.OnClientConnectionState += OnClientConnectionState;
         _manager.ServerManager.RegisterBroadcast<SnapshotRequest>(OnRequest);
-        _manager.ServerManager.OnAuthenticationResult += OnAuthentication;
         _manager.ServerManager.OnRemoteConnectionState += OnConnectionState;
+        _identityManager = _manager.GetComponent<RejoinIdentityManager>();
+        if (_identityManager != null)
+            _identityManager.ServerIdentityRegistered += OnServerIdentityRegistered;
+        else
+            Debug.LogError("[Scoreboard] RejoinIdentityManager is missing.", this);
         _listening = true;
         if (_manager.IsServerStarted)
         {
@@ -64,40 +71,82 @@ public sealed class MatchScoreboard : MonoBehaviour
 
     private void Register(NetworkConnection connection)
     {
-        if (!connection.IsActive || !connection.IsAuthenticated || _scores.ContainsKey(connection)) return;
-        _scores.Add(connection, new Row
-        {
-            ClientId = connection.ClientId,
-            Name = connection.IsLocalClient ? $"<Host> Player {connection.ClientId}" : $"Player {connection.ClientId}"
-        });
+        if (connection == null || !connection.IsActive || !connection.IsAuthenticated ||
+            _identityManager == null ||
+            !_identityManager.TryGetPlayerToken(connection, out string playerToken)) return;
+
+        Register(connection, playerToken);
     }
 
-    private void OnAuthentication(NetworkConnection connection, bool authenticated)
+    private void Register(NetworkConnection connection, string playerToken)
     {
-        if (!authenticated) return;
-        Register(connection);
+        if (connection == null || !connection.IsActive || !connection.IsAuthenticated ||
+            string.IsNullOrWhiteSpace(playerToken)) return;
+
+        _tokensByConnection[connection] = playerToken;
+        if (!_scores.TryGetValue(playerToken, out Row row))
+        {
+            row = new Row();
+        }
+
+        row.ClientId = connection.ClientId;
+        row.Name = connection.IsLocalClient
+            ? $"<Host> Player {connection.ClientId}"
+            : $"Player {connection.ClientId}";
+        _scores[playerToken] = row;
+    }
+
+    private void OnServerIdentityRegistered(
+        NetworkConnection connection,
+        string playerToken,
+        bool isReturningPlayer)
+    {
+        Register(connection, playerToken);
         Publish();
     }
 
     private void OnConnectionState(NetworkConnection connection, RemoteConnectionStateArgs args)
     {
-        if (args.ConnectionState == RemoteConnectionState.Stopped && _scores.Remove(connection)) Publish();
+        if (args.ConnectionState == RemoteConnectionState.Stopped)
+            _tokensByConnection.Remove(connection);
     }
 
     // Called only from Health's first positive-to-zero server transition, never an RPC.
     public void RecordDeath(NetworkConnection victim, NetworkConnection killer)
     {
         if (!_listening || !_manager.IsServerStarted || victim == null ||
-            !victim.IsActive || !victim.IsAuthenticated || !_scores.TryGetValue(victim, out Row victimRow)) return;
+            !victim.IsActive || !victim.IsAuthenticated ||
+            !TryGetPlayerToken(victim, out string victimToken) ||
+            !_scores.TryGetValue(victimToken, out Row victimRow)) return;
         victimRow.Deaths++;
-        _scores[victim] = victimRow;
+        _scores[victimToken] = victimRow;
         if (killer != null && killer != victim && killer.IsActive && killer.IsAuthenticated &&
-            _scores.TryGetValue(killer, out Row killerRow))
+            TryGetPlayerToken(killer, out string killerToken) &&
+            _scores.TryGetValue(killerToken, out Row killerRow))
         {
             killerRow.Kills++;
-            _scores[killer] = killerRow;
+            _scores[killerToken] = killerRow;
         }
         Publish();
+    }
+
+    private bool TryGetPlayerToken(NetworkConnection connection, out string playerToken)
+    {
+        if (connection != null &&
+            _tokensByConnection.TryGetValue(connection, out playerToken))
+        {
+            return true;
+        }
+
+        if (_identityManager != null &&
+            _identityManager.TryGetPlayerToken(connection, out playerToken))
+        {
+            _tokensByConnection[connection] = playerToken;
+            return true;
+        }
+
+        playerToken = string.Empty;
+        return false;
     }
 
     private Snapshot CreateSnapshot()
@@ -136,16 +185,26 @@ public sealed class MatchScoreboard : MonoBehaviour
         _receivedSnapshot = true;
     }
 
+    private void OnClientConnectionState(ClientConnectionStateArgs args)
+    {
+        if (args.ConnectionState != LocalConnectionState.Stopped) return;
+        _receivedSnapshot = false;
+        _nextRequest = 0f;
+    }
+
     private void OnDestroy()
     {
         if (_listening && _manager != null)
         {
             _manager.ClientManager.UnregisterBroadcast<Snapshot>(OnSnapshot);
+            _manager.ClientManager.OnClientConnectionState -= OnClientConnectionState;
             _manager.ServerManager.UnregisterBroadcast<SnapshotRequest>(OnRequest);
-            _manager.ServerManager.OnAuthenticationResult -= OnAuthentication;
             _manager.ServerManager.OnRemoteConnectionState -= OnConnectionState;
+            if (_identityManager != null)
+                _identityManager.ServerIdentityRegistered -= OnServerIdentityRegistered;
         }
         _scores.Clear();
+        _tokensByConnection.Clear();
         if (Instance == this) Instance = null;
     }
 }
