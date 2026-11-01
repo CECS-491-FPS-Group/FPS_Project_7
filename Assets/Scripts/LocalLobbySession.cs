@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 // Keeps the current room connection information while Unity changes scenes.
@@ -8,6 +9,7 @@ public static class LocalLobbySession
     public static bool IsIntentionalDisconnect { get; private set; }
     public static string LobbyCode { get; private set; } = string.Empty;
     public static string OwnerToken { get; private set; } = string.Empty;
+    public static string PlayerToken { get; private set; } = string.Empty;
     public static string Address { get; private set; } = string.Empty;
     public static ushort Port { get; private set; }
 
@@ -28,6 +30,7 @@ public static class LocalLobbySession
 
     public static void BeginHosting(LocalLobbyRecord room)
     {
+        BeginNewPlayerSession();
         IsHosting = true;
         HasConnected = false;
         IsIntentionalDisconnect = false;
@@ -39,6 +42,7 @@ public static class LocalLobbySession
 
     public static void BeginJoining(LocalLobbyRecord room)
     {
+        BeginNewPlayerSession();
         IsHosting = false;
         HasConnected = false;
         IsIntentionalDisconnect = false;
@@ -59,6 +63,15 @@ public static class LocalLobbySession
         IsIntentionalDisconnect = true;
     }
 
+    private static void BeginNewPlayerSession()
+    {
+        // This token remains unchanged during an unexpected disconnect/rejoin,
+        // but a completely new host or join attempt receives a fresh identity.
+        // It is intentionally process-local so an Editor client and a standalone
+        // build running on the same computer never share the same token.
+        PlayerToken = Guid.NewGuid().ToString("N");
+    }
+
     public static void ClearHostedRoom(string ownerToken)
     {
         if (!IsHosting || OwnerToken != ownerToken)
@@ -74,6 +87,7 @@ public static class LocalLobbySession
         IsIntentionalDisconnect = false;
         LobbyCode = string.Empty;
         OwnerToken = string.Empty;
+        PlayerToken = string.Empty;
         Address = string.Empty;
         Port = 0;
     }

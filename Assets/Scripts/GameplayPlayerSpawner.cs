@@ -32,19 +32,37 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
 
     [SerializeField] private NetworkObject playerPrefab;
 
+    [Header("Rejoin State")]
+    [Tooltip("How long the host remembers a disconnected player's position.")]
+    [SerializeField, Min(5f)] private float rejoinStateGraceSeconds = 60f;
+
+    private struct CachedPlayerState
+    {
+        public Vector3 Position;
+        public Quaternion Rotation;
+        public double DisconnectedAt;
+        public bool WaitingForRejoin;
+    }
+
     private readonly Dictionary<NetworkConnection, NetworkObject> _players =
         new Dictionary<NetworkConnection, NetworkObject>();
+    private readonly Dictionary<NetworkConnection, string> _playerTokens = new();
+    private readonly Dictionary<string, CachedPlayerState> _cachedPlayerStates = new();
+    private readonly List<string> _expiredPlayerTokens = new();
     private NetworkManager _networkManager;
+    private RejoinIdentityManager _identityManager;
     private readonly Dictionary<NetworkConnection, int> _terrainReady = new();
     private readonly HashSet<NetworkConnection> _spawnAttempted = new();
     private readonly Dictionary<NetworkConnection, float> _spawnRetryAt = new();
     private TerrainGenerator _terrain;
     private bool _reportedTerrainReady;
     private bool _returningToLobby;
+    private double _nextStateSnapshotTime;
 
     private void Awake()
     {
         _networkManager = GetComponent<NetworkManager>();
+        _identityManager = GetComponent<RejoinIdentityManager>();
         _networkManager.SceneManager.OnLoadEnd += OnSceneLoadEnd;
         _networkManager.SceneManager.OnClientPresenceChangeEnd += OnClientPresenceChangeEnd;
         _networkManager.SceneManager.OnClientLoadedStartScenes += OnClientLoadedStartScenes;
@@ -52,6 +70,18 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
         _networkManager.ServerManager.OnServerConnectionState += OnServerConnectionState;
         _networkManager.ServerManager.RegisterBroadcast<TerrainReadyMessage>(OnTerrainReady);
         _networkManager.ClientManager.OnClientConnectionState += OnClientConnectionState;
+
+        if (_identityManager != null)
+        {
+            _identityManager.ServerIdentityRegistered += OnServerIdentityRegistered;
+            _identityManager.ServerIdentityDisconnected += OnServerIdentityDisconnected;
+        }
+        else
+        {
+            Debug.LogError(
+                "[GameplayPlayerSpawner] RejoinIdentityManager is missing from the NetworkManager.",
+                this);
+        }
     }
 
     private void OnDestroy()
@@ -65,11 +95,24 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
         _networkManager.ServerManager.OnServerConnectionState -= OnServerConnectionState;
         _networkManager.ServerManager.UnregisterBroadcast<TerrainReadyMessage>(OnTerrainReady);
         _networkManager.ClientManager.OnClientConnectionState -= OnClientConnectionState;
+
+        if (_identityManager != null)
+        {
+            _identityManager.ServerIdentityRegistered -= OnServerIdentityRegistered;
+            _identityManager.ServerIdentityDisconnected -= OnServerIdentityDisconnected;
+        }
     }
 
     private void Update()
     {
         if (_returningToLobby) return;
+
+        if (_networkManager.IsServerStarted)
+        {
+            SnapshotActivePlayerStates();
+            RemoveExpiredPlayerStates();
+        }
+
         Scene scene = UnityEngine.SceneManagement.SceneManager.GetSceneByName(GameplaySceneName);
         if (!scene.IsValid() || !scene.isLoaded)
         {
@@ -169,6 +212,15 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
         if (_players.TryGetValue(connection, out NetworkObject existing) && existing != null && existing.IsSpawned)
             return;
 
+        // Do not spawn until the server knows the stable identity for this connection.
+        if (_identityManager == null ||
+            !_identityManager.TryGetPlayerToken(connection, out string playerToken))
+        {
+            return;
+        }
+
+        _playerTokens[connection] = playerToken;
+
         if (_terrain == null || _terrain.gameObject.scene != scene || !_terrain.IsGenerated ||
             !_terrainReady.TryGetValue(connection, out int clientSeed) || _spawnAttempted.Contains(connection)) return;
         if (_spawnRetryAt.TryGetValue(connection, out float retryAt) && Time.unscaledTime < retryAt) return;
@@ -187,7 +239,12 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             return;
         }
 
-        if (!TryGetSpawnPosition(out Vector3 spawnPosition))
+        bool restoredPosition = TryGetRejoinPosition(
+            playerToken,
+            out Vector3 spawnPosition,
+            out Quaternion spawnRotation);
+
+        if (!restoredPosition && !TryGetSpawnPosition(out spawnPosition))
         {
             if (!_spawnRetryAt.ContainsKey(connection))
                 Debug.LogWarning($"[GameplayPlayerSpawner] Waiting for a free terrain-safe spawn for client {connection.ClientId}.", this);
@@ -195,9 +252,12 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             return;
         }
 
+        if (!restoredPosition)
+            spawnRotation = playerPrefab.transform.rotation;
+
         _spawnRetryAt.Remove(connection);
         _spawnAttempted.Add(connection);
-        NetworkObject player = Instantiate(playerPrefab, spawnPosition, playerPrefab.transform.rotation);
+        NetworkObject player = Instantiate(playerPrefab, spawnPosition, spawnRotation);
         _players[connection] = player;
         _networkManager.ServerManager.Spawn(player, connection, scene);
 
@@ -209,7 +269,229 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[GameplayPlayerSpawner] Spawned player for client {connection.ClientId} in {scene.name} at {spawnPosition}.", this);
+        _cachedPlayerStates[playerToken] = new CachedPlayerState
+        {
+            Position = spawnPosition,
+            Rotation = spawnRotation,
+            WaitingForRejoin = false,
+            DisconnectedAt = 0d
+        };
+
+        string action = restoredPosition ? "Restored" : "Spawned";
+        Debug.Log(
+            $"[GameplayPlayerSpawner] {action} player for client {connection.ClientId} " +
+            $"in {scene.name} at {spawnPosition}.",
+            this);
+    }
+
+    private void OnServerIdentityRegistered(
+        NetworkConnection connection,
+        string playerToken,
+        bool isReturningPlayer)
+    {
+        _playerTokens[connection] = playerToken;
+
+        Scene scene = UnityEngine.SceneManagement.SceneManager.GetSceneByName(GameplaySceneName);
+        if (_networkManager.IsServerStarted && scene.IsValid() && scene.isLoaded)
+            TrySpawnPlayer(connection, scene);
+    }
+
+    private void OnServerIdentityDisconnected(NetworkConnection connection, string playerToken)
+    {
+        CacheDisconnectedPlayerState(connection, playerToken);
+        _playerTokens.Remove(connection);
+    }
+
+    private void SnapshotActivePlayerStates()
+    {
+        double now = Time.unscaledTimeAsDouble;
+        if (now < _nextStateSnapshotTime)
+            return;
+
+        _nextStateSnapshotTime = now + 0.1d;
+
+        foreach (var pair in _players)
+        {
+            NetworkConnection connection = pair.Key;
+            NetworkObject player = pair.Value;
+            if (player == null || !player.IsSpawned)
+                continue;
+
+            if (!_playerTokens.TryGetValue(connection, out string playerToken))
+            {
+                if (_identityManager == null ||
+                    !_identityManager.TryGetPlayerToken(connection, out playerToken))
+                {
+                    continue;
+                }
+
+                _playerTokens[connection] = playerToken;
+            }
+
+            _cachedPlayerStates[playerToken] = new CachedPlayerState
+            {
+                Position = player.transform.position,
+                Rotation = player.transform.rotation,
+                WaitingForRejoin = false,
+                DisconnectedAt = 0d
+            };
+        }
+    }
+
+    private void CacheDisconnectedPlayerState(
+        NetworkConnection connection,
+        string playerToken)
+    {
+        if (string.IsNullOrWhiteSpace(playerToken))
+            return;
+
+        bool hasState = _cachedPlayerStates.TryGetValue(
+            playerToken,
+            out CachedPlayerState state);
+
+        if (_players.TryGetValue(connection, out NetworkObject player) && player != null)
+        {
+            state.Position = player.transform.position;
+            state.Rotation = player.transform.rotation;
+            hasState = true;
+        }
+
+        if (!hasState)
+            return;
+
+        state.WaitingForRejoin = true;
+        state.DisconnectedAt = Time.unscaledTimeAsDouble;
+        _cachedPlayerStates[playerToken] = state;
+
+        Debug.Log(
+            $"[GameplayPlayerSpawner] Saved disconnected player position {state.Position} " +
+            $"for {rejoinStateGraceSeconds:0} seconds.",
+            this);
+    }
+
+    private bool TryGetRejoinPosition(
+        string playerToken,
+        out Vector3 position,
+        out Quaternion rotation)
+    {
+        position = default;
+        rotation = playerPrefab != null
+            ? playerPrefab.transform.rotation
+            : Quaternion.identity;
+
+        if (!_cachedPlayerStates.TryGetValue(playerToken, out CachedPlayerState state) ||
+            !state.WaitingForRejoin)
+        {
+            return false;
+        }
+
+        if (Time.unscaledTimeAsDouble - state.DisconnectedAt > rejoinStateGraceSeconds)
+        {
+            _cachedPlayerStates.Remove(playerToken);
+            return false;
+        }
+
+        if (!IsFinite(state.Position) ||
+            _terrain == null || !_terrain.IsGenerated ||
+            !_terrain.IsColliderReadyAt(state.Position) ||
+            !_terrain.TrySampleHeight(state.Position, out float height) ||
+            !_terrain.TryGetChunkAt(state.Position, out TerrainChunk chunk) ||
+            !TryGetFeetOffset(out float feetOffset))
+        {
+            Debug.LogWarning(
+                "[GameplayPlayerSpawner] Saved rejoin position was not terrain-safe; " +
+                "using a normal spawn instead.",
+                this);
+            _cachedPlayerStates.Remove(playerToken);
+            return false;
+        }
+
+        foreach (NetworkObject otherPlayer in _players.Values)
+        {
+            if (otherPlayer == null || !otherPlayer.IsSpawned)
+                continue;
+
+            Vector3 delta = otherPlayer.transform.position - state.Position;
+            if (delta.x * delta.x + delta.z * delta.z < 4f)
+            {
+                Debug.LogWarning(
+                    "[GameplayPlayerSpawner] Saved rejoin position is occupied; " +
+                    "using a normal spawn instead.",
+                    this);
+                _cachedPlayerStates.Remove(playerToken);
+                return false;
+            }
+        }
+
+        MeshCollider collider = chunk.GameObject.GetComponent<MeshCollider>();
+        if (collider == null)
+        {
+            _cachedPlayerStates.Remove(playerToken);
+            return false;
+        }
+
+        Bounds bounds = collider.bounds;
+        float originY = Mathf.Max(state.Position.y + 2f, Mathf.Max(height, bounds.max.y) + 1f);
+        Vector3 origin = new Vector3(state.Position.x, originY, state.Position.z);
+        if (!collider.Raycast(
+                new Ray(origin, Vector3.down),
+                out RaycastHit hit,
+                origin.y - bounds.min.y + 1f))
+        {
+            _cachedPlayerStates.Remove(playerToken);
+            return false;
+        }
+
+        float minimumY = hit.point.y + feetOffset + 0.05f;
+        position = new Vector3(
+            state.Position.x,
+            Mathf.Max(state.Position.y, minimumY),
+            state.Position.z);
+        rotation = Quaternion.Euler(0f, state.Rotation.eulerAngles.y, 0f);
+        return true;
+    }
+
+    private void RemoveExpiredPlayerStates()
+    {
+        double now = Time.unscaledTimeAsDouble;
+        _expiredPlayerTokens.Clear();
+
+        foreach (var pair in _cachedPlayerStates)
+        {
+            if (pair.Value.WaitingForRejoin &&
+                now - pair.Value.DisconnectedAt > rejoinStateGraceSeconds)
+            {
+                _expiredPlayerTokens.Add(pair.Key);
+            }
+        }
+
+        foreach (string playerToken in _expiredPlayerTokens)
+            _cachedPlayerStates.Remove(playerToken);
+    }
+
+    private bool TryGetFeetOffset(out float feetOffset)
+    {
+        feetOffset = 0f;
+        if (playerPrefab == null)
+            return false;
+
+        CharacterController controller = playerPrefab.GetComponent<CharacterController>();
+        if (controller == null)
+            return false;
+
+        Vector3 scale = playerPrefab.transform.lossyScale;
+        float halfHeight = Mathf.Max(
+            controller.height * Mathf.Abs(scale.y) * 0.5f,
+            controller.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z)));
+        feetOffset = halfHeight - controller.center.y * scale.y;
+        return true;
+    }
+
+    private static bool IsFinite(Vector3 value)
+    {
+        return !float.IsNaN(value.x) && !float.IsInfinity(value.x) &&
+               !float.IsNaN(value.y) && !float.IsInfinity(value.y) &&
+               !float.IsNaN(value.z) && !float.IsInfinity(value.z);
     }
 
     public bool TryGetRespawnPosition(NetworkObject player, out Vector3 position)
@@ -226,13 +508,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
     private bool TryGetSpawnPosition(out Vector3 position, NetworkObject excludedPlayer = null)
     {
         position = default;
-        CharacterController controller = playerPrefab.GetComponent<CharacterController>();
-        if (controller == null) return false;
-
-        Vector3 scale = playerPrefab.transform.lossyScale;
-        float halfHeight = Mathf.Max(controller.height * Mathf.Abs(scale.y) * 0.5f,
-            controller.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z)));
-        float feetOffset = halfHeight - controller.center.y * scale.y;
+        if (!TryGetFeetOffset(out float feetOffset)) return false;
         Vector2 centre = _terrain.worldSettings.WorldCentre(_terrain.MeshWorldSize);
 
         foreach (Vector2 offset in SpawnOffsets)
@@ -309,11 +585,15 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
     private void ClearGameplayState()
     {
         _players.Clear();
+        _playerTokens.Clear();
+        _cachedPlayerStates.Clear();
+        _expiredPlayerTokens.Clear();
         _terrainReady.Clear();
         _spawnAttempted.Clear();
         _spawnRetryAt.Clear();
         _terrain = null;
         _reportedTerrainReady = false;
+        _nextStateSnapshotTime = 0d;
     }
 
     private void OnRemoteConnectionState(NetworkConnection connection, RemoteConnectionStateArgs args)
@@ -321,7 +601,11 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
         // FishNet despawns this connection's owned objects when it disconnects.
         if (args.ConnectionState == RemoteConnectionState.Stopped)
         {
+            if (_playerTokens.TryGetValue(connection, out string playerToken))
+                CacheDisconnectedPlayerState(connection, playerToken);
+
             _players.Remove(connection);
+            _playerTokens.Remove(connection);
             _terrainReady.Remove(connection);
             _spawnAttempted.Remove(connection);
             _spawnRetryAt.Remove(connection);
