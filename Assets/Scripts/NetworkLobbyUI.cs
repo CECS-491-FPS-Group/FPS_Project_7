@@ -36,6 +36,8 @@ public class NetworkLobbyUI : NetworkBehaviour
 
     private TimeManager _timeManager;
     private bool _transitionInProgress;
+    private readonly Vector3[] _referenceStatusCorners = new Vector3[4];
+    private readonly Vector3[] _statusCorners = new Vector3[4];
 
     private void Awake()
     {
@@ -47,6 +49,7 @@ public class NetworkLobbyUI : NetworkBehaviour
 
     private void OnDestroy()
     {
+        Canvas.willRenderCanvases -= AlignStatusColumn;
         _playerNames.OnChange -= PlayerNames_OnChange;
         _playerIds.OnChange -= PlayerIds_OnChange;
         _playerReady.OnChange -= PlayerReady_OnChange;
@@ -88,12 +91,18 @@ public class NetworkLobbyUI : NetworkBehaviour
         RefreshLocalHostEntry();
         UpdateUI();
 
+        // Subscribe after the UI has initialized so this runs after normal
+        // Canvas layout work and can correct labels with different parents.
+        Canvas.willRenderCanvases -= AlignStatusColumn;
+        Canvas.willRenderCanvases += AlignStatusColumn;
+
         _timeManager = InstanceFinder.TimeManager;
         if (_timeManager != null) _timeManager.OnRoundTripTimeUpdated += OnLocalRoundTripTimeUpdated;
     }
 
     public override void OnStopClient()
     {
+        Canvas.willRenderCanvases -= AlignStatusColumn;
         if (_timeManager != null) _timeManager.OnRoundTripTimeUpdated -= OnLocalRoundTripTimeUpdated;
         _timeManager = null;
         base.OnStopClient();
@@ -175,6 +184,8 @@ public class NetworkLobbyUI : NetworkBehaviour
 
     private void UpdateUI()
     {
+        AlignStatusColumn();
+
         for (int i = 0; i < playerSlots.Length; i++)
         {
             if (playerSlots[i]) playerSlots[i].text = "Waiting . . .";
@@ -247,6 +258,62 @@ public class NetworkLobbyUI : NetworkBehaviour
             
             // The button is only clickable if EVERYONE is ready AND this computer is the Host
             startGameButton.interactable = allReady && IsServerStarted && !_transitionInProgress;
+        }
+    }
+
+    // Keep every Ready label in one fixed on-screen column while preserving
+    // the Y position of each player's row.
+    private void AlignStatusColumn()
+    {
+        if (statusSlots == null || statusSlots.Length < 2) return;
+
+        TextMeshProUGUI referenceText = null;
+        for (int i = 0; i < statusSlots.Length; i++)
+        {
+            if (!statusSlots[i]) continue;
+            referenceText = statusSlots[i];
+            break;
+        }
+
+        if (!referenceText) return;
+
+        RectTransform referenceRect = referenceText.rectTransform;
+        referenceRect.GetWorldCorners(_referenceStatusCorners);
+        float referenceRightEdge = Mathf.Max(
+            _referenceStatusCorners[2].x,
+            _referenceStatusCorners[3].x);
+
+        for (int i = 0; i < statusSlots.Length; i++)
+        {
+            TextMeshProUGUI statusText = statusSlots[i];
+            if (!statusText || statusText == referenceText) continue;
+
+            RectTransform statusRect = statusText.rectTransform;
+
+            Vector4 margin = statusText.margin;
+            if (!Mathf.Approximately(margin.x, referenceText.margin.x) ||
+                !Mathf.Approximately(margin.z, referenceText.margin.z))
+            {
+                margin.x = referenceText.margin.x;
+                margin.z = referenceText.margin.z;
+                statusText.margin = margin;
+            }
+
+            if (statusText.alignment != referenceText.alignment)
+                statusText.alignment = referenceText.alignment;
+
+            // Compare rendered world-space edges rather than local Pos X.
+            // This works even when rows use different RectTransform parents.
+            statusRect.GetWorldCorners(_statusCorners);
+            float statusRightEdge = Mathf.Max(_statusCorners[2].x, _statusCorners[3].x);
+            float horizontalCorrection = referenceRightEdge - statusRightEdge;
+
+            if (Mathf.Abs(horizontalCorrection) > 0.01f)
+            {
+                Vector3 worldPosition = statusRect.position;
+                worldPosition.x += horizontalCorrection;
+                statusRect.position = worldPosition;
+            }
         }
     }
 
