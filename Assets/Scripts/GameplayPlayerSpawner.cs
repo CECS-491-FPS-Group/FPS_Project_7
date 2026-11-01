@@ -40,6 +40,10 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
     {
         public Vector3 Position;
         public Quaternion Rotation;
+        public bool HasHealthState;
+        public Health.RejoinState HealthState;
+        public bool HasWeaponState;
+        public HitscanShooter.RejoinState WeaponState;
         public double DisconnectedAt;
         public bool WaitingForRejoin;
     }
@@ -239,10 +243,15 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             return;
         }
 
-        bool restoredPosition = TryGetRejoinPosition(
+        bool hasRejoinState = TryGetCachedRejoinState(
             playerToken,
-            out Vector3 spawnPosition,
-            out Quaternion spawnRotation);
+            out CachedPlayerState rejoinState);
+        Vector3 spawnPosition = default;
+        Quaternion spawnRotation = playerPrefab.transform.rotation;
+        bool restoredPosition = hasRejoinState && TryGetRejoinPosition(
+            rejoinState,
+            out spawnPosition,
+            out spawnRotation);
 
         if (!restoredPosition && !TryGetSpawnPosition(out spawnPosition))
         {
@@ -269,15 +278,20 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             return;
         }
 
-        _cachedPlayerStates[playerToken] = new CachedPlayerState
+        if (hasRejoinState)
+            RestorePlayerGameplayState(player, rejoinState);
+
+        CachedPlayerState activeState = new CachedPlayerState
         {
             Position = spawnPosition,
             Rotation = spawnRotation,
             WaitingForRejoin = false,
             DisconnectedAt = 0d
         };
+        CapturePlayerGameplayState(player, ref activeState);
+        _cachedPlayerStates[playerToken] = activeState;
 
-        string action = restoredPosition ? "Restored" : "Spawned";
+        string action = hasRejoinState ? "Restored" : "Spawned";
         Debug.Log(
             $"[GameplayPlayerSpawner] {action} player for client {connection.ClientId} " +
             $"in {scene.name} at {spawnPosition}.",
@@ -328,13 +342,15 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
                 _playerTokens[connection] = playerToken;
             }
 
-            _cachedPlayerStates[playerToken] = new CachedPlayerState
+            CachedPlayerState state = new CachedPlayerState
             {
                 Position = player.transform.position,
                 Rotation = player.transform.rotation,
                 WaitingForRejoin = false,
                 DisconnectedAt = 0d
             };
+            CapturePlayerGameplayState(player, ref state);
+            _cachedPlayerStates[playerToken] = state;
         }
     }
 
@@ -353,6 +369,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
         {
             state.Position = player.transform.position;
             state.Rotation = player.transform.rotation;
+            CapturePlayerGameplayState(player, ref state);
             hasState = true;
         }
 
@@ -369,8 +386,68 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             this);
     }
 
-    private bool TryGetRejoinPosition(
+    private void CapturePlayerGameplayState(
+        NetworkObject player,
+        ref CachedPlayerState state)
+    {
+        if (player == null || !player.IsSpawned)
+            return;
+
+        Health health = player.GetComponent<Health>();
+        if (health != null && health.TryCaptureRejoinState(out Health.RejoinState healthState))
+        {
+            state.HealthState = healthState;
+            state.HasHealthState = true;
+        }
+
+        HitscanShooter shooter = player.GetComponentInChildren<HitscanShooter>(true);
+        if (shooter != null &&
+            shooter.TryCaptureRejoinState(out HitscanShooter.RejoinState weaponState))
+        {
+            state.WeaponState = weaponState;
+            state.HasWeaponState = true;
+        }
+    }
+
+    private void RestorePlayerGameplayState(
+        NetworkObject player,
+        CachedPlayerState state)
+    {
+        if (player == null || !player.IsSpawned)
+            return;
+
+        Health health = player.GetComponent<Health>();
+        if (state.HasHealthState && health != null)
+            health.RestoreRejoinState(state.HealthState);
+
+        // Restore weapons after health so dead players remain in the normal
+        // death/respawn weapon flow.
+        HitscanShooter shooter = player.GetComponentInChildren<HitscanShooter>(true);
+        if (state.HasWeaponState && shooter != null)
+            shooter.RestoreRejoinState(state.WeaponState);
+    }
+
+    private bool TryGetCachedRejoinState(
         string playerToken,
+        out CachedPlayerState state)
+    {
+        state = default;
+        if (!_cachedPlayerStates.TryGetValue(playerToken, out state) ||
+            !state.WaitingForRejoin)
+        {
+            return false;
+        }
+
+        if (Time.unscaledTimeAsDouble - state.DisconnectedAt <= rejoinStateGraceSeconds)
+            return true;
+
+        _cachedPlayerStates.Remove(playerToken);
+        state = default;
+        return false;
+    }
+
+    private bool TryGetRejoinPosition(
+        CachedPlayerState state,
         out Vector3 position,
         out Quaternion rotation)
     {
@@ -378,18 +455,6 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
         rotation = playerPrefab != null
             ? playerPrefab.transform.rotation
             : Quaternion.identity;
-
-        if (!_cachedPlayerStates.TryGetValue(playerToken, out CachedPlayerState state) ||
-            !state.WaitingForRejoin)
-        {
-            return false;
-        }
-
-        if (Time.unscaledTimeAsDouble - state.DisconnectedAt > rejoinStateGraceSeconds)
-        {
-            _cachedPlayerStates.Remove(playerToken);
-            return false;
-        }
 
         if (!IsFinite(state.Position) ||
             _terrain == null || !_terrain.IsGenerated ||
@@ -400,9 +465,8 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
         {
             Debug.LogWarning(
                 "[GameplayPlayerSpawner] Saved rejoin position was not terrain-safe; " +
-                "using a normal spawn instead.",
+                "using a normal spawn while preserving health and weapons.",
                 this);
-            _cachedPlayerStates.Remove(playerToken);
             return false;
         }
 
@@ -416,19 +480,15 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             {
                 Debug.LogWarning(
                     "[GameplayPlayerSpawner] Saved rejoin position is occupied; " +
-                    "using a normal spawn instead.",
+                    "using a normal spawn while preserving health and weapons.",
                     this);
-                _cachedPlayerStates.Remove(playerToken);
                 return false;
             }
         }
 
         MeshCollider collider = chunk.GameObject.GetComponent<MeshCollider>();
         if (collider == null)
-        {
-            _cachedPlayerStates.Remove(playerToken);
             return false;
-        }
 
         Bounds bounds = collider.bounds;
         float originY = Mathf.Max(state.Position.y + 2f, Mathf.Max(height, bounds.max.y) + 1f);
@@ -438,7 +498,6 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
                 out RaycastHit hit,
                 origin.y - bounds.min.y + 1f))
         {
-            _cachedPlayerStates.Remove(playerToken);
             return false;
         }
 

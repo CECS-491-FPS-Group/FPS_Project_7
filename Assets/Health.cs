@@ -6,6 +6,14 @@ using UnityEngine;
 
 public class Health : NetworkBehaviour
 {
+    public struct RejoinState
+    {
+        public int CurrentHealth;
+        public bool IsDead;
+        public bool MatchEnded;
+        public double RespawnAt;
+    }
+
     [Min(1)] public int maxHp = 100;
     [Min(0)] public int killReward = 300;
     [Min(0f)] public float respawnDelay = 5f;
@@ -96,6 +104,70 @@ public class Health : NetworkBehaviour
         _pendingSequence = 0;
         _nextRespawnCheck = double.PositiveInfinity;
         _respawnAt.Value = 0d;
+    }
+
+    // Server-only snapshot used by GameplayPlayerSpawner before a disconnect.
+    public bool TryCaptureRejoinState(out RejoinState state)
+    {
+        state = default;
+        if (!IsServerInitialized || !IsSpawned)
+            return false;
+
+        state = new RejoinState
+        {
+            CurrentHealth = CurrentHealth,
+            IsDead = IsDead,
+            MatchEnded = MatchEnded,
+            RespawnAt = _respawnAt.Value
+        };
+        return true;
+    }
+
+    // Server-only restore onto the newly spawned object for the same identity.
+    public bool RestoreRejoinState(RejoinState state)
+    {
+        if (!IsServerInitialized || !IsSpawned)
+            return false;
+
+        double now = TimeManager.TicksToTime(TimeManager.Tick);
+        bool respawnTimeIsValid =
+            !double.IsNaN(state.RespawnAt) &&
+            !double.IsInfinity(state.RespawnAt) &&
+            state.RespawnAt >= 0d;
+
+        _pendingSequence = 0;
+        _respawnPosition = default;
+        _matchEnded.Value = state.MatchEnded;
+
+        if (state.MatchEnded)
+        {
+            _currentHp.Value = Mathf.Clamp(state.CurrentHealth, 0, Mathf.Max(1, maxHp));
+            _dead.Value = state.IsDead || _currentHp.Value <= 0;
+            _respawnAt.Value = 0d;
+            _nextRespawnCheck = double.PositiveInfinity;
+        }
+        else if (state.IsDead || state.CurrentHealth <= 0)
+        {
+            _currentHp.Value = 0;
+            _dead.Value = true;
+            _respawnAt.Value = respawnTimeIsValid
+                ? state.RespawnAt
+                : now + Mathf.Max(0f, respawnDelay);
+            _nextRespawnCheck = Math.Max(now, _respawnAt.Value);
+        }
+        else
+        {
+            _currentHp.Value = Mathf.Clamp(state.CurrentHealth, 1, Mathf.Max(1, maxHp));
+            _dead.Value = false;
+            _respawnAt.Value = 0d;
+            _nextRespawnCheck = 0d;
+        }
+
+        Debug.Log(
+            $"[Health] Restored owner={OwnerId} HP={CurrentHealth}, " +
+            $"dead={IsDead}, matchEnded={MatchEnded}.",
+            this);
+        return true;
     }
 
     private void Update()

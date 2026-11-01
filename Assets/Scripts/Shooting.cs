@@ -7,6 +7,18 @@ using UnityEngine.InputSystem;
 [DefaultExecutionOrder(100)] // Sample aim after Starter Assets applies mouse look.
 public class HitscanShooter : NetworkBehaviour
 {
+    public struct RejoinState
+    {
+        public int SelectedWeapon;
+        public int[] MagazineAmmo;
+        public bool IsReloading;
+        public double ReloadDeadline;
+        public double NextServerShotTime;
+        public double NextSwitchTime;
+        public float Bloom;
+        public double LastBloomTime;
+    }
+
     [Min(1)] public int damage = 40;
     [Min(0.1f)] public float range = 100f;
     [Min(0.1f)] public float shotsPerSecond = 5f;
@@ -89,6 +101,103 @@ public class HitscanShooter : NetworkBehaviour
         range = Mathf.Max(0.1f, p.range); automaticFire = p.automatic;
         _scoped = false;
         if (_camera != null) _camera.fieldOfView = _normalFov;
+    }
+
+    // Server-only snapshot used by GameplayPlayerSpawner before a disconnect.
+    public bool TryCaptureRejoinState(out RejoinState state)
+    {
+        state = default;
+        if (!IsServerInitialized || !IsSpawned || weapons == null || weapons.Length == 0)
+            return false;
+
+        ReconcileServerWeapon();
+        EnsureMagazineArray();
+
+        int selectedWeapon = Mathf.Clamp(_selectedWeapon.Value, 0, weapons.Length - 1);
+        _magazines[selectedWeapon] = Mathf.Clamp(CurrentAmmo, 0, Mathf.Max(1, weapons[selectedWeapon].magazine));
+
+        state = new RejoinState
+        {
+            SelectedWeapon = selectedWeapon,
+            MagazineAmmo = (int[])_magazines.Clone(),
+            IsReloading = IsReloading,
+            ReloadDeadline = _reloadDeadline.Value,
+            NextServerShotTime = _nextServerShotTime,
+            NextSwitchTime = _nextSwitchTime,
+            Bloom = _bloom,
+            LastBloomTime = _lastBloomTime
+        };
+        return true;
+    }
+
+    // Server-only restore onto the newly spawned object for the same identity.
+    public bool RestoreRejoinState(RejoinState state)
+    {
+        if (!IsServerInitialized || !IsSpawned || weapons == null || weapons.Length == 0)
+            return false;
+
+        EnsureMagazineArray();
+        for (int i = 0; i < weapons.Length; i++)
+        {
+            int fullMagazine = Mathf.Max(1, weapons[i].magazine);
+            int savedAmmo = state.MagazineAmmo != null && i < state.MagazineAmmo.Length
+                ? state.MagazineAmmo[i]
+                : fullMagazine;
+            _magazines[i] = Mathf.Clamp(savedAmmo, 0, fullMagazine);
+        }
+
+        int selectedWeapon = Mathf.Clamp(state.SelectedWeapon, 0, weapons.Length - 1);
+        _selectedWeapon.Value = selectedWeapon;
+        ApplyProfile();
+        _ammo.Value = _magazines[selectedWeapon];
+
+        double now = ServerTime;
+        bool reloadDeadlineIsValid =
+            Finite(state.ReloadDeadline) && state.ReloadDeadline >= 0d;
+
+        if (state.IsReloading && reloadDeadlineIsValid && state.ReloadDeadline > now &&
+            CurrentAmmo < magazineSize)
+        {
+            _reloading.Value = true;
+            _reloadDeadline.Value = state.ReloadDeadline;
+        }
+        else
+        {
+            if (state.IsReloading && reloadDeadlineIsValid && state.ReloadDeadline <= now)
+            {
+                _ammo.Value = Mathf.Max(1, magazineSize);
+                _magazines[selectedWeapon] = _ammo.Value;
+            }
+
+            _reloading.Value = false;
+            _reloadDeadline.Value = 0d;
+        }
+
+        _nextServerShotTime = Finite(state.NextServerShotTime)
+            ? state.NextServerShotTime
+            : now;
+        _nextSwitchTime = Finite(state.NextSwitchTime)
+            ? state.NextSwitchTime
+            : now;
+        _bloom = Finite(state.Bloom) ? Mathf.Clamp(state.Bloom, 0f, 4f) : 0f;
+        _lastBloomTime = Finite(state.LastBloomTime) ? state.LastBloomTime : now;
+        _wasDead = _health != null && _health.IsDead;
+
+        Debug.Log(
+            $"[Weapon] Restored owner={OwnerId} weapon={selectedWeapon}, " +
+            $"ammo={CurrentAmmo}, reloading={IsReloading}.",
+            this);
+        return true;
+    }
+
+    private void EnsureMagazineArray()
+    {
+        if (_magazines != null && _magazines.Length == weapons.Length)
+            return;
+
+        _magazines = new int[weapons.Length];
+        for (int i = 0; i < weapons.Length; i++)
+            _magazines[i] = Mathf.Max(1, weapons[i].magazine);
     }
 
     [ServerRpc(RequireOwnership = true)]
@@ -333,4 +442,5 @@ public class HitscanShooter : NetworkBehaviour
     }
 
     private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
+    private static bool Finite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
 }
