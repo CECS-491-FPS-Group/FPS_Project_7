@@ -41,6 +41,12 @@ public sealed class LobbyReturnController : MonoBehaviour
         return true;
     }
 
+    // Used by the persistent rejoin popup when the player chooses Cancel.
+    public static void RequestHostJoinAfterReturn()
+    {
+        _openHostJoinAfterReturn = true;
+    }
+
     private void Awake()
     {
         if (returnButton == null)
@@ -76,6 +82,7 @@ public sealed class LobbyReturnController : MonoBehaviour
             return;
 
         _returning = true;
+        LocalLobbySession.MarkIntentionalDisconnect();
 
         if (returnButton != null)
             returnButton.interactable = false;
@@ -168,8 +175,17 @@ public sealed class LobbyReturnController : MonoBehaviour
         if (args.ConnectionState != LocalConnectionState.Stopped || _returning)
             return;
 
-        // If the host closes the room, connected clients should not remain on a
-        // dead lobby screen. Send them back to MainMenu automatically.
+        // A persistent RejoinManager owns unexpected non-host disconnects.
+        // Keep the saved endpoint and current scene instead of immediately
+        // clearing the session and loading MainMenu.
+        if (LocalLobbySession.CanReconnect &&
+            RejoinManager.CanHandleDisconnect)
+        {
+            return;
+        }
+
+        // Fallback used if the rejoin UI was not installed or this disconnect
+        // is not eligible for rejoining.
         _returning = true;
 
         if (returnButton != null)
@@ -238,7 +254,7 @@ public sealed class LobbyReturnController : MonoBehaviour
 
         // HostOrJoin is a panel inside MainMenu, not a separate Unity scene.
         // MainMenuReturnController consumes this one-time request after load.
-        _openHostJoinAfterReturn = true;
+        RequestHostJoinAfterReturn();
         SceneManager.LoadScene(mainMenuSceneName);
     }
 }

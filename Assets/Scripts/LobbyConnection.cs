@@ -295,6 +295,9 @@ public sealed class LobbyConnection : MonoBehaviour
     {
         if (args.ConnectionState == LocalConnectionState.Started)
         {
+            // The client reached the room at least once. From this point on,
+            // an unexpected stop is eligible for the rejoin prompt.
+            LocalLobbySession.MarkConnected();
             _joiningClient = false;
 
             if (!LocalLobbySession.IsHosting)
