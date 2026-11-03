@@ -91,6 +91,9 @@ public class BoostHUD : MonoBehaviour
 
             case PlayerBoosts.BoostType.Damage:
                 return "Damage Boost";
+            
+            case PlayerBoosts.BoostType.Invisibility:
+                return "Invisibility Boost";
 
             default:
                 return "Boost";

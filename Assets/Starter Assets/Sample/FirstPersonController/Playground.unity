@@ -1599,7 +1599,7 @@ NavMeshAgent:
   m_AutoBraking: 1
   m_AutoRepath: 1
   m_Height: 2
-  m_BaseOffset: -0.4
+  m_BaseOffset: -0.5
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
 --- !u!114 &1039225646
@@ -1646,6 +1646,18 @@ MonoBehaviour:
   weapon: {fileID: 2071000467}
   recoilAngle: 10
   recoilTime: 0.15
+--- !u!114 &1039225656
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1039225644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5a0b5c0fa391479c99c73de5cae86da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AIBotRagdoll
 --- !u!1 &1113280263
 GameObject:
   m_ObjectHideFlags: 0
@@ -1795,6 +1807,14 @@ PrefabInstance:
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: b76315724b5804c128c16595085b2c49, type: 2}
+    - target: {fileID: 5441333827376641190, guid: cb4dec2fd6848924192efb496662299a, type: 3}
+      propertyPath: m_WarningMessage
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 5441333827376641190, guid: cb4dec2fd6848924192efb496662299a, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5441333827383887642, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       propertyPath: m_Name
       value: Soldier_demo (2)
@@ -1876,6 +1896,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5441333827383887642, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2116296051}
+    - targetCorrespondingSourceObject: {fileID: 5441333827383887642, guid: cb4dec2fd6848924192efb496662299a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2116296056}
   m_SourcePrefab: {fileID: 100100000, guid: cb4dec2fd6848924192efb496662299a, type: 3}
 --- !u!1 &1239620178
 GameObject:
@@ -2153,6 +2176,14 @@ PrefabInstance:
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: b76315724b5804c128c16595085b2c49, type: 2}
+    - target: {fileID: 5441333827376641190, guid: cb4dec2fd6848924192efb496662299a, type: 3}
+      propertyPath: m_WarningMessage
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 5441333827376641190, guid: cb4dec2fd6848924192efb496662299a, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 5441333827383887642, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       propertyPath: m_Name
       value: Soldier_demo (3)
@@ -2234,6 +2265,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5441333827383887642, guid: cb4dec2fd6848924192efb496662299a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1039225651}
+    - targetCorrespondingSourceObject: {fileID: 5441333827383887642, guid: cb4dec2fd6848924192efb496662299a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1039225656}
   m_SourcePrefab: {fileID: 100100000, guid: cb4dec2fd6848924192efb496662299a, type: 3}
 --- !u!1 &1582341322
 GameObject:
@@ -2841,6 +2875,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 7700669840641763210, guid: 1c4b439d490f514478051532c9985af4, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7700669840641763210, guid: 1c4b439d490f514478051532c9985af4, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -3106,7 +3148,7 @@ NavMeshAgent:
   m_AutoBraking: 1
   m_AutoRepath: 1
   m_Height: 2
-  m_BaseOffset: -0.4
+  m_BaseOffset: -0.5
   m_WalkableMask: 4294967295
   m_ObstacleAvoidanceType: 4
 --- !u!114 &2116296046
@@ -3153,6 +3195,18 @@ MonoBehaviour:
   weapon: {fileID: 168079245}
   recoilAngle: 10
   recoilTime: 0.15
+--- !u!114 &2116296056
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2116296044}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b5a0b5c0fa391479c99c73de5cae86da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AIBotRagdoll
 --- !u!1 &2127339899
 GameObject:
   m_ObjectHideFlags: 0

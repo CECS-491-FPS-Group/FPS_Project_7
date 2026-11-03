@@ -6,6 +6,8 @@ using FishNet.Object;
 public class PlayerHealthBarUI : MonoBehaviour
 {
     [SerializeField] private TMP_Text healthText;
+    [SerializeField] private Slider armorSlider;
+    [SerializeField] private TMP_Text armorText;
 
     private Slider healthSlider;
     private Health playerHealth;
@@ -14,9 +16,22 @@ public class PlayerHealthBarUI : MonoBehaviour
     {
         healthSlider = GetComponent<Slider>();
 
-        healthSlider.minValue = 0f;
-        healthSlider.maxValue = 1f;
-        healthSlider.value = 1f;
+        if (healthSlider != null)
+        {
+            healthSlider.minValue = 0f;
+            healthSlider.maxValue = 1f;
+            healthSlider.value = 1f;
+        }
+
+        if (armorSlider != null)
+        {
+            armorSlider.minValue = 0f;
+            armorSlider.value = 0f;
+            armorSlider.gameObject.SetActive(false);
+        }
+
+        if (armorText != null)
+            armorText.gameObject.SetActive(false);
     }
 
     private void Update()
@@ -27,43 +42,61 @@ public class PlayerHealthBarUI : MonoBehaviour
             return;
         }
 
-        if (playerHealth.MaximumHealth <= 0f)
-            return;
-
-        float healthPercent =
-            Mathf.Clamp01(
-                playerHealth.CurrentHealth /
-                playerHealth.MaximumHealth
+        if (healthSlider != null && playerHealth.MaximumHealth > 0f)
+        {
+            float healthPercent = Mathf.Clamp01(
+                playerHealth.CurrentHealth / playerHealth.MaximumHealth
             );
 
-        healthSlider.value = healthPercent;
+            healthSlider.value = healthPercent;
 
-        if (healthText != null)
+            if (healthText != null)
+                healthText.text =
+                    "Health: " + Mathf.RoundToInt(healthPercent * 100f) + "%";
+        }
+
+        bool hasArmor = playerHealth.CurrentArmor > 0f;
+
+        if (armorSlider != null)
         {
-            int percentage =
-                Mathf.RoundToInt(healthPercent * 100f);
+            armorSlider.gameObject.SetActive(hasArmor);
 
-            healthText.text =
-                "Health: " + percentage + "%";
+            if (hasArmor)
+            {
+                armorSlider.maxValue = Mathf.Max(
+                    1f,
+                    playerHealth.MaximumArmor
+                );
+                armorSlider.value = playerHealth.CurrentArmor;
+            }
+        }
+
+        if (armorText != null)
+        {
+            armorText.gameObject.SetActive(hasArmor);
+
+            if (hasArmor)
+            {
+                armorText.text =
+                    "Military Vest: " +
+                    Mathf.CeilToInt(playerHealth.CurrentArmor) +
+                    "/" +
+                    Mathf.CeilToInt(playerHealth.MaximumArmor);
+            }
         }
     }
 
     private void FindLocalPlayerHealth()
     {
         Health[] healthObjects =
-            FindObjectsByType<Health>(
-                FindObjectsSortMode.None
-            );
+            FindObjectsByType<Health>(FindObjectsSortMode.None);
 
         foreach (Health health in healthObjects)
         {
             NetworkObject networkObject =
                 health.GetComponentInParent<NetworkObject>();
 
-            if (
-                networkObject != null &&
-                networkObject.IsOwner
-            )
+            if (networkObject != null && networkObject.IsOwner)
             {
                 playerHealth = health;
                 return;
