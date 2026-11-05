@@ -9,9 +9,15 @@ public class HitscanShooter : MonoBehaviour
     public float range = 100f;
     public AudioClip gunshotClip;
     [Range(0f, 1f)] public float gunshotVolume = 1f;
+    public AudioClip hitConfirmClip;
+    [Range(0f, 1f)] public float hitConfirmVolume = 0.7f;
 
     private Camera cam;
     private AudioSource audioSource;
+    private float nextHitConfirmTime = float.NegativeInfinity;
+    private static AudioClip generatedHitConfirmClip;
+
+    private const float HitConfirmCooldown = 0.12f;
 
     public float recoilAmount = 2f;
     public float recoilSpeed = 10f;
@@ -37,6 +43,16 @@ public class HitscanShooter : MonoBehaviour
         if (audioSource == null)
         {
             audioSource = gameObject.AddComponent<AudioSource>();
+        }
+
+        if (hitConfirmClip == null)
+        {
+            if (generatedHitConfirmClip == null)
+            {
+                generatedHitConfirmClip = CreateHitConfirmClip();
+            }
+
+            hitConfirmClip = generatedHitConfirmClip;
         }
 
         if (cam != null)
@@ -134,6 +150,7 @@ public class HitscanShooter : MonoBehaviour
             if (health != null)
             {
                 health.TakeDamage(damage);
+                PlayHitConfirm();
             }
         }
 
@@ -141,5 +158,40 @@ public class HitscanShooter : MonoBehaviour
         ApplyRecoil();
 
         Debug.DrawRay(ray.origin, ray.direction * range, Color.red, 1f);
+    }
+
+    private void PlayHitConfirm()
+    {
+        if (Time.time < nextHitConfirmTime)
+        {
+            return;
+        }
+
+        audioSource.PlayOneShot(hitConfirmClip, hitConfirmVolume * GameAudioSettings.SfxVolume);
+        nextHitConfirmTime = Time.time + HitConfirmCooldown;
+    }
+
+    private static AudioClip CreateHitConfirmClip()
+    {
+        const int sampleRate = 44100;
+        const float duration = 0.14f;
+        const float startFrequency = 1450f;
+        const float endFrequency = 920f;
+        int sampleCount = Mathf.CeilToInt(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+        float frequencySlope = (endFrequency - startFrequency) / duration;
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float time = (float)i / sampleRate;
+            float phase = 2f * Mathf.PI * (startFrequency * time + 0.5f * frequencySlope * time * time);
+            float envelope = Mathf.Exp(-22f * time) * Mathf.Clamp01(time / 0.002f);
+            float transient = 0.22f * Mathf.Sin(2f * Mathf.PI * 2300f * time) * Mathf.Exp(-65f * time);
+            samples[i] = envelope * (0.72f * Mathf.Sin(phase) + transient);
+        }
+
+        AudioClip clip = AudioClip.Create("Hit Confirm", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
     }
 }
