@@ -25,4 +25,9 @@ public class VirtualInput : MonoBehaviour
     {
         StarterAssetsInputs.SprintInput(virtualSprintState);
     }
+
+    public void VirtualCrouchInput(bool virtualCrouchState)
+    {
+        StarterAssetsInputs.CrouchInput(virtualCrouchState);
+    }
 }
