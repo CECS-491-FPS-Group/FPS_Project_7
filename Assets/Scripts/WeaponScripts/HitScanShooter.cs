@@ -75,6 +75,7 @@ public class HitscanShooter : MonoBehaviour
     [Range(0f, 1f)] public float hitConfirmVolume = 0.7f;
 
     private AudioSource audioSource;
+    private ShotAudioBroadcaster shotBroadcaster;
     private float nextHitConfirmTime = float.NegativeInfinity;
     private static AudioClip generatedHitConfirmClip;
 
@@ -90,6 +91,7 @@ public class HitscanShooter : MonoBehaviour
     {
         currentAmmo = magazineSize;
         playerVision = GetComponentInParent<PlayerVision>();
+        shotBroadcaster = GetComponentInParent<ShotAudioBroadcaster>();
 
         // Legacy scenes have a single shooter with no WeaponHolster to hand it a camera.
         // Players with a holster must not self-assign one, or leftover shooters on the
@@ -275,6 +277,11 @@ public class HitscanShooter : MonoBehaviour
         if (gunshotClip != null)
         {
             audioSource.PlayOneShot(gunshotClip, gunshotVolume * GameAudioSettings.SfxVolume);
+        }
+
+        if (shotBroadcaster != null)
+        {
+            shotBroadcaster.NotifyShot(gameObject);
         }
 
         bool damagedSomething = false;

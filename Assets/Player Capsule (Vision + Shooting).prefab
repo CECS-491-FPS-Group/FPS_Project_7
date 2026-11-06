@@ -46,8 +46,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HitscanShooter
   damage: 20
   range: 100
-  gunshotClip: {fileID: 8300000, guid: 0330762d2b3c8d641bfe11ad89b7e196, type: 3}
-  gunshotVolume: 1
   isAutomatic: 1
   fireRate: 15
   isShotgun: 0
@@ -69,6 +67,10 @@ MonoBehaviour:
   hitMarker: {fileID: 4724461779606514509, guid: 3ee41655cbe230d4398da0ef5618e184, type: 3}
   maxHitMarkers: 8
   hitMarkerMinDistance: 0.1
+  gunshotClip: {fileID: 8300000, guid: 0330762d2b3c8d641bfe11ad89b7e196, type: 3}
+  gunshotVolume: 1
+  hitConfirmClip: {fileID: 0}
+  hitConfirmVolume: 0.7
 --- !u!1 &4732219762754882448
 GameObject:
   m_ObjectHideFlags: 0
@@ -115,8 +117,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HitscanShooter
   damage: 40
   range: 100
-  gunshotClip: {fileID: 8300000, guid: f4157ecf729afe9498a92328a7205d1d, type: 3}
-  gunshotVolume: 1
   isAutomatic: 0
   fireRate: 10
   isShotgun: 1
@@ -138,6 +138,10 @@ MonoBehaviour:
   hitMarker: {fileID: 4724461779606514509, guid: 3ee41655cbe230d4398da0ef5618e184, type: 3}
   maxHitMarkers: 8
   hitMarkerMinDistance: 0.1
+  gunshotClip: {fileID: 8300000, guid: f4157ecf729afe9498a92328a7205d1d, type: 3}
+  gunshotVolume: 1
+  hitConfirmClip: {fileID: 0}
+  hitConfirmVolume: 0.7
 --- !u!1 &6077211246191985300
 GameObject:
   m_ObjectHideFlags: 0
@@ -185,8 +189,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HitscanShooter
   damage: 50
   range: 100
-  gunshotClip: {fileID: 8300000, guid: 0330762d2b3c8d641bfe11ad89b7e196, type: 3}
-  gunshotVolume: 1
   isAutomatic: 0
   fireRate: 1
   isShotgun: 0
@@ -208,6 +210,10 @@ MonoBehaviour:
   hitMarker: {fileID: 4724461779606514509, guid: 3ee41655cbe230d4398da0ef5618e184, type: 3}
   maxHitMarkers: 8
   hitMarkerMinDistance: 0.1
+  gunshotClip: {fileID: 8300000, guid: 0330762d2b3c8d641bfe11ad89b7e196, type: 3}
+  gunshotVolume: 1
+  hitConfirmClip: {fileID: 0}
+  hitConfirmVolume: 0.7
 --- !u!114 &62676106364324506
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -313,6 +319,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 9143461172801206369, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1843711691557920817}
+    - targetCorrespondingSourceObject: {fileID: 9143461172801206369, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5588543317698294941}
   m_SourcePrefab: {fileID: 100100000, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
 --- !u!1 &3042165735055783275 stripped
 GameObject:
@@ -349,8 +358,38 @@ MonoBehaviour:
   - {fileID: 4710465112796332097}
   - {fileID: 4732219762754882448}
   - {fileID: 6077211246191985300}
+--- !u!114 &5588543317698294941
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3042165735055783275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 44d85ff6239fc26418d250d5c03f6889, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShotAudioBroadcaster
+  _componentIndexCache: 255
+  _addedNetworkObject: {fileID: 5827912071527940772}
+  _networkObjectCache: {fileID: 0}
+  minDistance: 6
+  maxDistance: 90
+  remoteVolume: 1
+  soundHeight: 1.5
 --- !u!4 &5702104005446641750 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2013700029042369884, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
   m_PrefabInstance: {fileID: 6112485168708652298}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &5827912071527940772 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 302602946835337134, guid: d81c6950b8a3d584aaaa626262f5a822, type: 3}
+  m_PrefabInstance: {fileID: 6112485168708652298}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3042165735055783275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26b716c41e9b56b4baafaf13a523ba2e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FishNet.Runtime::FishNet.Object.NetworkObject

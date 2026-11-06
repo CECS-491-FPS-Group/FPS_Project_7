@@ -75,6 +75,11 @@ public class WeaponHolster : MonoBehaviour
         UpdateAmmoDisplay();
     }
 
+    public int IndexOfWeapon(GameObject weapon)
+    {
+        return System.Array.IndexOf(weapons, weapon);
+    }
+
     public void EquipWeapon(int weaponIndex)
     {
         if (weaponIndex < 0 ||
