@@ -7,8 +7,11 @@ public class Health : MonoBehaviour
     public int currentHp;
     public AudioClip damageClip;
     [Range(0f, 1f)] public float damageVolume = 0.8f;
+    public AudioClip deathClip;
+    [Range(0f, 1f)] public float deathVolume = 1f;
 
     private static AudioClip generatedDamageClip;
+    private static AudioClip generatedDeathClip;
 
     [Header("Respawn")]
     public bool respawnOnDeath;
@@ -33,6 +36,16 @@ public class Health : MonoBehaviour
             damageClip = generatedDamageClip;
         }
 
+        if (deathClip == null)
+        {
+            if (generatedDeathClip == null)
+            {
+                generatedDeathClip = CreateDeathClip();
+            }
+
+            deathClip = generatedDeathClip;
+        }
+
         startingPosition = transform.position;
         startingRotation = transform.rotation;
     }
@@ -42,14 +55,49 @@ public class Health : MonoBehaviour
         if (isDead)
             return;
 
-        // Played at a point so the sound survives the object being destroyed on death.
-        AudioSource.PlayClipAtPoint(damageClip, transform.position, damageVolume * GameAudioSettings.SfxVolume);
-
         currentHp = Mathf.Max(0, currentHp - damage);
+
+        // Played at a point so the sound survives the object being destroyed on death.
+        // The killing blow plays the death sound instead of the regular damage sound.
+        if (currentHp <= 0)
+            AudioSource.PlayClipAtPoint(deathClip, transform.position, deathVolume * GameAudioSettings.SfxVolume);
+        else
+            AudioSource.PlayClipAtPoint(damageClip, transform.position, damageVolume * GameAudioSettings.SfxVolume);
+
         Debug.Log(gameObject.name + " took " + damage + " damage. HP left: " + currentHp);
 
         if (currentHp <= 0)
             Die();
+    }
+
+    private static AudioClip CreateDeathClip()
+    {
+        const int sampleRate = 44100;
+        const float duration = 0.8f;
+        int sampleCount = Mathf.CeilToInt(sampleRate * duration);
+        float[] samples = new float[sampleCount];
+        System.Random random = new System.Random(13);
+        float lowPass = 0f;
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float time = (float)i / sampleRate;
+            float noise = (float)(random.NextDouble() * 2.0 - 1.0);
+            lowPass += 0.15f * (noise - lowPass);
+
+            // Descending tone with a heavy impact at the start.
+            float fall = Mathf.Sin(2f * Mathf.PI * (330f * time - 220f * time * time)) * Mathf.Exp(-4f * time);
+            float impact = Mathf.Sin(2f * Mathf.PI * (90f * time - 60f * time * time)) * Mathf.Exp(-9f * time);
+            float crunch = lowPass * Mathf.Exp(-14f * time);
+            float attack = Mathf.Clamp01(time / 0.003f);
+            float release = Mathf.Clamp01((duration - time) / 0.1f);
+
+            samples[i] = attack * release * (0.45f * fall + 0.7f * impact + 0.8f * crunch);
+        }
+
+        AudioClip clip = AudioClip.Create("Death", sampleCount, 1, sampleRate, false);
+        clip.SetData(samples, 0);
+        return clip;
     }
 
     private static AudioClip CreateDamageClip()
