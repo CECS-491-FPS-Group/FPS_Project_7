@@ -91,7 +91,10 @@ public class HitscanShooter : MonoBehaviour
         currentAmmo = magazineSize;
         playerVision = GetComponentInParent<PlayerVision>();
 
-        if (cam == null)
+        // Legacy scenes have a single shooter with no WeaponHolster to hand it a camera.
+        // Players with a holster must not self-assign one, or leftover shooters on the
+        // prefab would fire alongside the equipped weapon.
+        if (cam == null && GetComponentInParent<WeaponHolster>() == null)
         {
             cam = GetComponentInChildren<Camera>();
             if (cam == null)
