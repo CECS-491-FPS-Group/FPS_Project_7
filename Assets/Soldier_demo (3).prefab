@@ -161,7 +161,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 8557096172224006917}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 599839e6f8c228c48821e3d5eb607031, type: 3}
+  m_Script: {fileID: 11500000, guid: d2eb5d0905acda64bb3c869fbbbc0702, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HitscanShooter
   damage: 40
