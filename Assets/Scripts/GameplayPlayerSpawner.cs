@@ -38,6 +38,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
     private readonly Dictionary<NetworkConnection, int> _terrainReady = new();
     private readonly HashSet<NetworkConnection> _spawnAttempted = new();
     private readonly Dictionary<NetworkConnection, float> _spawnRetryAt = new();
+    private readonly Dictionary<NetworkConnection, ServerGameplayValidation.RequestBudget> _combatRequests = new();
     private TerrainGenerator _terrain;
     private bool _reportedTerrainReady;
     private bool _returningToLobby;
@@ -314,6 +315,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
         _terrainReady.Clear();
         _spawnAttempted.Clear();
         _spawnRetryAt.Clear();
+        _combatRequests.Clear();
         _terrain = null;
         _reportedTerrainReady = false;
     }
@@ -327,6 +329,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             _terrainReady.Remove(connection);
             _spawnAttempted.Remove(connection);
             _spawnRetryAt.Remove(connection);
+            _combatRequests.Remove(connection);
         }
     }
 
@@ -338,5 +341,16 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             ClearGameplayState();
             _returningToLobby = false;
         }
+    }
+
+    internal bool TryConsumeCombatRequest(NetworkConnection connection, double serverRequestRate)
+    {
+        if (!_networkManager.IsServerStarted || connection == null || !connection.IsActive || !connection.IsAuthenticated) return false;
+        if (!_combatRequests.TryGetValue(connection, out var budget))
+        {
+            budget = new ServerGameplayValidation.RequestBudget(serverRequestRate, serverRequestRate);
+            _combatRequests.Add(connection, budget);
+        }
+        return budget.TryConsume(Time.realtimeSinceStartupAsDouble);
     }
 }

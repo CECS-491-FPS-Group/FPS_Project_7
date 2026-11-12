@@ -36,8 +36,12 @@ public class HitscanShooter : NetworkBehaviour
     private double _nextSwitchTime;
     private bool _scoped;
     private float _normalFov;
-    private double _requestWindow, _nextRejectLog;
-    private int _requestsThisWindow;
+    private double _nextRejectLog, _serverRequestRate;
+    private GameplayPlayerSpawner _requestGate;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    private int _developmentProbe;
+    private double _nextDevelopmentProbe;
+#endif
     public string WeaponName => Profile.label;
     private WeaponProfile Profile => weapons[Mathf.Clamp(_selectedWeapon.Value, 0, weapons.Length - 1)];
 
@@ -71,6 +75,12 @@ public class HitscanShooter : NetworkBehaviour
     {
         base.OnStartServer();
         _nextServerShotTime = 0d;
+        _nextRejectLog = 0d;
+        _requestGate = NetworkManager.GetComponent<GameplayPlayerSpawner>();
+        double fastest = 0d;
+        foreach (WeaponProfile weapon in weapons)
+            if (weapon != null && Finite(weapon.rate) && weapon.rate > fastest) fastest = weapon.rate;
+        _serverRequestRate = ServerGameplayValidation.CombatRequestRate(fastest);
         _ammo.Value = Mathf.Max(1, magazineSize);
         _reloading.Value = false;
         _reloadDeadline.Value = 0d;
@@ -95,7 +105,9 @@ public class HitscanShooter : NetworkBehaviour
     private void RequestWeapon(int index, NetworkConnection sender = null)
     {
         if (!IsServerInitialized || !IsSpawned || sender != Owner || sender == null ||
-            !sender.IsActive || !sender.IsAuthenticated || _health == null || !_health.CanAct ||
+            !sender.IsActive || !sender.IsAuthenticated) return;
+        if (!AdmitRequest(sender, "switch")) return;
+        if (_health == null || !_health.CanAct ||
             index < 0 || index >= weapons.Length || index == _selectedWeapon.Value || ServerTime < _nextSwitchTime) return;
         ReconcileServerWeapon();
         _magazines[_selectedWeapon.Value] = CurrentAmmo;
@@ -145,6 +157,7 @@ public class HitscanShooter : NetworkBehaviour
     {
         if (!IsServerInitialized || !IsSpawned || sender == null || sender != Owner ||
             !sender.IsActive || !sender.IsAuthenticated) return;
+        if (!AdmitRequest(sender, "reload")) return;
         ReconcileServerWeapon();
         if (_health == null || !_health.CanAct || IsReloading || CurrentAmmo >= magazineSize ||
             magazineSize < 1 || !Finite(reloadDuration) || reloadDuration <= 0f) return;
@@ -171,6 +184,9 @@ public class HitscanShooter : NetworkBehaviour
         }
         if (Keyboard.current != null)
         {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (Keyboard.current.f10Key.wasPressedThisFrame) DevelopmentRequestProbe();
+#endif
             if (Keyboard.current.digit1Key.wasPressedThisFrame) RequestWeapon(0);
             if (Keyboard.current.digit2Key.wasPressedThisFrame) RequestWeapon(1);
             if (Keyboard.current.digit3Key.wasPressedThisFrame) RequestWeapon(2);
@@ -202,9 +218,7 @@ public class HitscanShooter : NetworkBehaviour
             Reject("invalid ownership");
             return;
         }
-        // Lightweight abuse guard; never kicks legitimate clients or rolls back transforms.
-        if (ServerTime >= _requestWindow + 1d) { _requestWindow = ServerTime; _requestsThisWindow = 0; }
-        if (++_requestsThisWindow > 60) { Reject("request budget exceeded"); return; }
+        if (!AdmitRequest(sender, "shot")) return;
         Vector3 origin = transform.position;
         if (!Finite(origin.x) || !Finite(origin.y) || !Finite(origin.z)) { Reject("invalid server origin"); return; }
         ReconcileServerWeapon();
@@ -325,12 +339,49 @@ public class HitscanShooter : NetworkBehaviour
         if (_presentation != null) _presentation.ShowImpact(blood, point, normal);
     }
 
-    private void Reject(string reason)
+    private bool AdmitRequest(NetworkConnection sender, string action)
+    {
+        if (_requestGate != null && _requestGate.TryConsumeCombatRequest(sender, _serverRequestRate)) return true;
+        Reject(_requestGate == null ? "server request gate unavailable" : "request budget exceeded", action);
+        return false;
+    }
+
+    private void Reject(string reason, string action = "shot")
     {
         if (ServerTime < _nextRejectLog) return;
         _nextRejectLog = ServerTime + 1d;
-        Debug.Log($"[Combat] Rejected shot shooter={OwnerId}: {reason}.", this);
+        Debug.Log($"[Combat] Rejected {action} shooter={OwnerId}: {reason}.", this);
     }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    // Fixed local probes through the existing RPCs/broadcasts, with no privileged server API.
+    private void DevelopmentRequestProbe()
+    {
+        if (Time.unscaledTimeAsDouble < _nextDevelopmentProbe) return;
+        _nextDevelopmentProbe = Time.unscaledTimeAsDouble + 2d;
+        int phase = _developmentProbe++ % 3;
+        if (phase == 0)
+        {
+            Debug.Log($"[Request TEST] owner={OwnerId} F10 invalid NaN shot (no valid shot sent).");
+            RequestShot(new Vector3(float.NaN, 0f, 1f));
+        }
+        else if (phase == 1)
+        {
+            Debug.Log($"[Request TEST] owner={OwnerId} F10 128 invalid switches, then zero-direction shot.");
+            for (int i = 0; i < 128; i++) RequestWeapon(-1);
+            RequestShot(Vector3.zero);
+        }
+        else
+        {
+            Debug.Log($"[Request TEST] owner={OwnerId} F10 16 scoreboard and 16 balance queries.");
+            for (int i = 0; i < 16; i++)
+            {
+                ClientManager.Broadcast(new MatchScoreboard.SnapshotRequest());
+                ClientManager.Broadcast(new TrackPlayerCurrency.BalanceRequest());
+            }
+        }
+    }
+#endif
 
     private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
 }

@@ -1,5 +1,13 @@
 # Build-file integrity (schema 1, ReportOnly by default)
 
+2026-11-12 recheck: the existing 31 deterministic integrity checks pass. AC02 clean
+and test selected files still match the installed trusted AC02 manifest. No baseline
+was regenerated or modified. Directory/archive inspection found AC03 unused; the
+runtime-source changes require a new matching clean build/manifest for demonstration.
+Use WindowsAntiCheatBatch.md, rechecking unused numbers before building. Static
+protocol/enforcement policy is unchanged; AntiCheatAudit.md explicitly records the
+never-report, unavailable/configuration and malicious-client limitations.
+
 This checks three files from one developer-approved **finished Windows Mono build**.
 It defaults to reporting without disconnecting, gating authentication/lobby/gameplay,
 locking movement, or scanning periodically. Optional server-controlled enforcement

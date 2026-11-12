@@ -1,5 +1,11 @@
 # Movement observer (ReportOnly by default)
 
+2026-11-12 recheck: the existing 33 deterministic movement checks pass. Observer,
+thresholds, authoritative boost allowances, displacement policy and lifecycle grace
+are unchanged in the new request-admission batch. Vertical/fly and repeated-teleport
+observation remain deferred; see AntiCheatAudit.md for feasibility/limitations and
+WindowsAntiCheatBatch.md for outstanding legitimate boost/respawn runtime rows.
+
 Implemented on `feature/anti-cheat-complete`, starting from `63532e1`.
 This observes server-side replicated XZ movement. It never corrects positions,
 detects vertical movement, or performs file-integrity checks. Optional server

@@ -22,6 +22,7 @@ public sealed class MatchScoreboard : MonoBehaviour
     public struct SnapshotRequest : IBroadcast { }
 
     private readonly Dictionary<NetworkConnection, Row> _scores = new();
+    private readonly Dictionary<NetworkConnection, ServerGameplayValidation.RequestBudget> _requests = new();
     private NetworkManager _manager;
     private bool _listening;
     private bool _receivedSnapshot;
@@ -45,6 +46,7 @@ public sealed class MatchScoreboard : MonoBehaviour
         _manager.ServerManager.RegisterBroadcast<SnapshotRequest>(OnRequest);
         _manager.ServerManager.OnAuthenticationResult += OnAuthentication;
         _manager.ServerManager.OnRemoteConnectionState += OnConnectionState;
+        _manager.ServerManager.OnServerConnectionState += OnServerState;
         _listening = true;
         if (_manager.IsServerStarted)
         {
@@ -81,7 +83,14 @@ public sealed class MatchScoreboard : MonoBehaviour
 
     private void OnConnectionState(NetworkConnection connection, RemoteConnectionStateArgs args)
     {
-        if (args.ConnectionState == RemoteConnectionState.Stopped && _scores.Remove(connection)) Publish();
+        if (args.ConnectionState != RemoteConnectionState.Stopped) return;
+        _requests.Remove(connection);
+        if (_scores.Remove(connection)) Publish();
+    }
+
+    private void OnServerState(ServerConnectionStateArgs args)
+    {
+        if (args.ConnectionState == LocalConnectionState.Stopped) _requests.Clear();
     }
 
     // Called only from Health's first positive-to-zero server transition, never an RPC.
@@ -116,6 +125,17 @@ public sealed class MatchScoreboard : MonoBehaviour
     private void OnRequest(NetworkConnection sender, SnapshotRequest request, Channel channel)
     {
         if (!_manager.IsServerStarted || !sender.IsActive || !sender.IsAuthenticated) return;
+        if (!_requests.TryGetValue(sender, out var budget))
+        {
+            budget = new ServerGameplayValidation.RequestBudget(2d, 4d);
+            _requests.Add(sender, budget);
+        }
+        double now = Time.realtimeSinceStartupAsDouble;
+        if (!budget.TryConsume(now))
+        {
+            if (budget.PermitRejectionLog(now)) Debug.Log($"[Request Limit] owner={sender.ClientId} kind=scoreboard rejected; no snapshot built.");
+            return;
+        }
         _manager.ServerManager.Broadcast(sender, CreateSnapshot(), true, Channel.Reliable);
     }
 
@@ -144,8 +164,10 @@ public sealed class MatchScoreboard : MonoBehaviour
             _manager.ServerManager.UnregisterBroadcast<SnapshotRequest>(OnRequest);
             _manager.ServerManager.OnAuthenticationResult -= OnAuthentication;
             _manager.ServerManager.OnRemoteConnectionState -= OnConnectionState;
+            _manager.ServerManager.OnServerConnectionState -= OnServerState;
         }
         _scores.Clear();
+        _requests.Clear();
         if (Instance == this) Instance = null;
     }
 }

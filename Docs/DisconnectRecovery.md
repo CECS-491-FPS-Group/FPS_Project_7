@@ -1,5 +1,11 @@
 # Disconnect reason and local menu recovery
 
+2026-11-12 baseline recheck: recovery/message source is unchanged since `fe0f922`.
+The stale exact static/fallback strings in Tests/DisconnectNoticeChecks.cs were
+updated to the user's intended wording; all 18 notice checks now pass. Earlier
+failure notes below are historical. See AntiCheatAudit.md / WindowsAntiCheatBatch.md
+for the current bounded server-admission batch and pending new runtime work.
+
 ## Current user-tested status — 2026-10-27
 
 The user reports the instructed disconnect-recovery tests passed. User-reported

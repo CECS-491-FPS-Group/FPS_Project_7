@@ -99,7 +99,9 @@ public sealed class MatchBoosts : MonoBehaviour
                     if (health == null || !health.CanAct || obj.gameObject.scene.name != "RoundImplementation") continue;
                     for (int i = _pickups.Count - 1; i >= 0; i--)
                     {
-                        if ((obj.transform.position - _pickups[i].Position).sqrMagnitude > 6.25f) continue;
+                        Vector3 delta = obj.transform.position - _pickups[i].Position;
+                        // Positive finite eligibility: NaN must not make a greater-than rejection fail open.
+                        if (!ServerGameplayValidation.WithinPickupRange(delta.x, delta.y, delta.z, 2.5d)) continue;
                         Pickup p = _pickups[i];
                         _pickups.RemoveAt(i);
                         _effects[c] = new Effect { ClientId = c.ClientId, Type = p.Type, Expires = Now + duration };

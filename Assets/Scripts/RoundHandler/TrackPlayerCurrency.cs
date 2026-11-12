@@ -18,6 +18,7 @@ public class TrackPlayerCurrency : MonoBehaviour
     public struct BalanceSnapshot : IBroadcast { public int Balance; }
 
     private readonly Dictionary<NetworkConnection, int> _balances = new();
+    private readonly Dictionary<NetworkConnection, ServerGameplayValidation.RequestBudget> _requests = new();
     private readonly Dictionary<NetworkConnection, Action<NetworkObject>> _subscriptions = new();
     private NetworkManager _networkManager;
     private bool _listening;
@@ -92,6 +93,17 @@ public class TrackPlayerCurrency : MonoBehaviour
     private void OnBalanceRequest(NetworkConnection connection, BalanceRequest request, Channel channel)
     {
         if (!_networkManager.IsServerStarted || !connection.IsActive || !connection.IsAuthenticated) return;
+        if (!_requests.TryGetValue(connection, out var budget))
+        {
+            budget = new ServerGameplayValidation.RequestBudget(2d, 4d);
+            _requests.Add(connection, budget);
+        }
+        double now = Time.realtimeSinceStartupAsDouble;
+        if (!budget.TryConsume(now))
+        {
+            if (budget.PermitRejectionLog(now)) Debug.Log($"[Request Limit] owner={connection.ClientId} kind=balance rejected; no balance scan/reply.");
+            return;
+        }
         foreach (NetworkObject player in connection.Objects)
         {
             if (!IsGameplayPlayer(player)) continue;
@@ -151,6 +163,7 @@ public class TrackPlayerCurrency : MonoBehaviour
             _subscriptions.Remove(connection);
         }
         _balances.Remove(connection);
+        _requests.Remove(connection);
     }
 
     private void OnServerConnectionState(ServerConnectionStateArgs args)
@@ -164,6 +177,7 @@ public class TrackPlayerCurrency : MonoBehaviour
             subscription.Key.OnObjectAdded -= subscription.Value;
         _subscriptions.Clear();
         _balances.Clear();
+        _requests.Clear();
     }
 
     private void OnClientConnectionState(ClientConnectionStateArgs args)

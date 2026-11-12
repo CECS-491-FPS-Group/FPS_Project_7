@@ -1,5 +1,11 @@
 # Optional server enforcement
 
+2026-11-12: current source still defaults both modes to ReportOnly and exempts the
+local host. The resumed trust audit and server request/pickup fixes are documented in
+AntiCheatAudit.md. Rejected gameplay requests do not invoke punitive enforcement.
+Notice exact-text expectations are repaired (18 passing checks); earlier stale-test
+notes below are historical. New build/runtime batch: WindowsAntiCheatBatch.md.
+
 Both systems default to **ReportOnly**. Leave them there until their report-only
 runtime tests pass. The user subsequently supplied clean startup verification and
 ReportOnly tamper/recovery passes, plus successful static/dynamic server disconnects.

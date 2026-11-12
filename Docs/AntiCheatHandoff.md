@@ -1,6 +1,126 @@
 # Anti-cheat continuation handoff
 
-## End-of-day handoff — 2026-10-27 (current status)
+## AC03 checkpoint and branch inspection — 2026-11-12
+
+Starting branch `feature/anti-cheat-complete`, HEAD `e4d0e15`. The pending changes
+were the completed request-admission/pickup/notice-test batch below. No unrelated
+source or asset changes were present in git status. This task checkpoints that
+batch before inspecting branches; it adds no detectors or gameplay refactors.
+
+### New user-observed AC03 evidence
+
+Editor host + one Windows Development standalone, run from AC03-Clean without file
+tampering. The user reports normal movement/shooting worked, no disconnect occurred,
+and host Console showed:
+
+```text
+Rejected shot shooter=1: invalid aim direction
+Rejected switch shooter=1: request budget exceeded
+kind=scoreboard rejected; no snapshot built
+kind=balance rejected; no balance scan/reply
+```
+
+These establish the targeted F10 rejection paths and a basic normal-gameplay smoke
+result, as user-observed evidence. They do **not** establish startup Verified,
+complete boost/pickup/recovery behavior, second-clean-client isolation, exhaustive
+reload/switch/cadence behavior or latency/macOS coverage. Those remain pending.
+
+### Verified AC03 deployment setup
+
+Archive `Desktop/Builds/Manifests/approved-AC03.json`: schema 1, Windows/Mono,
+build `bac7c31cb0a74bb3bd60e50b1daad852`. All three selected files in AC03-Clean
+and AC03-Test matched that archive during inspection. AC03-Clean's generated
+`Project FPS 7_Data/integrity-client.json` matched the archive exactly.
+
+The default installed `<project>/IntegrityServer/approved.json` was still AC02,
+and no process/user/machine manifest override was found in the inspected environment.
+The old installed file was preserved under an ignored `approved.json.before-AC03-...`
+backup; the existing, clean-build-verified AC03 archive was then installed and its
+bytes verified. No baseline was generated and no selected build file was changed.
+
+AC03-Test was missing its client descriptor (the copy likely preceded generation;
+the exact cause is unproven). Its missing descriptor was populated from the existing
+verified AC03-Clean descriptor, with no overwrite. Clean, Test descriptor, archive
+and installed baseline now agree. Restart hosting to load the newly selected server
+manifest; launch/reconnect the desired client and explicitly record startup Verified.
+File inspection cannot establish what baseline a currently running host has cached.
+
+All 112 deterministic checks were rerun successfully before checkpointing. Earlier
+compiler/metadata checks remain recorded below; no new interactive Unity test was
+performed by the agent. The checkpoint excludes builds, tamper backups and ignored
+local manifest deployment/backup files. Push remains explicitly deferred.
+
+## Resumed weekend batch — 2026-11-12 (current status)
+
+Inspected branch `feature/anti-cheat-complete`, commit
+`e4d0e157bea4095350b08f4025530608c1d674f9`, clean starting worktree. Changes since
+`fe0f922` were documentation only, so the recovery checkpoint's source protections
+and the user's message edits were still current. See [AntiCheatAudit.md](AntiCheatAudit.md)
+for the method/file-referenced trust audit, classifications, limitations and ranking.
+
+### Baseline repair and implemented batch
+
+- Repaired the exact static/fallback expectations in Tests/DisconnectNoticeChecks.cs
+  to preserve the user's intended `You CHEATER!` wording. All 18 reason-selection,
+  fallback, dismissal/reconnect and lifecycle checks now pass. No UI message changed.
+- Added a small pure ServerGameplayValidation helper: elapsed token budgets and
+  finite positive pickup-distance eligibility. A new script `.meta` is included.
+- Shot/reload/switch requests now share a per-connection budget owned by the existing
+  GameplayPlayerSpawner, before reconciliation/physics. Rate/burst floor 60, increased
+  from the server's fastest configured weapon (`max(60, 2*rate+8)`), without changing
+  authoritative fire cadence, ammo, reload, switch deadlines or accepted damage.
+- Balance and scoreboard queries each admit 2/s with burst 4 before scans/snapshot
+  allocation/replies; logs cap at once/5s per connection/category. Disconnect, server
+  stop and scene lifecycle remove budgets. Ordinary server payouts/snapshots continue.
+- Fixed pickup eligibility's NaN fail-open comparison: non-finite/overflow distances
+  are ineligible; the existing 2.5m 3D radius, single consumption and server boost
+  state stay authoritative. No new movement detector or trust in client limits.
+- Invalid requests are rejected regardless of punitive modes, without treating them
+  as cheating or disconnecting. Both committed modes still default ReportOnly, with
+  local-host punitive exemption. No vendor/prefab/scene/authority changes.
+- Development-only F10 cycles existing-API probes: invalid NaN shot, invalid-index
+  switch burst, scoreboard/balance bursts. No privileged RPC was added. Fixtures,
+  expected logs and exactly what they prove are in WindowsAntiCheatBatch.md.
+
+### Checks actually run and limits
+
+18 notice + 31 integrity + 33 movement + 30 new gameplay-admission checks passed
+(112 total). Run `powershell -NoProfile -ExecutionPolicy Bypass -File Tests/RunAntiCheatChecks.ps1` from this checkout to
+repeat the pure suites using Unity's installed Roslyn/Mono. The local default script
+policy blocked the first runner launch; the process-only override above succeeded
+without changing persistent machine/user policy. Editor/development/release
+symbol compiler checks and Editor-tool compilation passed with existing warnings;
+F7/F8/F9/F10/probe method exclusion was checked in release metadata. These do not run
+Unity import, FishNet codegen, real RPCs, physics or interactive gameplay.
+
+All new batch runtime tests are pending. Historical AC02 static/dynamic enforcement,
+messages and local recovery remain **user-tested** evidence, not fresh agent passes.
+Unreported power-up/respawn/geometry, broader latency/race, release runtime and macOS
+coverage are still pending. Client hash reports can be falsified; hosted servers trust
+the host; smoothed owner positions are not authoritative physics/grounding evidence.
+
+### Current baseline and next runtime batch
+
+Read-only inspection reconfirmed AC02-Clean and AC02-Test's three files match installed
+AC02 approved hashes; archive names remain approved-AC01/AC02.json. No preserved build,
+backup, descriptor, manifest or server configuration was changed. Windows remains
+preferred. Directory/archive inspection found **AC03 unused**, but recheck before
+building in case another session creates it.
+
+Follow [WindowsAntiCheatBatch.md](WindowsAntiCheatBatch.md): rebuild all participants,
+generate from AC03-Clean's completed Mono development build, archive approved-AC03.json,
+install a separate trusted server copy while preserving the old deployment, and copy
+Clean to AC03-Test. No new wire schema/NetworkBehaviour ordering change is involved.
+Never regenerate from a tampered copy or assume independent rebuild hashes match.
+
+Next: run that one batch (normal weapons/reload/switch, F10 invalid/flood probes,
+recovery/isolation, Shield/Damage/Speed transitions, death/respawn/pickup race) and
+review evidence. Then consider ready/ping churn limits + server profile validation
+and static unavailable/error cases; geometry/latency validation precedes speculative
+vertical or repeated-teleport detectors. Keep uncertain future observations ReportOnly.
+Mac Touch Bar alternatives remain optional future work. No commit/push performed.
+
+## End-of-day handoff — 2026-10-27 (historical checkpoint)
 
 Windows is currently the preferred testing environment. Unity 6000.3.8f1, Windows
 Mono; branch `feature/anti-cheat-complete`, current code commit `fe0f922`. The source,
