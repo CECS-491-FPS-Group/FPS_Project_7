@@ -2,6 +2,35 @@
 
 ## AC03 checkpoint and branch inspection — 2026-11-12
 
+**Checkpoint committed: `91a420f`**, `Bound gameplay requests and checkpoint AC03 validation`.
+All 112 pure checks passed again; staged scope was inspected, and the worktree was
+clean afterward. Fetched origin without switching/merging/pushing. Detailed fetched
+tips, ancestry, source/asset comparisons and inclusion decisions are recorded in
+[BranchIntegrationAudit.md](BranchIntegrationAudit.md).
+
+**Recommendation B:** create a separate integration branch in a later authorized task,
+based on `91a420f` (or the documentation-only audit descendant), rather than replace
+the current branch with main/fullmerge. Existing combat/full-integration/round-control
+tips are already included. No fetched main/develop/integration tip contains the current
+AC03 protection plus all newer gameplay work. Fullmerge contains older main/Divyanshu/
+audio snapshots and a conflicting local Health/MatchManager flow.
+
+Proposed order: Soroush map/water/bridge/structures -> selected Audio_Management
+presentation/settings -> owner-scoped crawl-and-crouch input/crouch changes -> only
+agreed unique Divyanshu armor/invisibility/killstreak/ragdoll features. These require
+selective ports/conflict resolution preserving current server authority, GUIDs and
+active game-scene wiring, not blanket prototype replacement. Rejoin/host-migration,
+AI, projectile redesign, theater playback and PlayFab need separate scope/security
+decisions; historical prototype branches do not all need merging. No integration
+branch was created and no merge was performed here.
+
+Next: restart host with installed AC03, explicitly establish startup Verified, review
+the integration feature choices, and execute the separate integration/runtime gates
+before expanding detectors. Still pending: complete boosts/pickups/recovery,
+second-clean-client isolation, broader latency, release runtime and macOS coverage.
+AC03-Test now matches AC03-Clean's full 314-file inventory/hash comparison after only
+the missing generated descriptor was copied; previous deployment remains backed up.
+
 Starting branch `feature/anti-cheat-complete`, HEAD `e4d0e15`. The pending changes
 were the completed request-admission/pickup/notice-test batch below. No unrelated
 source or asset changes were present in git status. This task checkpoints that
