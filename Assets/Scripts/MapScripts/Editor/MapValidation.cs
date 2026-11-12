@@ -3,11 +3,7 @@ using System.Text;
 using UnityEditor;
 using UnityEngine;
 
-/// <summary>
-/// Checks the properties the generator has to hold: the layout is deterministic for a seed,
-/// carved roads actually come out flat in the chunk heightmaps, and terrain away from the
-/// layout is untouched.
-/// </summary>
+/// <summary>Checks the properties the generator has to hold: the layout is deterministic for a seed, carved roads actually come out flat in the chunk heightmaps, and terrain away from the layout is untouched.</summary>
 public static class MapValidation
 {
     const string MeshSettingsPath = "Assets/Terrain Assets/New Mesh Settings 1.asset";
@@ -41,11 +37,14 @@ public static class MapValidation
         report.AppendLine("seed            : " + seed);
 
         TerrainHeightField field = new TerrainHeightField(heightSettings, falloff, seed, meshSettings.meshScale);
-        WorldLayout layout = WorldLayout.Build(seed, worldRect, field, worldSettings.layoutSettings);
+        WorldLayout layout = WorldLayout.Build(seed, worldRect, field, worldSettings.layoutSettings, worldSettings.seaLevel);
 
         report.AppendLine("points of interest: " + layout.PointsOfInterest.Length);
         report.AppendLine("road segments     : " + layout.Roads.SegmentCount);
         report.AppendLine("building plots    : " + layout.Plots.Length);
+        report.AppendLine("bridge spans      : " + layout.Bridges.Length);
+
+        passed &= ValidateWater(report, layout, field, worldSettings);
 
         if (layout.PointsOfInterest.Length < 2)
         {
@@ -60,7 +59,7 @@ public static class MapValidation
         }
 
         // Determinism: the same seed must produce a bit-identical layout.
-        WorldLayout repeat = WorldLayout.Build(seed, worldRect, field, worldSettings.layoutSettings);
+        WorldLayout repeat = WorldLayout.Build(seed, worldRect, field, worldSettings.layoutSettings, worldSettings.seaLevel);
         bool identical = repeat.Roads.SegmentCount == layout.Roads.SegmentCount
             && repeat.Plots.Length == layout.Plots.Length
             && repeat.PointsOfInterest.Length == layout.PointsOfInterest.Length;
@@ -85,7 +84,7 @@ public static class MapValidation
         }
 
         // A different seed must produce a different layout, or the seed is not wired through.
-        WorldLayout other = WorldLayout.Build(seed + 1, worldRect, field, worldSettings.layoutSettings);
+        WorldLayout other = WorldLayout.Build(seed + 1, worldRect, field, worldSettings.layoutSettings, worldSettings.seaLevel);
         bool differs = other.Roads.Points.Length != layout.Roads.Points.Length;
         if (!differs)
         {
@@ -121,6 +120,70 @@ public static class MapValidation
         }
     }
 
+    /// <summary>Nothing that has to be dry may be in the water, and every bridge must actually be over water.</summary>
+    static bool ValidateWater(StringBuilder report, WorldLayout layout, TerrainHeightField field, WorldSettings worldSettings)
+    {
+        bool passed = true;
+        float shore = worldSettings.seaLevel + (worldSettings.layoutSettings != null ? worldSettings.layoutSettings.shoreClearance : 0f);
+
+        int wetPois = 0;
+        for (int i = 0; i < layout.PointsOfInterest.Length; i++)
+        {
+            if (field.Height(layout.PointsOfInterest[i]) < shore)
+            {
+                wetPois++;
+            }
+        }
+
+        int wetPlots = 0;
+        Vector2[] corners = new Vector2[4];
+        for (int i = 0; i < layout.Plots.Length; i++)
+        {
+            layout.Plots[i].GetCorners(corners);
+            for (int c = 0; c < corners.Length; c++)
+            {
+                if (field.Height(corners[c]) < shore)
+                {
+                    wetPlots++;
+                    break;
+                }
+            }
+        }
+
+        int badBridges = 0;
+        for (int i = 0; i < layout.Bridges.Length; i++)
+        {
+            BridgeSpan span = layout.Bridges[i];
+            Vector3 middle = layout.Roads.Points[(span.FirstPoint + span.LastPoint) / 2];
+            if (field.Height(new Vector2(middle.x, middle.z)) >= worldSettings.seaLevel || span.DeckHeight <= worldSettings.seaLevel)
+            {
+                badBridges++;
+            }
+        }
+
+        report.AppendLine("sea level         : " + worldSettings.seaLevel.ToString("F1") + " m (dry above " + shore.ToString("F1") + " m)");
+
+        if (wetPois > 0)
+        {
+            report.AppendLine("FAIL: " + wetPois + " point(s) of interest below shore clearance");
+            passed = false;
+        }
+
+        if (wetPlots > 0)
+        {
+            report.AppendLine("FAIL: " + wetPlots + " building plot(s) have a corner in the water");
+            passed = false;
+        }
+
+        if (badBridges > 0)
+        {
+            report.AppendLine("FAIL: " + badBridges + " bridge span(s) are not over water or have a deck at or below sea level");
+            passed = false;
+        }
+
+        return passed;
+    }
+
     static bool ValidateCarving(StringBuilder report, MeshSettings meshSettings, HeightMapSettings heightSettings,
         WorldSettings worldSettings, WorldLayout layout, int seed)
     {
@@ -139,6 +202,11 @@ public static class MapValidation
 
         for (int i = 0; i < roadPoints.Length; i += stride)
         {
+            if (layout.Roads.IsBridgePoint(i))
+            {
+                continue;
+            }
+
             Vector3 point = roadPoints[i];
             Vector2 worldXZ = new Vector2(point.x, point.z);
             Vector2 coord = new Vector2(
@@ -220,8 +288,6 @@ public static class MapValidation
             }
         }
 
-        // Surface mask: it drives the road paint, so it has to be present, in range,
-        // saturated on the centreline, and zero on open ground.
         int maskOutOfRange = 0;
         int maskMissing = 0;
         int maskCovered = 0;
@@ -284,6 +350,11 @@ public static class MapValidation
         float weakestCentreline = 1f;
         for (int i = 0; i < roadPoints.Length; i += stride)
         {
+            if (layout.Roads.IsBridgePoint(i))
+            {
+                continue;
+            }
+
             Vector3 point = roadPoints[i];
             Vector2 worldXZ = new Vector2(point.x, point.z);
             Vector2 coord = new Vector2(
@@ -304,6 +375,55 @@ public static class MapValidation
         }
 
         report.AppendLine("weakest centreline: " + weakestCentreline.ToString("F3") + " (1 = fully painted)");
+
+        int carvedUnderBridge = 0;
+        for (int b = 0; b < layout.Bridges.Length; b++)
+        {
+            BridgeSpan span = layout.Bridges[b];
+            for (int pointIndex = span.FirstPoint + 1; pointIndex < span.LastPoint; pointIndex++)
+            {
+                Vector3 point = roadPoints[pointIndex];
+                Vector2 worldXZ = new Vector2(point.x, point.z);
+                Vector2 coord = new Vector2(
+                    Mathf.Round(worldXZ.x / meshWorldSize),
+                    Mathf.Round(worldXZ.y / meshWorldSize));
+
+                if (coord.x < worldSettings.ChunkCoordMin || coord.x > worldSettings.ChunkCoordMax ||
+                    coord.y < worldSettings.ChunkCoordMin || coord.y > worldSettings.ChunkCoordMax)
+                {
+                    continue;
+                }
+
+                HeightMap carved;
+                if (!carvedChunks.TryGetValue(coord, out carved))
+                {
+                    HeightMapContext context = HeightMapContext.ForChunk(coord, meshSettings, worldSettings, seed, layout);
+                    carved = HeightMapGenerator.GenerateHeightMap(size, size, heightSettings, context);
+                    carvedChunks[coord] = carved;
+                }
+
+                if (carved.surfaceMask == null)
+                {
+                    continue;
+                }
+
+                HeightMapSampler sampler = new HeightMapSampler(carved.values, size, meshWorldSize, coord * meshWorldSize);
+                Vector2 index = sampler.WorldToIndex(worldXZ);
+                int ix = Mathf.Clamp(Mathf.RoundToInt(index.x), 0, size - 1);
+                int iy = Mathf.Clamp(Mathf.RoundToInt(index.y), 0, size - 1);
+                if (carved.surfaceMask[ix, iy] > 0f)
+                {
+                    carvedUnderBridge++;
+                }
+            }
+        }
+
+        report.AppendLine("carved under bridge: " + carvedUnderBridge + " vertices");
+        if (carvedUnderBridge > 0)
+        {
+            report.AppendLine("FAIL: terrain under a bridge deck was carved; the water beneath should be untouched");
+            passed = false;
+        }
 
         if (sampled > 0 && weakestCentreline < 0.9f)
         {

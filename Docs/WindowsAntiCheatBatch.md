@@ -1,5 +1,11 @@
 # Windows runtime batch: request admission and legitimate gameplay
 
+Current integration gate: [TerrainIntegrationStage.md](TerrainIntegrationStage.md)
+uses **AC04**, verified unused on 2026-11-12, for the Soroush terrain stage. AC03 below
+is the preserved historical request-admission build. Follow the current gate's build,
+matching manifest installation and metadata-before-Test-copy order; do not overwrite
+an earlier numbered pair. No new stage multiplayer pass is claimed.
+
 ## AC03 user-observed results and setup correction
 
 The user ran Editor host + one Windows Development standalone from AC03-Clean,

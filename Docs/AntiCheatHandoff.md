@@ -1,5 +1,59 @@
 # Anti-cheat continuation handoff
 
+## Current: first terrain integration stage — 2026-11-12
+
+Working branch **`integration/anti-cheat-merged-test`**, created from verified
+`9570966f11d59e8d5ddf19f58cd820d1e3089477` after confirming a clean checkpoint and
+`91a420f` ancestry. Recovery branch `feature/anti-cheat-complete` remains at `9570966`.
+Fetched origin; audited Soroush tip still **`3a52ecd03259820237fa62387c63a3a7679e13b4`**.
+Only its terrain/water/road/bridge/structure stage was selectively ported; no other
+branch was merged and nothing was pushed. See [TerrainIntegrationStage.md](TerrainIntegrationStage.md)
+for source attribution, exact scope, decisions, automated evidence and AC04 runtime steps.
+
+Active RoundImplementation now wires RoadMeshBuilder, WaterSurface, StructureSpawner
+and existing WorldBoundary on its Map Generator, using the existing Building_01 collider
+asset. Active bridges use grade-following procedural collider decks; imported sample
+straight bridge prefabs are retained but unselected. Water is visual, without swimming,
+forces or speed changes, so no anti-cheat allowance/threshold change was made. Spawn/
+respawn now selects dry integrated surfaces with slope/capsule clearance; pickups also
+avoid submerged/covered terrain. Clear/teardown removes companions and ignores disposed
+chunk worker callbacks. Existing server authority, FishNet owner movement, request
+limits, integrity/recovery protocol, **ReportOnly defaults and host exemption remain**.
+Player prefab inheritance, network component layout and 17 prefab registrations remain.
+
+Checks actually run: **112 pure checks passed**; current-source Editor/Development/
+Release compiler checks passed with existing warnings; full-project Unity6000.3.8f1
+batch import/compilation/IL postprocessing (FishNetILPP) completed. **65 native terrain/
+PhysX checks passed**, including the actual server placement method with obstruction
+and recovery, Full/ServerOnly parity, bridge collision and teardown. Pinned water-aware
+MapValidation passes (max land-road error .167m, no under-bridge carve, 1,849 unchanged
+outside-layout samples). The old land-only validator initially failed on intentional
+bridge gaps; Soroush's corresponding water-aware checks were ported, not weakened
+gameplay thresholds. Existing Cinemachine diagnostics and compiler warnings remain.
+
+No standalone build or interactive multiplayer stage test was performed. New map
+rendering, host/remote alignment/collision, spawn/respawn, combat obstruction, legitimate
+Speed/Jump, F10 recovery/isolation, return-to-lobby and local disconnect recovery are
+**pending**. Earlier AC03 normal shooting/movement/F10 logs and AC02 enforcement/recovery
+remain **user-observed historical evidence**, not passes for this integrated map.
+Broader latency, macOS, release runtime and unreported power-up regressions remain pending.
+
+Desktop/Builds + Manifests inspection: AC01–03 occupied, **AC04 unused** (recheck before
+building). All old builds/manifests/backups and installed AC03 server copy were left
+alone. Rebuild every participant from this branch; generate approved-AC04 from the
+finished Clean build, preserve/install the matching trusted server copy, then create
+Test **after** integrity-client.json generation. Default Editor baseline remains
+`<project>/IntegrityServer/approved.json`, unless server-process FPS_INTEGRITY_MANIFEST
+overrides it; restart hosting after selection. No baseline regeneration from Test.
+
+Next session: open this branch; review the local stage checkpoint/status; run the
+single AC04 gate in TerrainIntegrationStage.md with both modes ReportOnly and explicit
+remote startup Verified. Report map/boost/lifecycle results before another integration
+stage or detector expansion. Windows remains preferred; Mac Touch Bar development
+F-key alternatives remain optional future work. Client hash claims remain falsifiable
+and a player-hosted server assumes a trusted host. Historical sections below retain
+their checkpoint dates; their earlier “current/next build” labels are superseded here.
+
 ## AC03 checkpoint and branch inspection — 2026-11-12
 
 **Checkpoint committed: `91a420f`**, `Bound gameplay requests and checkpoint AC03 validation`.

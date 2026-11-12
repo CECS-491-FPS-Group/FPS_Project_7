@@ -1,30 +1,50 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Global structure derived from the world seed: points of interest, the road network
-/// connecting them, and the building pads beside those roads.
-///
-/// This layer must exist before any chunk heightmap is finalised, because a road flattens
-/// the terrain it crosses. It is built once on the main thread and then read concurrently
-/// by chunk workers through <see cref="LayoutCarver"/>.
-/// </summary>
+/// <summary>One contiguous stretch of road over water.</summary>
+public struct BridgeSpan
+{
+    public int Road;
+    public int FirstPoint;
+    public int LastPoint;
+    public Vector3 Start;
+    public Vector3 End;
+    public float DeckHeight;
+
+    public float Length
+    {
+        get { return Vector3.Distance(new Vector3(Start.x, 0f, Start.z), new Vector3(End.x, 0f, End.z)); }
+    }
+}
+
+/// <summary>Global structure derived from the world seed: points of interest, the road network connecting them, and the building pads beside those roads.</summary>
 public sealed class WorldLayout
 {
     public readonly Vector2[] PointsOfInterest;
     public readonly RoadNetwork Roads;
     public readonly BuildingPlot[] Plots;
+    public readonly BridgeSpan[] Bridges;
     public readonly Rect WorldBounds;
+    public readonly float SeaLevel;
 
     readonly SpatialGrid plotGrid;
     readonly float maxPlotInfluence;
 
-    WorldLayout(Vector2[] pois, RoadNetwork roads, BuildingPlot[] plots, Rect worldBounds)
+    const int GradeClampIterations = 4;
+
+    // Each pass relaxes the terrain filters.
+    static readonly float[] SlopeRelaxation = { 1f, 1.75f, 3f, 1000f };
+    static readonly float[] SpacingRelaxation = { 1f, 0.85f, 0.65f, 0.45f };
+    static readonly float[] HeightRelaxation = { 1f, 0.5f, 0.25f, 0f };
+
+    WorldLayout(Vector2[] pois, RoadNetwork roads, BuildingPlot[] plots, BridgeSpan[] bridges, Rect worldBounds, float seaLevel)
     {
         PointsOfInterest = pois;
         Roads = roads;
         Plots = plots;
+        Bridges = bridges;
         WorldBounds = worldBounds;
+        SeaLevel = seaLevel;
 
         float influence = 0f;
         for (int i = 0; i < plots.Length; i++)
@@ -51,26 +71,21 @@ public sealed class WorldLayout
         get { return plotGrid; }
     }
 
-    public static WorldLayout Build(int seed, Rect worldBounds, TerrainHeightField field, LayoutSettings settings)
+    public static WorldLayout Build(int seed, Rect worldBounds, TerrainHeightField field, LayoutSettings settings, float seaLevel)
     {
         DeterministicRandom rng = new DeterministicRandom(DeterministicRandom.Hash((uint)seed, 0x4C41594Fu, 0u, 0u));
+        float shoreHeight = seaLevel + settings.shoreClearance;
 
-        Vector2[] pois = PlacePointsOfInterest(ref rng, worldBounds, field, settings);
-        RoadNetwork roads = BuildRoads(ref rng, pois, worldBounds, field, settings);
-        BuildingPlot[] plots = PlacePlots(ref rng, pois, roads, field, settings);
+        Vector2[] pois = PlacePointsOfInterest(ref rng, worldBounds, field, settings, shoreHeight);
+        RoadNetwork roads = BuildRoads(ref rng, pois, worldBounds, field, settings, seaLevel);
+        BuildingPlot[] plots = PlacePlots(ref rng, pois, roads, field, settings, shoreHeight);
+        BridgeSpan[] bridges = CollectBridges(roads);
 
-        return new WorldLayout(pois, roads, plots, worldBounds);
+        return new WorldLayout(pois, roads, plots, bridges, worldBounds, seaLevel);
     }
 
-    const int GradeClampIterations = 4;
-
-    // Each pass relaxes the terrain filters. A sparse map is recoverable; an empty one is not,
-    // so the final pass accepts anything rather than returning a layout with no roads.
-    static readonly float[] SlopeRelaxation = { 1f, 1.75f, 3f, 1000f };
-    static readonly float[] SpacingRelaxation = { 1f, 0.85f, 0.65f, 0.45f };
-    static readonly float[] HeightRelaxation = { 1f, 0.5f, 0.25f, 0f };
-
-    static Vector2[] PlacePointsOfInterest(ref DeterministicRandom rng, Rect worldBounds, TerrainHeightField field, LayoutSettings settings)
+    static Vector2[] PlacePointsOfInterest(ref DeterministicRandom rng, Rect worldBounds, TerrainHeightField field,
+        LayoutSettings settings, float shoreHeight)
     {
         Rect inner = Rect.MinMaxRect(
             worldBounds.xMin + settings.edgeInset,
@@ -90,7 +105,7 @@ public sealed class WorldLayout
         for (int pass = 0; pass < SlopeRelaxation.Length && accepted.Count < settings.poiCount; pass++)
         {
             float slopeLimit = Mathf.Min(89f, settings.maxPoiSlopeDegrees * SlopeRelaxation[pass]);
-            float minHeight = settings.minPoiHeight * HeightRelaxation[pass];
+            float minHeight = Mathf.Max(settings.minPoiHeight * HeightRelaxation[pass], shoreHeight);
             float spacing = settings.minPoiSpacing * SpacingRelaxation[pass];
             float spacingSqr = spacing * spacing;
 
@@ -132,18 +147,22 @@ public sealed class WorldLayout
         if (accepted.Count < settings.poiCount)
         {
             Debug.LogWarning(string.Format(
-                "[WorldLayout] Placed {0} of {1} points of interest. Lower minPoiSpacing or edgeInset, or raise maxPoiSlopeDegrees, if the road network looks sparse.",
+                "[WorldLayout] Placed {0} of {1} points of interest. Lower minPoiSpacing or edgeInset, raise maxPoiSlopeDegrees, or lower seaLevel if the road network looks sparse.",
                 accepted.Count, settings.poiCount));
         }
 
         return accepted.ToArray();
     }
 
-    static RoadNetwork BuildRoads(ref DeterministicRandom rng, Vector2[] pois, Rect worldBounds, TerrainHeightField field, LayoutSettings settings)
+    static RoadNetwork BuildRoads(ref DeterministicRandom rng, Vector2[] pois, Rect worldBounds, TerrainHeightField field,
+        LayoutSettings settings, float seaLevel)
     {
         List<Vector3> points = new List<Vector3>();
+        List<bool> bridgePoints = new List<bool>();
         List<int> segmentA = new List<int>();
         List<int> segmentB = new List<int>();
+        List<int> roadFirstPoint = new List<int>();
+        List<int> roadPointCount = new List<int>();
 
         if (pois.Length >= 2)
         {
@@ -153,12 +172,13 @@ public sealed class WorldLayout
 
             for (int e = 0; e < edgeFrom.Count; e++)
             {
-                AppendRoad(ref rng, pois[edgeFrom[e]], pois[edgeTo[e]], field, settings, points, segmentA, segmentB);
+                AppendRoad(ref rng, pois[edgeFrom[e]], pois[edgeTo[e]], field, settings, seaLevel,
+                    points, bridgePoints, segmentA, segmentB, roadFirstPoint, roadPointCount);
             }
         }
 
-        return new RoadNetwork(points.ToArray(), segmentA.ToArray(), segmentB.ToArray(),
-            worldBounds, settings.roadHalfWidth, settings.roadShoulder);
+        return new RoadNetwork(points.ToArray(), bridgePoints.ToArray(), segmentA.ToArray(), segmentB.ToArray(),
+            roadFirstPoint.ToArray(), roadPointCount.ToArray(), worldBounds, settings.roadHalfWidth, settings.roadShoulder);
     }
 
     /// <summary>Minimum spanning tree over the points of interest, plus the shortest unused links.</summary>
@@ -269,7 +289,8 @@ public sealed class WorldLayout
     }
 
     static void AppendRoad(ref DeterministicRandom rng, Vector2 from, Vector2 to, TerrainHeightField field,
-        LayoutSettings settings, List<Vector3> points, List<int> segmentA, List<int> segmentB)
+        LayoutSettings settings, float seaLevel, List<Vector3> points, List<bool> bridgePoints,
+        List<int> segmentA, List<int> segmentB, List<int> roadFirstPoint, List<int> roadPointCount)
     {
         Vector2 direction = to - from;
         float length = direction.magnitude;
@@ -292,21 +313,37 @@ public sealed class WorldLayout
 
         Vector2[] centreline = new Vector2[sampleCount];
         float[] heights = new float[sampleCount];
+        bool[] bridge = new bool[sampleCount];
+        bool[] pinned = new bool[sampleCount];
+        float deckHeight = seaLevel + settings.bridgeDeckClearance;
 
         for (int i = 0; i < sampleCount; i++)
         {
             float t = i / (float)(sampleCount - 1);
             centreline[i] = CatmullRom(control, t);
             heights[i] = field.Height(centreline[i]);
+
+            // Over water the road becomes a flat deck at a fixed height instead of following the lake bed down.
+            bridge[i] = heights[i] < seaLevel;
+            if (bridge[i])
+            {
+                heights[i] = deckHeight;
+            }
+
+            pinned[i] = bridge[i] || i == 0 || i == sampleCount - 1;
         }
 
-        SmoothGrade(heights, settings.gradeSmoothingPasses);
-        ClampGrade(centreline, heights, settings.maxRoadGradeDegrees);
+        SmoothGrade(heights, pinned, settings.gradeSmoothingPasses);
+        ClampGrade(centreline, heights, pinned, settings.maxRoadGradeDegrees);
 
         int baseIndex = points.Count;
+        roadFirstPoint.Add(baseIndex);
+        roadPointCount.Add(sampleCount);
+
         for (int i = 0; i < sampleCount; i++)
         {
             points.Add(new Vector3(centreline[i].x, heights[i], centreline[i].y));
+            bridgePoints.Add(bridge[i]);
         }
 
         for (int i = 0; i < sampleCount - 1; i++)
@@ -316,11 +353,8 @@ public sealed class WorldLayout
         }
     }
 
-    /// <summary>
-    /// Box filter with pinned ends. Endpoints stay at the natural terrain height so roads
-    /// meeting at a point of interest agree, and junctions do not step.
-    /// </summary>
-    static void SmoothGrade(float[] heights, int passes)
+    /// <summary>Box filter that leaves pinned points alone.</summary>
+    static void SmoothGrade(float[] heights, bool[] pinned, int passes)
     {
         if (heights.Length < 3 || passes <= 0)
         {
@@ -331,24 +365,24 @@ public sealed class WorldLayout
 
         for (int pass = 0; pass < passes; pass++)
         {
-            scratch[0] = heights[0];
-            scratch[heights.Length - 1] = heights[heights.Length - 1];
-
-            for (int i = 1; i < heights.Length - 1; i++)
+            for (int i = 0; i < heights.Length; i++)
             {
-                scratch[i] = (heights[i - 1] + heights[i] + heights[i + 1]) / 3f;
+                if (pinned[i] || i == 0 || i == heights.Length - 1)
+                {
+                    scratch[i] = heights[i];
+                }
+                else
+                {
+                    scratch[i] = (heights[i - 1] + heights[i] + heights[i + 1]) / 3f;
+                }
             }
 
             System.Array.Copy(scratch, heights, heights.Length);
         }
     }
 
-    /// <summary>
-    /// Enforces a hard steepness ceiling. Alternating forward and backward sweeps converge on a
-    /// profile within the limit while leaving the endpoints pinned, so junctions still line up.
-    /// A box filter cannot do this: it lowers the average grade but leaves the worst spike.
-    /// </summary>
-    static void ClampGrade(Vector2[] centreline, float[] heights, float maxGradeDegrees)
+    /// <summary>Enforces a hard steepness ceiling.</summary>
+    static void ClampGrade(Vector2[] centreline, float[] heights, bool[] pinned, float maxGradeDegrees)
     {
         if (heights.Length < 3 || maxGradeDegrees >= 89f)
         {
@@ -361,12 +395,22 @@ public sealed class WorldLayout
         {
             for (int i = 1; i < heights.Length - 1; i++)
             {
+                if (pinned[i])
+                {
+                    continue;
+                }
+
                 float limit = Vector2.Distance(centreline[i - 1], centreline[i]) * tangent;
                 heights[i] = Mathf.Clamp(heights[i], heights[i - 1] - limit, heights[i - 1] + limit);
             }
 
             for (int i = heights.Length - 2; i >= 1; i--)
             {
+                if (pinned[i])
+                {
+                    continue;
+                }
+
                 float limit = Vector2.Distance(centreline[i], centreline[i + 1]) * tangent;
                 heights[i] = Mathf.Clamp(heights[i], heights[i + 1] - limit, heights[i + 1] + limit);
             }
@@ -394,8 +438,56 @@ public sealed class WorldLayout
             (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
     }
 
+    /// <summary>Groups consecutive bridge points on each road into spans that run dry land to dry land.</summary>
+    static BridgeSpan[] CollectBridges(RoadNetwork roads)
+    {
+        List<BridgeSpan> spans = new List<BridgeSpan>();
+        Vector3[] points = roads.Points;
+
+        for (int road = 0; road < roads.RoadCount; road++)
+        {
+            int first;
+            int count;
+            roads.GetRoad(road, out first, out count);
+            int last = first + count - 1;
+
+            int i = first;
+            while (i <= last)
+            {
+                if (!roads.IsBridgePoint(i))
+                {
+                    i++;
+                    continue;
+                }
+
+                int runStart = i;
+                while (i + 1 <= last && roads.IsBridgePoint(i + 1))
+                {
+                    i++;
+                }
+                int runEnd = i;
+                i++;
+
+                int startIndex = Mathf.Max(first, runStart - 1);
+                int endIndex = Mathf.Min(last, runEnd + 1);
+
+                spans.Add(new BridgeSpan
+                {
+                    Road = road,
+                    FirstPoint = runStart,
+                    LastPoint = runEnd,
+                    Start = points[startIndex],
+                    End = points[endIndex],
+                    DeckHeight = points[runStart].y
+                });
+            }
+        }
+
+        return spans.ToArray();
+    }
+
     static BuildingPlot[] PlacePlots(ref DeterministicRandom rng, Vector2[] pois, RoadNetwork roads,
-        TerrainHeightField field, LayoutSettings settings)
+        TerrainHeightField field, LayoutSettings settings, float shoreHeight)
     {
         List<BuildingPlot> plots = new List<BuildingPlot>();
 
@@ -405,6 +497,7 @@ public sealed class WorldLayout
         }
 
         List<int> roadBuffer = new List<int>(32);
+        Vector2[] corners = new Vector2[4];
         float searchRadius = settings.plotMaxRoadDistance + roads.MaxInfluence + settings.plotSizeRange.y;
         float slopeStep = Mathf.Max(1f, settings.plotShoulder);
 
@@ -428,8 +521,30 @@ public sealed class WorldLayout
                     Height = field.Height(centre)
                 };
 
+                if (plot.Height < shoreHeight)
+                {
+                    continue;
+                }
+
+                // A pad is only dry if its whole footprint is; the centre alone can sit on a spit.
+                plot.GetCorners(corners);
+                bool wet = false;
+                for (int c = 0; c < corners.Length; c++)
+                {
+                    if (field.Height(corners[c]) < shoreHeight)
+                    {
+                        wet = true;
+                        break;
+                    }
+                }
+
+                if (wet)
+                {
+                    continue;
+                }
+
                 RoadSample road = roads.Sample(centre, searchRadius, roadBuffer);
-                if (!road.Hit)
+                if (!road.Hit || road.Bridge)
                 {
                     continue;
                 }

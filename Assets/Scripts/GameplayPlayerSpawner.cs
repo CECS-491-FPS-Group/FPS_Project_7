@@ -253,19 +253,18 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
                 }
             }
 
-            if (!separated || !_terrain.IsColliderReadyAt(candidate) ||
-                !_terrain.TrySampleHeight(candidate, out float height) ||
-                !_terrain.TryGetChunkAt(candidate, out TerrainChunk chunk)) continue;
-
-            // Target this generated chunk directly, never another player's collider.
-            MeshCollider collider = chunk.GameObject.GetComponent<MeshCollider>();
-            if (collider == null) continue;
-            Bounds bounds = collider.bounds;
-            Vector3 origin = new Vector3(candidate.x, Mathf.Max(height, bounds.max.y) + 1f, candidate.z);
-            if (!collider.Raycast(new Ray(origin, Vector3.down), out RaycastHit hit,
-                origin.y - bounds.min.y + 1f)) continue;
+            if (!separated || !_terrain.TryGetDrySurface(candidate, out RaycastHit hit) ||
+                hit.normal.y < Mathf.Cos(controller.slopeLimit * Mathf.Deg2Rad)) continue;
 
             position = new Vector3(candidate.x, hit.point.y + feetOffset + 0.05f, candidate.z);
+            float radius = Mathf.Max(0.01f, controller.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z)) - 0.01f);
+            Vector3 centre3D = position + Vector3.Scale(controller.center, scale);
+            Collider[] overlaps = Physics.OverlapCapsule(centre3D + Vector3.up * (halfHeight - radius),
+                centre3D - Vector3.up * (halfHeight - radius), radius, ~0, QueryTriggerInteraction.Ignore);
+            bool blocked = false;
+            foreach (Collider overlap in overlaps)
+                if (excludedPlayer == null || !overlap.transform.IsChildOf(excludedPlayer.transform)) { blocked = true; break; }
+            if (blocked) continue;
             return true;
         }
 

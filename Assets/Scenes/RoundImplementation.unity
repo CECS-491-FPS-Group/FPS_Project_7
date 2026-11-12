@@ -693,6 +693,10 @@ GameObject:
   m_Component:
   - component: {fileID: 1008436975}
   - component: {fileID: 1008436976}
+  - component: {fileID: 1008436977}
+  - component: {fileID: 1008436978}
+  - component: {fileID: 1008436979}
+  - component: {fileID: 1008436980}
   m_Layer: 0
   m_Name: Map Generator
   m_TagString: Untagged
@@ -742,6 +746,74 @@ MonoBehaviour:
   mapMaterial: {fileID: 2100000, guid: b0872f84cf3c7441d893168677410c73, type: 2}
   buildProfile: 0
   generateOnStart: 1
+--- !u!114 &1008436977
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1008436972}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cd9a0371358346359789e23c42fc863d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  terrainGenerator: {fileID: 1008436976}
+  roadMaterial: {fileID: 2100000, guid: c12f34d9136b41439c9cf8c604451546, type: 2}
+  bridgeMaterial: {fileID: 2100000, guid: 5859f324163a1ef42ba9a80b0ec02eab, type: 2}
+  rebuildOnLayout: 1
+  buildBridgeDecks: 1
+--- !u!114 &1008436978
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1008436972}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1cfc8ac57de246b588242b3f50b9ff06, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  terrainGenerator: {fileID: 1008436976}
+  waterMaterial: {fileID: 2100000, guid: e159ef1eb117434b93bc689d6468b2b1, type: 2}
+  margin: 400
+  textureLength: 20
+  rebuildOnLayout: 1
+--- !u!114 &1008436979
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1008436972}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 64237b03b79c45d7a686c49e511297e8, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  terrainGenerator: {fileID: 1008436976}
+  rebuildOnLayout: 1
+--- !u!114 &1008436980
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1008436972}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba3350d60ae64692871315ccfd34c3ed, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  terrainGenerator: {fileID: 1008436976}
+  wallHeight: 200
+  wallDepth: 100
+  wallThickness: 10
+  inset: 0
+  boundaryLayer: 1
+  rebuildOnGenerationComplete: 1
+  drawGizmos: 1
 --- !u!1 &1036289789
 GameObject:
   m_ObjectHideFlags: 0

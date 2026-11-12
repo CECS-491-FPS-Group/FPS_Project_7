@@ -1,5 +1,12 @@
 # Gameplay branch inspection — 2026-11-12
 
+Implementation follow-up: the authorized first Soroush stage is now selectively
+ported on **integration/anti-cheat-merged-test**, based on audit descendant `9570966`.
+Fetched tip still matched pinned `3a52ecd`; recovery branch is unchanged. See
+[TerrainIntegrationStage.md](TerrainIntegrationStage.md) for included/excluded work,
+actual Unity checks and the pending AC04 runtime gate. The no-branch/no-merge statements
+below describe the earlier audit task. Later stages remain separately scoped.
+
 ## Scope and checkpoint
 
 Source checkpoint: **`91a420f`**, `Bound gameplay requests and checkpoint AC03 validation`,

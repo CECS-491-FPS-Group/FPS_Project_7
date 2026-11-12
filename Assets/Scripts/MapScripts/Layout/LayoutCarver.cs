@@ -1,10 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Applies the layout to terrain heights. One instance per chunk worker: the layout itself is
-/// shared and read-only, but the query buffers are not, so they live here.
-/// </summary>
+/// <summary>Applies the layout to terrain heights.</summary>
 public sealed class LayoutCarver
 {
     readonly WorldLayout layout;
@@ -16,11 +13,7 @@ public sealed class LayoutCarver
         this.layout = layout;
     }
 
-    /// <summary>
-    /// Blends natural terrain toward road and pad heights.
-    /// <paramref name="surfaceMask"/> is 1 on a fully carved surface and 0 on untouched terrain;
-    /// the texture layer uses it to paint roads.
-    /// </summary>
+    /// <summary>Blends natural terrain toward road and pad heights.</summary>
     public float Apply(Vector2 worldXZ, float height, out float surfaceMask)
     {
         surfaceMask = 0f;
@@ -57,7 +50,7 @@ public sealed class LayoutCarver
         {
             RoadSample road = roads.Sample(worldXZ, 0f, roadBuffer);
 
-            if (road.Hit && road.Distance < roads.MaxInfluence)
+            if (road.Hit && !road.Bridge && road.Distance < roads.MaxInfluence)
             {
                 float blend = SmoothStep(roads.HalfWidth, roads.MaxInfluence, road.Distance);
                 height = Mathf.Lerp(road.Height, height, blend);

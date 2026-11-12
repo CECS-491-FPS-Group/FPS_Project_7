@@ -52,6 +52,7 @@ public class WorldBoundary : MonoBehaviour
         if (terrainGenerator != null && rebuildOnGenerationComplete)
         {
             terrainGenerator.OnWorldGenerationComplete += Build;
+            terrainGenerator.OnWorldCleared += Clear;
         }
     }
 
@@ -60,7 +61,9 @@ public class WorldBoundary : MonoBehaviour
         if (terrainGenerator != null)
         {
             terrainGenerator.OnWorldGenerationComplete -= Build;
+            terrainGenerator.OnWorldCleared -= Clear;
         }
+        Clear();
     }
 
     void Start()
@@ -135,6 +138,7 @@ public class WorldBoundary : MonoBehaviour
 
         if (Application.isPlaying)
         {
+            container.gameObject.SetActive(false);
             Destroy(container.gameObject);
         }
         else

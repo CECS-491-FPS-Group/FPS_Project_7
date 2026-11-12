@@ -29,6 +29,7 @@ public class TerrainChunk
     readonly TerrainChunkConfig config;
     readonly LODInfo[] detailLevels;
     readonly LODMesh[] lodMeshes;
+    bool disposed;
     readonly int colliderLODIndex;
     readonly GameObject meshObject;
     readonly MeshFilter meshFilter;
@@ -111,6 +112,7 @@ public class TerrainChunk
 
     void OnHeightMapReceived(object heightMapObject)
     {
+        if (disposed || meshObject == null) return;
         heightMap = (HeightMap)heightMapObject;
         heightMapReceived = true;
 
@@ -135,6 +137,7 @@ public class TerrainChunk
 
     void OnMeshReady(int lodIndex)
     {
+        if (disposed || meshObject == null) return;
         if (lodIndex == colliderLODIndex && !hasCollider)
         {
             meshCollider.sharedMesh = lodMeshes[lodIndex].mesh;
@@ -226,15 +229,20 @@ public class TerrainChunk
 
     public void Destroy()
     {
+        disposed = true;
+        onReady = null;
+        foreach (LODMesh mesh in lodMeshes) mesh.Dispose();
         if (meshObject != null)
         {
-            Object.Destroy(meshObject);
+            if (Application.isPlaying) { meshObject.SetActive(false); Object.Destroy(meshObject); }
+            else Object.DestroyImmediate(meshObject);
         }
     }
 }
 
 class LODMesh
 {
+    bool disposed;
     public Mesh mesh;
     public bool hasRequestedMesh;
     public bool hasMesh;
@@ -257,9 +265,18 @@ class LODMesh
             () => MeshGenerator.GenerateTerrainMesh(values, mask, meshSettings, level),
             meshDataObject =>
             {
+                if (disposed) return;
                 mesh = ((MeshData)meshDataObject).CreateMesh();
                 hasMesh = true;
                 onReceived();
             });
+    }
+
+    public void Dispose()
+    {
+        disposed = true;
+        if (mesh == null) return;
+        if (Application.isPlaying) Object.Destroy(mesh); else Object.DestroyImmediate(mesh);
+        mesh = null;
     }
 }

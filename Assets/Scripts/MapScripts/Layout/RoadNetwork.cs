@@ -6,24 +6,27 @@ public struct RoadSample
     public float Distance;
     public float Height;
     public bool Hit;
+    /// <summary>Nearest segment spans water, so the terrain beneath it is left untouched.</summary>
+    public bool Bridge;
 }
 
-/// <summary>
-/// Road centrelines as graded polylines, with a spatial index for nearest-segment queries.
-/// Points carry their own height so a road can be flat across terrain the noise made bumpy.
-/// </summary>
+/// <summary>Road centrelines as graded polylines, with a spatial index for nearest-segment queries.</summary>
 public sealed class RoadNetwork
 {
     // x/z are world position, y is the graded road height at that point.
     readonly Vector3[] points;
+    readonly bool[] bridgePoints;
     readonly int[] segmentA;
     readonly int[] segmentB;
+    readonly int[] roadFirstPoint;
+    readonly int[] roadPointCount;
     readonly SpatialGrid grid;
 
     public readonly float HalfWidth;
     public readonly float Shoulder;
 
     public int SegmentCount { get { return segmentA.Length; } }
+    public int RoadCount { get { return roadFirstPoint.Length; } }
     public Vector3[] Points { get { return points; } }
 
     public float MaxInfluence
@@ -31,11 +34,15 @@ public sealed class RoadNetwork
         get { return HalfWidth + Shoulder; }
     }
 
-    public RoadNetwork(Vector3[] points, int[] segmentA, int[] segmentB, Rect worldBounds, float halfWidth, float shoulder)
+    public RoadNetwork(Vector3[] points, bool[] bridgePoints, int[] segmentA, int[] segmentB,
+        int[] roadFirstPoint, int[] roadPointCount, Rect worldBounds, float halfWidth, float shoulder)
     {
         this.points = points;
+        this.bridgePoints = bridgePoints;
         this.segmentA = segmentA;
         this.segmentB = segmentB;
+        this.roadFirstPoint = roadFirstPoint;
+        this.roadPointCount = roadPointCount;
         HalfWidth = halfWidth;
         Shoulder = shoulder;
 
@@ -47,6 +54,24 @@ public sealed class RoadNetwork
     {
         a = points[segmentA[index]];
         b = points[segmentB[index]];
+    }
+
+    /// <summary>Point range of one road.</summary>
+    public void GetRoad(int road, out int firstPoint, out int pointCount)
+    {
+        firstPoint = roadFirstPoint[road];
+        pointCount = roadPointCount[road];
+    }
+
+    public bool IsBridgePoint(int pointIndex)
+    {
+        return bridgePoints[pointIndex];
+    }
+
+    /// <summary>A segment is a bridge only when both ends are over water; a segment with one land end is the approach ramp.</summary>
+    public bool IsBridgeSegment(int segmentIndex)
+    {
+        return bridgePoints[segmentA[segmentIndex]] && bridgePoints[segmentB[segmentIndex]];
     }
 
     Rect SegmentBounds(int index, float padding)
@@ -61,10 +86,10 @@ public sealed class RoadNetwork
             Mathf.Max(a.z, b.z) + padding);
     }
 
-    /// <summary>Nearest road centreline within <paramref name="radius"/>. Buffer must be caller-owned.</summary>
+    /// <summary>Nearest road centreline within <paramref name="radius"/>.</summary>
     public RoadSample Sample(Vector2 worldXZ, float radius, List<int> buffer)
     {
-        RoadSample result = new RoadSample { Distance = float.MaxValue, Height = 0f, Hit = false };
+        RoadSample result = new RoadSample { Distance = float.MaxValue, Height = 0f, Hit = false, Bridge = false };
 
         if (segmentA.Length == 0)
         {
@@ -92,6 +117,7 @@ public sealed class RoadNetwork
                 result.Distance = distance;
                 result.Height = Mathf.Lerp(a.y, b.y, t);
                 result.Hit = true;
+                result.Bridge = IsBridgeSegment(index);
             }
         }
 

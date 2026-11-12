@@ -2,10 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Builds a bounded grid of terrain chunks from a single seed. Every client that receives the
-/// same seed produces the same world, so terrain is never replicated.
-/// </summary>
+/// <summary>Builds a bounded grid of terrain chunks from a single seed.</summary>
 public class TerrainGenerator : MonoBehaviour
 {
     public WorldSettings worldSettings;
@@ -40,15 +37,36 @@ public class TerrainGenerator : MonoBehaviour
     bool generating;
 
     public event Action<float> OnGenerationProgress;
+    public event Action OnLayoutBuilt;
     public event Action OnWorldGenerationComplete;
+    public event Action OnWorldCleared;
 
     public bool IsGenerated { get; private set; }
     public int Seed { get; private set; }
     public WorldLayout Layout { get; private set; }
 
+    // Diagnostic only: compare saved-layout generation across peers, never anti-cheat evidence.
+    public string LayoutSignature
+    {
+        get
+        {
+            if (Layout == null) return "none";
+            uint hash = 2166136261;
+            foreach (Vector3 point in Layout.Roads.Points)
+                foreach (float value in new[] { point.x, point.y, point.z })
+                    foreach (byte b in BitConverter.GetBytes(value)) hash = unchecked((hash ^ b) * 16777619);
+            return $"{hash:x8}/poi={Layout.PointsOfInterest.Length}/plots={Layout.Plots.Length}/bridges={Layout.Bridges.Length}";
+        }
+    }
+
     public float MeshWorldSize
     {
         get { return meshSettings != null ? meshSettings.meshWorldSize : 0f; }
+    }
+
+    public float SeaLevel
+    {
+        get { return worldSettings != null ? worldSettings.seaLevel : float.NegativeInfinity; }
     }
 
     public float WorldSize
@@ -108,6 +126,13 @@ public class TerrainGenerator : MonoBehaviour
         Seed = seed;
         Layout = BuildLayout(seed);
         generating = true;
+
+        WarnIfRuntimeCompanionsMissing();
+
+        if (OnLayoutBuilt != null)
+        {
+            OnLayoutBuilt();
+        }
         IsGenerated = false;
         readyChunkCount = 0;
 
@@ -153,6 +178,26 @@ public class TerrainGenerator : MonoBehaviour
         }
     }
 
+    /// <summary>Bridge spans are uncarved on purpose, so without a spawner or deck builder they are gaps over water.</summary>
+    void WarnIfRuntimeCompanionsMissing()
+    {
+        if (Layout == null || Layout.Bridges.Length == 0)
+        {
+            return;
+        }
+
+        bool spawner = GetComponent<StructureSpawner>() != null;
+        bool decks = GetComponent<RoadMeshBuilder>() != null;
+        if (spawner || decks)
+        {
+            return;
+        }
+
+        Debug.LogError(string.Format(
+            "[TerrainGenerator] Layout has {0} bridge span(s) but no StructureSpawner or RoadMeshBuilder on '{1}', so nothing will be built over the water. Wire the map companions on the active multiplayer map root; preserve the network player setup.",
+            Layout.Bridges.Length, name), this);
+    }
+
     WorldLayout BuildLayout(int seed)
     {
         if (worldSettings.layoutSettings == null)
@@ -164,11 +209,12 @@ public class TerrainGenerator : MonoBehaviour
         WorldFalloff falloff = WorldFalloff.From(worldSettings, meshWorldSize);
         TerrainHeightField field = new TerrainHeightField(heightMapSettings, falloff, seed, meshSettings.meshScale);
 
-        return WorldLayout.Build(seed, worldSettings.WorldRect(meshWorldSize), field, worldSettings.layoutSettings);
+        return WorldLayout.Build(seed, worldSettings.WorldRect(meshWorldSize), field, worldSettings.layoutSettings, worldSettings.seaLevel);
     }
 
     public void Clear()
     {
+        OnWorldCleared?.Invoke();
         for (int i = 0; i < chunkList.Count; i++)
         {
             chunkList[i].Destroy();
@@ -181,6 +227,8 @@ public class TerrainGenerator : MonoBehaviour
         IsGenerated = false;
         Layout = null;
     }
+
+    void OnDestroy() => Clear();
 
     bool ValidateSettings()
     {
@@ -227,7 +275,12 @@ public class TerrainGenerator : MonoBehaviour
         }
 
         generating = false;
+        // Include newly placed static colliders before spawners or readiness observers run.
+        Physics.SyncTransforms();
         IsGenerated = true;
+        Debug.Log($"[Terrain] ready seed={Seed} profile={buildProfile} layout={LayoutSignature} " +
+            $"buildings={GetComponent<StructureSpawner>()?.BuildingCount ?? 0} " +
+            $"bridgeVertices={GetComponent<RoadMeshBuilder>()?.BridgeVertexCount ?? 0} seaLevel={SeaLevel}.", this);
 
         if (OnWorldGenerationComplete != null)
         {
@@ -286,6 +339,35 @@ public class TerrainGenerator : MonoBehaviour
 
         height = chunk.Sampler.SampleHeight(new Vector2(worldPosition.x, worldPosition.z));
         return true;
+    }
+
+    // Server placement uses the actual integrated world, including bridge decks/building
+    // roofs, rather than selecting the terrain buried beneath a structure or water.
+    public bool TryGetDrySurface(Vector3 worldPosition, out RaycastHit surface)
+    {
+        surface = default;
+        if (!IsGenerated || !IsColliderReadyAt(worldPosition)) return false;
+        Collider[] colliders = GetComponentsInChildren<Collider>();
+        float high = float.NegativeInfinity, low = float.PositiveInfinity;
+        foreach (Collider collider in colliders)
+        {
+            if (!collider.enabled || collider.isTrigger || !collider.gameObject.activeInHierarchy) continue;
+            high = Mathf.Max(high, collider.bounds.max.y);
+            low = Mathf.Min(low, collider.bounds.min.y);
+        }
+        if (float.IsInfinity(high) || float.IsInfinity(low)) return false;
+        Ray ray = new Ray(new Vector3(worldPosition.x, high + 1f, worldPosition.z), Vector3.down);
+        float nearest = float.PositiveInfinity;
+        foreach (Collider collider in colliders)
+        {
+            if (!collider.enabled || collider.isTrigger || !collider.gameObject.activeInHierarchy) continue;
+            if (collider.Raycast(ray, out RaycastHit hit, high - low + 2f) && hit.distance < nearest)
+            {
+                surface = hit;
+                nearest = hit.distance;
+            }
+        }
+        return !float.IsInfinity(nearest) && surface.point.y > SeaLevel + 0.05f;
     }
 
     void Update()

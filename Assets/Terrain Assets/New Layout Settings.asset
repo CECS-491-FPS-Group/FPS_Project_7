@@ -25,6 +25,11 @@ MonoBehaviour:
   samplesPerRoadSpan: 10
   gradeSmoothingPasses: 6
   maxRoadGradeDegrees: 12
+  shoreClearance: 1.5
+  bridgeDeckClearance: 2.5
+  roadSurfaceLift: 0.08
+  roadTextureLength: 8
+  bridgeDeckThickness: 0.6
   plotsPerPoi: 4
   plotSizeRange: {x: 9, y: 18}
   plotShoulder: 5

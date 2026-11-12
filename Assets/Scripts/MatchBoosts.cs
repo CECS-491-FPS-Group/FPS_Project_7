@@ -126,12 +126,8 @@ public sealed class MatchBoosts : MonoBehaviour
         {
             float angle = ((_nextId + attempt) % 8) * Mathf.PI / 4;
             Vector3 point = new Vector3(centre.x + Mathf.Cos(angle) * 10f, 0f, centre.y + Mathf.Sin(angle) * 10f);
-            if (_pickups.Exists(p => new Vector2(p.Position.x - point.x, p.Position.z - point.z).sqrMagnitude < 16f) || !_terrain.IsColliderReadyAt(point) ||
-                !_terrain.TrySampleHeight(point, out float height) || !_terrain.TryGetChunkAt(point, out TerrainChunk chunk)) continue;
-            MeshCollider collider = chunk.GameObject.GetComponent<MeshCollider>();
-            if (collider == null) continue;
-            Vector3 origin = new Vector3(point.x, Mathf.Max(height, collider.bounds.max.y) + 1f, point.z);
-            if (!collider.Raycast(new Ray(origin, Vector3.down), out RaycastHit hit, origin.y - collider.bounds.min.y + 1f)) continue;
+            if (_pickups.Exists(p => new Vector2(p.Position.x - point.x, p.Position.z - point.z).sqrMagnitude < 16f) ||
+                !_terrain.TryGetDrySurface(point, out RaycastHit hit)) continue;
             _pickups.Add(new Pickup { Id = ++_nextId, Position = hit.point + Vector3.up * 0.8f,
                 Type = (Kind)(1 + (_nextId - 1) % 4), Expires = Now + 30d });
             _nextSnapshot = 0;
