@@ -20,6 +20,9 @@ public class Health : NetworkBehaviour
     private bool _localPlacementPending;
     private Vector3 _respawnPosition;
 
+    // Local presentation hook for existing authoritative HP updates, not a new RPC.
+    public event Action<int, int, bool> HealthPresentationChanged;
+
     public int CurrentHealth => _currentHp.Value;
     public bool IsDead => _dead.Value || CurrentHealth <= 0;
     public bool MatchEnded => _matchEnded.Value;
@@ -164,6 +167,7 @@ public class Health : NetworkBehaviour
 
     private void OnHealthChanged(int previous, int next, bool asServer)
     {
+        HealthPresentationChanged?.Invoke(previous, next, asServer);
         if (!asServer)
             Debug.Log($"[Health] Client {LocalConnection.ClientId}: player owner={OwnerId} synchronized HP={previous}->{next}.", this);
     }

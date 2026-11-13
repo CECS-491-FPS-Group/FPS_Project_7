@@ -3,7 +3,6 @@ using UnityEngine.UI;
 
 public class ButtonClickSound : MonoBehaviour
 {
-    private static AudioSource audioSource;
     private static AudioClip clickClip;
     private static float clickVolume = 1f;
     private Button[] buttons;
@@ -20,7 +19,7 @@ public class ButtonClickSound : MonoBehaviour
 
     private void Awake()
     {
-        EnsureAudioSource();
+        EnsureClip();
 
         buttons = GetComponentsInChildren<Button>(true);
         foreach (Button button in buttons)
@@ -45,19 +44,12 @@ public class ButtonClickSound : MonoBehaviour
         }
     }
 
-    private static void EnsureAudioSource()
+    private static void EnsureClip()
     {
-        if (audioSource != null)
+        if (clickClip != null)
         {
             return;
         }
-
-        GameObject audioObject = new GameObject("UI Click Audio");
-        Object.DontDestroyOnLoad(audioObject);
-        audioSource = audioObject.AddComponent<AudioSource>();
-        audioSource.playOnAwake = false;
-        audioSource.spatialBlend = 0f;
-        audioSource.volume = 1f;
 
         const int sampleRate = 44100;
         const float duration = 0.08f;
@@ -78,9 +70,9 @@ public class ButtonClickSound : MonoBehaviour
 
     private static void PlayClick()
     {
-        if (audioSource != null && clickClip != null)
+        if (clickClip != null)
         {
-            audioSource.PlayOneShot(clickClip, clickVolume);
+            IntegrationAudio.PlayClick(clickClip, clickVolume);
         }
     }
 }

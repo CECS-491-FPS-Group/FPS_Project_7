@@ -1,6 +1,77 @@
 # Anti-cheat continuation handoff
 
-## Current: first terrain integration stage — 2026-11-12
+## Current: selected audio/settings stage — 2026-11-12
+
+Branch **integration/anti-cheat-merged-test**, source base **17d2c02**, with recovery
+`feature/anti-cheat-complete` still at **9570966**. Initial worktree contained only
+pre-existing Road.mat and Water.mat serialization changes; they are preserved
+byte-for-byte and excluded from this stage's commit. AGENTS.md is unchanged.
+Fetched audio tip still matched pinned **11c62b658f40dcfa83f86f4154d8f9258dbf6507**.
+See [AudioIntegrationStage.md](AudioIntegrationStage.md) for exact source attribution,
+scope, lifecycle decisions, checks and the AC05 runtime batch. No push/main merge.
+
+**AC04 user-tested evidence:** Editor host + two remotes. User reports movement,
+shooting, power-up collection and F10 worked. User-described screenshot establishes
+remote owner **1 startup Verified**, observer startup for owners **0/1/2** at **6/9**,
+and both policies **ReportOnly**. The screenshot was not independently inspected in
+this session. Do not infer owner 2 Verified, complete terrain collision/obstruction,
+all power-up transitions, respawn/round/recovery, isolation or latency coverage.
+Spawn logs show distinct but clustered central positions: owner 0 (-4,11.35,0),
+owner 1 (4,10.49,0), owner 2 (0,11.04,-4). **Limited spawn variety remains follow-up;
+the audio stage does not redesign spawning.** Terrain runtime checklist is updated.
+
+Selective audio port: local music/SFX preferences and menu rows; source positional
+falloff and hurt/death synthesis; existing byte-identical music/shot/shotgun/step
+resources reused. The alternative shooter/projectile/local Health, unrestricted
+shot-audio RPC, microphone/Gain and competing music manager were excluded. Current
+combat/health/boost/currency/round and FishNet movement authority remain unchanged.
+Shots still follow accepted server results, with no owner prediction/second host
+playback. HP cues filter host duplicate callbacks and initial/healing/unchanged state.
+Footsteps recognize static structure surfaces and respect SFX gain.
+
+Listener investigation: AC04 logs place warnings before owner camera startup/scene
+transitions; valid owner callback and serialized references support transient gaps,
+not an established ongoing ownership failure. One persistent **local nonnetworked**
+audio root/listener now bridges these gaps and follows the owner camera after look/
+recoil. Player/scene listeners stay disabled. MainMenu Settings and lobby Audio rows
+are created automatically; no Inspector wiring. Local preferences save on dismissal/
+exit and never cross the network. Same-user copies share normal persisted PlayerPrefs.
+
+**Rebuild all peers:** existing accepted-shot presentation RPC adds a server-selected
+sound-kind boolean to avoid weapon-switch ordering races. No new NetworkBehaviour,
+prefab ordering, registration or scene/prefab YAML change; registration remains 17.
+Static/dynamic defaults remain **ReportOnly**, host exemption and all thresholds stay.
+
+Actual checks: **112 pure suites**, current-source Editor/Development/Release compiler
+checks, full Unity6000.3.8f1 compilation/FishNetILPP, **48 automated unconnected Play
+Mode audio/lifecycle checks**, added meta/GUID and protected asset checks pass. The
+source UI's missing legacy builtin sprites and an inactive-parent test lookup were
+corrected. Null-graphics Play failed on URP render textures; graphics-enabled batch
+passes without suppressed diagnostics. Existing package/compiler warnings remain.
+Automated tests restore original audio preferences. **No audible/networked audio
+runtime pass is claimed**; actual Windows build/host/remote/respawn/recovery tests are
+pending in AudioIntegrationStage.md. Broader latency/macOS/release and unreported
+terrain/power-up regressions remain pending.
+
+Read-only AC04 inspection: both Clean/Test selected files and client identities match
+archive **68eef2a27f65489d96b28e4bf08a48ff**; installed default server approved.json is
+byte-identical to that archive. No inspected manifest/policy override was set. AC04,
+all older pairs and deployment artifacts were left untouched. **AC05 verified unused**;
+recheck before building. Build finished Clean -> generate archived matching manifest/
+client descriptor -> preserve/install trusted server copy -> create Test after metadata
+generation -> restart hosting, require remote startup Verified. Default Editor server
+path remains `<project>/IntegrityServer/approved.json` unless FPS_INTEGRITY_MANIFEST
+overrides it. Never regenerate from Test or mix AC04 with the changed RPC.
+
+Next session: review this local checkpoint/status, run only the AC05 audio batch with
+both modes ReportOnly, record audible behavior/listener continuity/normal combat/F10/
+recovery and explicit startup Verified. Then consider the audited owner-scoped input/
+crouch stage with separate authorization; clarify crawl and remaining boost tests.
+Spawn variety is separate follow-up. Windows remains preferred; optional Touch Bar
+test controls, macOS and broader latency remain unfinished. Hash reports are not
+trusted attestation, and player-hosted servers assume a trusted host.
+
+## Terrain implementation checkpoint — 2026-11-12 (historical; AC04 evidence above)
 
 Working branch **`integration/anti-cheat-merged-test`**, created from verified
 `9570966f11d59e8d5ddf19f58cd820d1e3089477` after confirming a clean checkpoint and

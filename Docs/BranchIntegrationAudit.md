@@ -1,5 +1,11 @@
 # Gameplay branch inspection — 2026-11-12
 
+Audio follow-up: selected presentation/settings work from pinned **11c62b6** is now
+adapted on integration/anti-cheat-merged-test after **17d2c02**. Fetch found no newer
+audio tip. Existing authorities are retained; microphone and alternate combat/Health
+systems were excluded. See [AudioIntegrationStage.md](AudioIntegrationStage.md) for
+checks and pending AC05 gate. Crouch and subsequent stages have not started.
+
 Implementation follow-up: the authorized first Soroush stage is now selectively
 ported on **integration/anti-cheat-merged-test**, based on audit descendant `9570966`.
 Fetched tip still matched pinned `3a52ecd`; recovery branch is unchanged. See

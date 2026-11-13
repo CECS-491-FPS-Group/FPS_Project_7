@@ -276,7 +276,7 @@ public class HitscanShooter : NetworkBehaviour
         }
         _bloom = Mathf.Min(4f, _bloom + 0.4f);
         _lastBloomTime = now;
-        PresentAcceptedShot(damagedPlayer);
+        PresentAcceptedShot(damagedPlayer, Profile.pellets > 1);
     }
 
     private bool FireServerRay(Vector3 direction)
@@ -319,9 +319,9 @@ public class HitscanShooter : NetworkBehaviour
     }
 
     [ObserversRpc(BufferLast = false, RunLocally = false)]
-    private void PresentAcceptedShot(bool damagedPlayer)
+    private void PresentAcceptedShot(bool damagedPlayer, bool shotgunAudio)
     {
-        if (_presentation != null) _presentation.PlayShotAudio(_selectedWeapon.Value == 2);
+        if (_presentation != null) _presentation.PlayShotAudio(shotgunAudio);
         if (IsOwner)
         {
             if (_presentation != null) _presentation.AcceptedShot(damagedPlayer);

@@ -95,7 +95,9 @@ public class PlayerCameraSetup : NetworkBehaviour
     {
         SetMovementControl(enabled && (_health == null || _health.CanAct));
         if (playerCamera) playerCamera.enabled = enabled;
-        if (audioListener) audioListener.enabled = enabled;
+        if (audioListener) audioListener.enabled = false;
+        if (enabled) IntegrationAudio.RegisterOwnerCamera(playerCamera);
+        else IntegrationAudio.ReleaseOwnerCamera(playerCamera);
         if (playerUI) playerUI.enabled = enabled;
         UpdateBodyVisibility();
     }
@@ -107,6 +109,8 @@ public class PlayerCameraSetup : NetworkBehaviour
         if (allowed != _movementEnabled) SetMovementControl(allowed);
         UpdateBodyVisibility();
     }
+
+    private void OnDestroy() => IntegrationAudio.ReleaseOwnerCamera(playerCamera);
 
     private void UpdateDeathCollision()
     {

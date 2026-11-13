@@ -1,5 +1,26 @@
 # Terrain/structures integration stage (Windows runtime gate)
 
+## AC04 user-tested evidence (reported after 17d2c02)
+
+The user tested AC04 with Editor host and **two remote players**. Reported movement,
+shooting, power-up collection and F10 worked. The user reports screenshot evidence
+of remote **owner 1 startup result=Verified**, observers starting for owners 0/1/2
+with base/boosted limits **6/9**, and both enforcement modes **ReportOnly**. The
+screenshot was described by the user; this session did not independently view it.
+Do not infer owner 2 Verified, every power-up transition or complete terrain acceptance.
+
+Reported server spawn positions are distinct but concentrated around the centre:
+owner 0 `(-4, 11.35, 0)`, owner 1 `(4, 10.49, 0)`, owner 2 `(0, 11.04, -4)`.
+**Limited spawn variety is follow-up work**, not an overlapping-position failure;
+the audio stage does not redesign placement. Full bridge/road/water collision parity,
+all obstruction/weapon cases, Speed/Jump expiry/replacement, respawn/scene/recovery
+and latency/macOS coverage remain pending unless explicitly reported below.
+The runtime table is the remaining acceptance checklist, not a claim all rows passed.
+Read-only follow-up verifies both AC04 copies' three selected files/client build IDs
+against archived 68eef2a27f65489d96b28e4bf08a48ff, and the default installed server copy
+is byte-identical. They were preserved. For current audio source, use the new AC05
+workflow in [AudioIntegrationStage.md](AudioIntegrationStage.md), not an AC04 rebuild.
+
 ## Source and scope
 
 Branch: `integration/anti-cheat-merged-test`, created from audited checkpoint
@@ -101,9 +122,10 @@ with the Editor closed, run Unity `-batchmode -nographics -projectPath <checkout
 -executeMethod TerrainIntegrationChecks.Run -logFile <log>`; the entry point exits
 0/1 itself. Run MapValidation.Run separately in the same way.
 
-**Pending:** Windows standalone build, rendering, actual RPC/network generation
-timing, interactive host/client collision/combat/boost/respawn and recovery. No stage
-multiplayer pass is claimed. Broader latency, macOS, release runtime and unreported
+AC04 has the limited user-tested standalone/multiplayer evidence above. Full rendering,
+collision/obstruction parity, boost transitions, respawn/scene/recovery and network
+timing coverage remain pending; this is not full terrain acceptance. Broader latency,
+macOS, release runtime and unreported
 power-up regressions remain pending. Windows remains the preferred test environment.
 
 ## AC04 build -> manifest -> server -> test copy
@@ -167,7 +189,7 @@ if ((Get-ChildItem -LiteralPath $acRoot -Name) -match ($acTag + '(?![0-9])') -or
    Use AC04-Test as the remote client, keep AC04-Clean/archive/installed baseline
    separate, and never commit builds, backups or deployment copies.
 
-## One focused runtime batch (all rows pending)
+## Focused runtime checklist (partial AC04 evidence above)
 
 Use Editor host + AC04-Test remote; a second clean remote is useful for isolation.
 Record each peer's terrain summary, owner IDs, approved build identity, relevant logs,

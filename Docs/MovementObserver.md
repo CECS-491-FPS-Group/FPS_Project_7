@@ -1,5 +1,11 @@
 # Movement observer (ReportOnly by default)
 
+AC04 user evidence: Editor host + two remotes, reported normal movement/shooting/
+power-up collection/F10, screenshot-reported observer startups for owners 0/1/2 at
+6/9 and both modes ReportOnly. This does not complete every boost expiry/replacement,
+slope/water/respawn, terrain or latency case. The audio/settings stage leaves observer
+logic, thresholds and authority unchanged; next runtime gate is AudioIntegrationStage.md.
+
 2026-11-12 recheck: the existing 33 deterministic movement checks pass. Observer,
 thresholds, authoritative boost allowances, displacement policy and lifecycle grace
 are unchanged in the new request-admission batch. Vertical/fly and repeated-teleport

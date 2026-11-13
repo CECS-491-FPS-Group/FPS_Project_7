@@ -1,5 +1,12 @@
 # Build-file integrity (schema 1, ReportOnly by default)
 
+AC04 follow-up: user-described screenshot confirms remote owner 1 startup Verified.
+Both AC04 copies' checked files/client identities match their archive; installed
+default server manifest is byte-identical (read-only verification). No owner 2 startup
+result or broader test completion is inferred. Current audio source changes require
+a new AC05 clean build/manifest; see AudioIntegrationStage.md. Preserve AC04 and do
+not regenerate its baseline. Earlier checkpoint/build-number notes below are historical.
+
 2026-11-12 recheck: the existing 31 deterministic integrity checks pass. AC02 clean
 and test selected files still match the installed trusted AC02 manifest. No baseline
 was regenerated or modified. Directory/archive inspection found AC03 unused; the
