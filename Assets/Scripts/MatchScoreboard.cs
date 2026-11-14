@@ -17,6 +17,7 @@ public sealed class MatchScoreboard : MonoBehaviour
         public string Name;
         public int Kills;
         public int Deaths;
+        public int Streak;
     }
     public struct Snapshot : IBroadcast { public Row[] Rows; }
     public struct SnapshotRequest : IBroadcast { }
@@ -28,6 +29,7 @@ public sealed class MatchScoreboard : MonoBehaviour
     private bool _receivedSnapshot;
     private float _nextRequest;
     public string DisplayText { get; private set; } = "Waiting for scoreboard...";
+    public int LocalStreak { get; private set; }
     public string PlayerNamesText { get; private set; } = "PLAYERS\n\nWaiting...";
     public string PlayerStatsText { get; private set; } = "KILLS / DEATHS";
 
@@ -99,14 +101,33 @@ public sealed class MatchScoreboard : MonoBehaviour
         if (!_listening || !_manager.IsServerStarted || victim == null ||
             !victim.IsActive || !victim.IsAuthenticated || !_scores.TryGetValue(victim, out Row victimRow)) return;
         victimRow.Deaths++;
+        victimRow.Streak = 0;
         _scores[victim] = victimRow;
         if (killer != null && killer != victim && killer.IsActive && killer.IsAuthenticated &&
             _scores.TryGetValue(killer, out Row killerRow))
         {
             killerRow.Kills++;
+            if (MatchBoosts.Instance != null && MatchBoosts.Instance.ServerMatchActive)
+            {
+                killerRow.Streak = CombatEffectRules.NextStreak(killerRow.Streak);
+                MatchBoosts.Instance.RewardServerStreak(killer, killerRow.Streak);
+            }
             _scores[killer] = killerRow;
         }
         Publish();
+    }
+
+    public void ResetStreaks()
+    {
+        if (!_listening || !_manager.IsServerStarted) return;
+        bool changed = false;
+        foreach (var connection in new List<NetworkConnection>(_scores.Keys))
+        {
+            Row row = _scores[connection];
+            if (row.Streak == 0) continue;
+            row.Streak = 0; _scores[connection] = row; changed = true;
+        }
+        if (changed) Publish();
     }
 
     private Snapshot CreateSnapshot()
@@ -143,12 +164,14 @@ public sealed class MatchScoreboard : MonoBehaviour
     {
         var text = new StringBuilder("PLAYER                         KILLS   DEATHS\n");
         var names = new StringBuilder("PLAYERS\n\n");
-        var stats = new StringBuilder("KILLS / DEATHS\n\n");
+        var stats = new StringBuilder("KILLS / DEATHS / STREAK\n\n");
+        LocalStreak = 0;
         foreach (Row row in snapshot.Rows ?? System.Array.Empty<Row>())
         {
             text.Append(row.Name).Append("     ").Append(row.Kills).Append("     ").Append(row.Deaths).Append('\n');
             names.Append(row.Name).Append('\n');
-            stats.Append(row.Kills).Append(" / ").Append(row.Deaths).Append('\n');
+            stats.Append(row.Kills).Append(" / ").Append(row.Deaths).Append(" / ").Append(row.Streak).Append('\n');
+            if (row.ClientId == _manager.ClientManager.Connection.ClientId) LocalStreak = row.Streak;
         }
         PlayerNamesText = names.ToString();
         PlayerStatsText = stats.ToString();

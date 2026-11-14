@@ -114,7 +114,7 @@ public sealed class PlayerAudio : MonoBehaviour
         if (_distance < 2f || _step == null || _capsule == null) return;
         bool grounded = false;
         int hits = Physics.RaycastNonAlloc(transform.position + Vector3.up * .2f, Vector3.down, _groundHits,
-            .6f, ~0, QueryTriggerInteraction.Ignore);
+            .6f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < hits; i++)
             if (!_groundHits[i].transform.IsChildOf(transform) && _groundHits[i].normal.y > .4f &&
                 _groundHits[i].collider.GetComponentInParent<FishNet.Object.NetworkObject>() == null)

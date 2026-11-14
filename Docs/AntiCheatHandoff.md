@@ -16,10 +16,17 @@ server-selected shot origin. No vendor or movement-authority change. Native inpu
 posture 19 + existing unconnected audio 48 checks pass; interactive multiplayer tests
 remain pending for the combined build. New posture SyncVar/RPC requires all peers rebuilt.
 
+Controls checkpoint: **4b8e275**. Effects/ragdoll stage is now implemented: authoritative
+armor, timed invisibility, PvP 5-kill rewards from original pool, per-player streaks and
+cosmetic 11-body/10-joint corpses (layer/query/player collision exclusions; max 8/8s).
+148 pure checks (112 + 36), native corpse/input checks and 48 unconnected audio checks
+pass; real multiplayer delivery/physics remain pending. No vendor/root authority change.
+Next unfinished stage is local theater/replay presentation, then combined validation.
+
 User decisions already confirmed: random original four buffs at every five consecutive
 PvP kills, resetting on death/match boundary; cosmetic player death ragdolls. Source
 pool is enum 1..4 (Random.Range(1,5)), excludes Armor/Invisibility. Next unfinished
-work is authoritative effects/ragdolls, then local theater/replay UI, separate commits,
+work is local theater/replay UI, separate commit,
 final compilation/release-exclusion checks and one consolidated Windows runtime batch.
 Do not restart finished terrain/audio/controls or ask these gameplay choices again.
 Bots and rejoin/host migration remain deferred for concrete authority/identity/NavMesh

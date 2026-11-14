@@ -75,7 +75,8 @@ public sealed class CombatPresentation : MonoBehaviour
         if (_weapon != null && _weapon.IsReloading && _health != null && _health.CanAct)
             _ammoText.text += $"  Reloading... {_weapon.ReloadSecondsRemaining:0.0}s";
         if (MatchBoosts.Instance != null) _ammoText.text += "\n" + MatchBoosts.Instance.LocalText;
-        _hpText.text = _health != null ? $"HP: {_health.CurrentHealth} / {_health.maxHp}" : "";
+        _hpText.text = _health != null ? $"HP: {_health.CurrentHealth} / {_health.maxHp}  Armor: {_health.CurrentArmor}/{_health.maxArmor}" : "";
+        if (MatchScoreboard.Instance != null) _ammoText.text += $"  Streak: {MatchScoreboard.Instance.LocalStreak}";
         if (_health != null && !_health.CanAct)
         {
             _recoil = 0f;

@@ -320,11 +320,12 @@ public class HitscanShooter : NetworkBehaviour
         }
 
         int previousHp = victim.CurrentHealth;
+        int previousArmor = victim.CurrentArmor;
         int actualDamage = Mathf.RoundToInt(damage * (MatchBoosts.Instance != null ? MatchBoosts.Instance.DamageMultiplier(Owner) : 1f));
         victim.TakeDamage(actualDamage, Owner);
         bool damagedPlayer = victim.CurrentHealth < previousHp;
         if (damagedPlayer) PresentImpact(true, closest.point, closest.normal);
-        return damagedPlayer;
+        return damagedPlayer || victim.CurrentArmor < previousArmor;
     }
 
     [ObserversRpc(BufferLast = false, RunLocally = false)]

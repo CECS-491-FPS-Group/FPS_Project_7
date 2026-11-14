@@ -13,7 +13,7 @@ using UnityEngine;
 public sealed class MatchBoosts : MonoBehaviour
 {
     public static MatchBoosts Instance { get; private set; }
-    public enum Kind { None, Shield, Speed, Jump, Damage }
+    public enum Kind { None, Shield, Speed, Jump, Damage, Armor, Invisibility }
     public struct Pickup { public int Id; public Vector3 Position; public Kind Type; public double Expires; }
     public struct Effect { public int ClientId; public Kind Type; public double Expires; }
     public struct State : IBroadcast { public Pickup[] Pickups; public Effect[] Effects; }
@@ -46,6 +46,36 @@ public sealed class MatchBoosts : MonoBehaviour
     public float DamageMultiplier(NetworkConnection connection) => Has(connection, Kind.Damage) ? 2f : 1f;
     // Uses this server's effect dictionary and deadline; never the client snapshot/LocalKind.
     public bool ServerHasSpeedBoost(NetworkConnection connection) => Has(connection, Kind.Speed);
+    public bool ServerMatchActive => _manager != null && _manager.IsServerStarted && _timer.timerIsRunning &&
+        _timer.currentState == RoundTimer.gameStates.GAME;
+    public bool ClientInvisible(int clientId) => _clientEffects.TryGetValue(clientId, out Effect effect) &&
+        effect.Type == Kind.Invisibility && _manager != null && effect.Expires > Now;
+
+    // One authority for pickups, approved development fixtures and killstreak rewards.
+    private bool ApplyServerBoost(NetworkConnection connection, Kind kind, double seconds)
+    {
+        if (!ServerMatchActive || connection == null || !connection.IsActive || !connection.IsAuthenticated ||
+            kind < Kind.Shield || kind > Kind.Invisibility || !ServerGameplayValidation.Finite(seconds) || seconds <= 0) return false;
+        Health player = null;
+        foreach (NetworkObject obj in connection.Objects)
+            if (obj != null && obj.IsSpawned && obj.gameObject.scene == gameObject.scene &&
+                obj.TryGetComponent(out Health candidate) && candidate.CanAct) { player = candidate; break; }
+        if (player == null) return false;
+        if (kind == Kind.Armor)
+        {
+            if (!player.AddServerArmor(100)) return false;
+        }
+        else _effects[connection] = new Effect { ClientId = connection.ClientId, Type = kind, Expires = Now + seconds };
+        _nextSnapshot = 0;
+        Debug.Log($"[Boost] Server granted {kind} to connection {connection.ClientId}.");
+        return true;
+    }
+    public void RewardServerStreak(NetworkConnection connection, int streak)
+    {
+        if (!CombatEffectRules.EarnsReward(streak) || !ServerMatchActive) return;
+        Kind kind = (Kind)CombatEffectRules.OriginalReward(UnityEngine.Random.Range(1, 5));
+        if (ApplyServerBoost(connection, kind, duration)) Debug.Log($"[Streak] owner={connection.ClientId} streak={streak} reward={kind}.");
+    }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     // Repeatable power-up compatibility tests from the host Inspector. No grant RPC is exposed.
@@ -54,9 +84,7 @@ public sealed class MatchBoosts : MonoBehaviour
         if (_manager == null || !_manager.IsServerStarted || connection == null ||
             !connection.IsActive || !connection.IsAuthenticated || !_timer.timerIsRunning ||
             _timer.currentState != RoundTimer.gameStates.GAME || kind == Kind.None) return;
-        _effects[connection] = new Effect { ClientId = connection.ClientId, Type = kind, Expires = Now + 8d };
-        _nextSnapshot = 0d;
-        Debug.Log($"[Boost TEST] Server granted {kind} to connection {connection.ClientId} for 8s.", this);
+        ApplyServerBoost(connection, kind, 8d);
     }
 #endif
     public Kind LocalKind
@@ -103,9 +131,8 @@ public sealed class MatchBoosts : MonoBehaviour
                         // Positive finite eligibility: NaN must not make a greater-than rejection fail open.
                         if (!ServerGameplayValidation.WithinPickupRange(delta.x, delta.y, delta.z, 2.5d)) continue;
                         Pickup p = _pickups[i];
+                        if (!ApplyServerBoost(c, p.Type, duration)) continue;
                         _pickups.RemoveAt(i);
-                        _effects[c] = new Effect { ClientId = c.ClientId, Type = p.Type, Expires = Now + duration };
-                        Debug.Log($"[Boost] Server granted {p.Type} to connection {c.ClientId}.");
                         _nextSnapshot = 0;
                         break;
                     }
@@ -129,7 +156,7 @@ public sealed class MatchBoosts : MonoBehaviour
             if (_pickups.Exists(p => new Vector2(p.Position.x - point.x, p.Position.z - point.z).sqrMagnitude < 16f) ||
                 !_terrain.TryGetDrySurface(point, out RaycastHit hit)) continue;
             _pickups.Add(new Pickup { Id = ++_nextId, Position = hit.point + Vector3.up * 0.8f,
-                Type = (Kind)(1 + (_nextId - 1) % 4), Expires = Now + 30d });
+                Type = (Kind)(1 + (_nextId - 1) % 6), Expires = Now + 30d });
             _nextSnapshot = 0;
             break;
         }
@@ -157,7 +184,8 @@ public sealed class MatchBoosts : MonoBehaviour
             visual.transform.position = pickup.Position;
             visual.transform.localScale = Vector3.one * 0.65f;
             visual.GetComponent<Renderer>().material.color = pickup.Type switch
-            { Kind.Shield => Color.cyan, Kind.Speed => Color.green, Kind.Jump => Color.yellow, _ => Color.red };
+            { Kind.Shield => Color.cyan, Kind.Speed => Color.green, Kind.Jump => Color.yellow,
+                Kind.Armor => Color.gray, Kind.Invisibility => new Color(.65f, .3f, .95f), _ => Color.red };
             _visuals.Add(pickup.Id, visual);
             Debug.Log($"[Boost] Client {_manager.ClientManager.Connection.ClientId} showing pickup {pickup.Id} ({pickup.Type}) at {pickup.Position}.", this);
         }

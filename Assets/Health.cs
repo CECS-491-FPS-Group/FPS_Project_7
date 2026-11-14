@@ -7,6 +7,9 @@ using UnityEngine;
 public class Health : NetworkBehaviour
 {
     [Min(1)] public int maxHp = 100;
+    [Min(0)] public int maxArmor = 100;
+    private readonly SyncVar<int> _armor = new();
+    public int CurrentArmor => _armor.Value;
     [Min(0)] public int killReward = 300;
     [Min(0f)] public float respawnDelay = 5f;
     private readonly SyncVar<int> _currentHp = new SyncVar<int>();
@@ -44,6 +47,7 @@ public class Health : NetworkBehaviour
     {
         base.OnStartServer();
         _currentHp.Value = Mathf.Max(1, maxHp);
+        _armor.Value = 0;
         _dead.Value = false;
         _matchEnded.Value = false;
         _pendingSequence = 0;
@@ -73,9 +77,13 @@ public class Health : NetworkBehaviour
     {
         if (!IsServerInitialized || !IsSpawned || damage <= 0 || IsDead || MatchEnded) return;
         if (MatchBoosts.Instance != null && MatchBoosts.Instance.Invulnerable(Owner)) return;
+        int incoming = damage;
+        int armor = _armor.Value;
+        damage = CombatEffectRules.AbsorbArmor(ref armor, damage);
+        _armor.Value = armor;
         int previous = CurrentHealth;
         _currentHp.Value = Mathf.Max(0, previous - damage);
-        Debug.Log($"[Combat] Damage shooter={shooter?.ClientId} victim={OwnerId} damage={damage} HP={previous}->{CurrentHealth}.", this);
+        Debug.Log($"[Combat] Damage shooter={shooter?.ClientId} victim={OwnerId} damage={incoming} armor={CurrentArmor} HP={previous}->{CurrentHealth}.", this);
         if (previous > 0 && CurrentHealth == 0)
         {
             if (MatchBoosts.Instance != null) MatchBoosts.Instance.Clear(Owner);
@@ -95,6 +103,7 @@ public class Health : NetworkBehaviour
     {
         if (!IsServerInitialized || !IsSpawned || MatchEnded) return;
         _matchEnded.Value = true;
+        _armor.Value = 0;
         if (MatchBoosts.Instance != null) MatchBoosts.Instance.Clear(Owner);
         _pendingSequence = 0;
         _nextRespawnCheck = double.PositiveInfinity;
@@ -153,6 +162,7 @@ public class Health : NetworkBehaviour
         _pendingSequence = 0;
         GetComponent<SpeedHackDetector>()?.CompleteServerRespawn(token);
         _currentHp.Value = Mathf.Max(1, maxHp);
+        _armor.Value = 0;
         _dead.Value = false;
         _respawnAt.Value = 0d;
         Debug.Log($"[Respawn] Server accepted player {OwnerId} token={token}; HP={CurrentHealth}.", this);
@@ -170,5 +180,13 @@ public class Health : NetworkBehaviour
         HealthPresentationChanged?.Invoke(previous, next, asServer);
         if (!asServer)
             Debug.Log($"[Health] Client {LocalConnection.ClientId}: player owner={OwnerId} synchronized HP={previous}->{next}.", this);
+    }
+
+    // Only existing server pickup/reward code calls this, never an RPC.
+    public bool AddServerArmor(int amount)
+    {
+        if (!IsServerInitialized || !IsSpawned || !CanAct || !Owner.IsActive || !Owner.IsAuthenticated || amount <= 0) return false;
+        _armor.Value = CombatEffectRules.AddArmor(_armor.Value, amount, maxArmor);
+        return true;
     }
 }

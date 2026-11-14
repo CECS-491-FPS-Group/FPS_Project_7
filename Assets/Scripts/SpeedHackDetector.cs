@@ -130,6 +130,10 @@ public sealed class SpeedHackDetector : NetworkBehaviour
     private void TestJump() => GrantTestBoost(MatchBoosts.Kind.Jump);
     [ContextMenu("Development/Grant Damage (8 seconds)")]
     private void TestDamage() => GrantTestBoost(MatchBoosts.Kind.Damage);
+    [ContextMenu("Development/Grant Armor")]
+    private void TestArmor() => GrantTestBoost(MatchBoosts.Kind.Armor);
+    [ContextMenu("Development/Grant Invisibility (8 seconds)")]
+    private void TestInvisibility() => GrantTestBoost(MatchBoosts.Kind.Invisibility);
     private void GrantTestBoost(MatchBoosts.Kind kind)
     {
         if (IsServerInitialized && _health != null && _health.CanAct && MatchBoosts.Instance != null)

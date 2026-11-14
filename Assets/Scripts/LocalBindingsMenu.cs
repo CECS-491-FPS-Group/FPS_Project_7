@@ -11,9 +11,11 @@ public sealed class LocalBindingsMenu : MonoBehaviour
     private InputActionAsset _asset;
     private bool _ownsAsset;
     private InputActionRebindingExtensions.RebindingOperation _operation;
+    private bool _destroying;
     private readonly List<Button> _rows = new();
     private readonly List<System.Action> _refresh = new();
     public static bool Rebinding => _open != null && _open._operation != null;
+    public static bool IsOpenFor(InputActionAsset asset) => _open != null && _open._asset == asset;
     public static void CloseFor(InputActionAsset asset) { if (_open != null && _open._asset == asset) Destroy(_open.gameObject); }
 
     public static void Install(Scene scene)
@@ -77,6 +79,7 @@ public sealed class LocalBindingsMenu : MonoBehaviour
     private void Completed(bool save)
     {
         _operation?.Dispose(); _operation = null;
+        if (_destroying) return;
         if (save) LocalInputBindings.Save(_asset);
         foreach (var row in _rows) row.interactable = true;
         Refresh();
@@ -85,6 +88,7 @@ public sealed class LocalBindingsMenu : MonoBehaviour
     private void Refresh() { foreach (var refresh in _refresh) refresh(); }
     private void OnDestroy()
     {
+        _destroying = true;
         Cancel(); _operation?.Dispose(); _operation = null;
         if (_ownsAsset && _asset != null) Destroy(_asset);
         if (_open == this) _open = null;

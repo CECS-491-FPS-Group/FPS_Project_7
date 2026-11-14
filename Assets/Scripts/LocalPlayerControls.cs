@@ -15,7 +15,7 @@ public sealed class LocalPlayerControls : MonoBehaviour
     private InputActionAsset _ownedAsset;
     private float _nextStance;
     private GameObject _menu;
-    public bool MenuOpen => _menu != null && _menu.activeSelf;
+    public bool MenuOpen => (_menu != null && _menu.activeSelf) || (_input != null && LocalBindingsMenu.IsOpenFor(Actions));
     public InputActionAsset Actions => _input.actions;
     public bool Held(string name) => !MenuOpen && Actions.FindAction(name)?.IsPressed() == true;
     public bool Pressed(string name) => !MenuOpen && Actions.FindAction(name)?.WasPressedThisFrame() == true;
@@ -63,6 +63,7 @@ public sealed class LocalPlayerControls : MonoBehaviour
     }
     private void CloseMenu()
     {
+        if (_input != null) LocalBindingsMenu.CloseFor(Actions);
         if (_menu != null) _menu.SetActive(false);
         if (_values == null) return;
         _values.cursorLocked = true; _values.cursorInputForLook = true;

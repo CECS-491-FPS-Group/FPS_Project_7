@@ -10,8 +10,9 @@ $suites = @{
     BuildIntegrity = @('Assets/Scripts/BuildIntegrity.cs')
     MovementObserver = @('Assets/Scripts/HorizontalMovementObservation.cs', 'Assets/Scripts/ApprovedMovementLimits.cs')
     ServerGameplayValidation = @('Assets/Scripts/ServerGameplayValidation.cs')
+    CombatEffectRules = @('Assets/Scripts/CombatEffectRules.cs')
 }
-foreach ($suite in @('DisconnectNotice', 'BuildIntegrity', 'MovementObserver', 'ServerGameplayValidation')) {
+foreach ($suite in @('DisconnectNotice', 'BuildIntegrity', 'MovementObserver', 'ServerGameplayValidation', 'CombatEffectRules')) {
     $testSources = @((Join-Path $projectRoot "Tests/${suite}Checks.cs"))
     $testSources += $suites[$suite] | ForEach-Object { Join-Path $projectRoot $_ }
     $testExecutable = Join-Path $outputDirectory ($suite + 'Checks.exe')
@@ -24,4 +25,4 @@ foreach ($suite in @('DisconnectNotice', 'BuildIntegrity', 'MovementObserver', '
     & "$UnityData/MonoBleedingEdge/bin/mono.exe" $testExecutable
     if ($LASTEXITCODE -ne 0) { throw "Checks failed: $suite" }
 }
-Write-Output 'All four deterministic suites passed. Unity/FishNet/build/multiplayer tests are separate.'
+Write-Output 'All five deterministic suites passed. Unity/FishNet/build/multiplayer tests are separate.'

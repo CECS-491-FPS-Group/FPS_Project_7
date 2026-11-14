@@ -50,6 +50,7 @@ public static class TeamIntegrationChecks
             posture.Apply(false);
             Require(Mathf.Abs(capsule.height - height) < .001f && Vector3.Distance(posture.AimOrigin, actor.transform.position + aim) < .001f,
                 "standing restores collider and server eye origin");
+            CheckEffects(actor);
             Debug.Log($"[Team CHECK] PASS checks={checks}; controls/posture geometry, network runtime pending.");
         }
         catch (Exception error)
@@ -71,5 +72,37 @@ public static class TeamIntegrationChecks
     {
         if (!value) throw new InvalidOperationException("[Team CHECK] FAIL: " + label);
         checks++;
+    }
+    private static void CheckEffects(GameObject actor)
+    {
+        var prefab = Resources.Load<GameObject>("PlayerRagdoll");
+        Require(prefab != null && prefab.GetComponentsInChildren<Rigidbody>(true).Length == 11, "source ragdoll bone bodies imported");
+        Require(prefab.GetComponentsInChildren<MonoBehaviour>(true).Length == 0 &&
+            prefab.GetComponentsInChildren<FishNet.Object.NetworkObject>(true).Length == 0, "corpse asset has no gameplay/network scripts");
+        Require(prefab.GetComponentsInChildren<CharacterJoint>(true).Length == 10, "source joints retained");
+        CosmeticCorpse corpse = CosmeticCorpse.Create(actor.GetComponent<PlayerCameraSetup>().soldierVisual);
+        Require(corpse != null, "cosmetic corpse created from live visual pose");
+        CosmeticCorpse.IgnoreForPlayer(actor);
+        foreach (Collider bone in corpse.GetComponentsInChildren<Collider>())
+        {
+            Require(bone.gameObject.layer == 2 && (Physics.DefaultRaycastLayers & (1 << bone.gameObject.layer)) == 0,
+                "corpse excluded from combat/spawn/clearance probes");
+            foreach (Collider player in actor.GetComponentsInChildren<Collider>())
+                Require(Physics.GetIgnoreCollision(bone, player), "corpse cannot physically block player collider");
+        }
+        CosmeticCorpse.Retire(corpse);
+        Require(corpse == null, "corpse retires immediately outside Play Mode");
+        var bodies = new System.Collections.Generic.List<CosmeticCorpse>();
+        for (int i = 0; i <= CosmeticCorpse.MaximumCount; i++)
+            bodies.Add(CosmeticCorpse.Create(actor.GetComponent<PlayerCameraSetup>().soldierVisual));
+        Require(UnityEngine.Object.FindObjectsByType<CosmeticCorpse>(FindObjectsSortMode.None).Length == CosmeticCorpse.MaximumCount,
+            "creating excess corpses retires oldest bodies");
+        var last = bodies[bodies.Count - 1];
+        typeof(CosmeticCorpse).GetField("_expires", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(last, -1d);
+        last.SendMessage("Update");
+        Require(last == null, "expired corpse lifetime retires body");
+        foreach (var body in bodies) CosmeticCorpse.Retire(body);
+        Require((int)MatchBoosts.Kind.Armor == 5 && (int)MatchBoosts.Kind.Invisibility == 6, "original four effect IDs preserved");
+        Require(CombatEffectRules.OriginalReward(5) == 0, "streak cannot select armor");
     }
 }

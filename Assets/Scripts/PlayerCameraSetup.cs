@@ -46,6 +46,7 @@ public class PlayerCameraSetup : NetworkBehaviour
         SetLocalControl(false);
         _posture = gameObject.AddComponent<PlayerPosture>();
         _controls = gameObject.AddComponent<LocalPlayerControls>();
+        gameObject.AddComponent<PlayerDeathVisual>();
     }
 
     private void SetupSoldierVisual()
@@ -83,6 +84,7 @@ public class PlayerCameraSetup : NetworkBehaviour
         base.OnStartClient();
 
         SetLocalControl(base.IsOwner);
+        CosmeticCorpse.IgnoreForPlayer(gameObject);
         _posture.Initialize();
 
         string devices = "none";
@@ -159,6 +161,7 @@ public class PlayerCameraSetup : NetworkBehaviour
         {
             if (!_collisionSuppressed)
             {
+                GetComponent<PlayerDeathVisual>()?.Show();
                 // Capture after FishNet configures the remote CharacterController.
                 _deathColliders = GetComponentsInChildren<Collider>(true);
                 _collisionBeforeDeath = new bool[_deathColliders.Length];
@@ -171,15 +174,18 @@ public class PlayerCameraSetup : NetworkBehaviour
         }
         else if (_collisionSuppressed)
         {
+            GetComponent<PlayerDeathVisual>()?.Clear();
             for (int i = 0; i < _deathColliders.Length; i++)
                 if (_deathColliders[i] != null) _deathColliders[i].enabled = _collisionBeforeDeath[i];
             _collisionSuppressed = false;
+            CosmeticCorpse.IgnoreForPlayer(gameObject);
         }
     }
 
     private void UpdateBodyVisibility()
     {
-        bool visible = IsClientInitialized && !IsOwner && (_health == null || !_health.IsDead);
+        bool visible = IsClientInitialized && !IsOwner && (_health == null || !_health.IsDead) &&
+            (MatchBoosts.Instance == null || !MatchBoosts.Instance.ClientInvisible(OwnerId));
         if (_bodyRenderers != null)
             foreach (Renderer body in _bodyRenderers)
                 if (body != null && body.enabled != visible) body.enabled = visible;
@@ -221,5 +227,6 @@ public class PlayerCameraSetup : NetworkBehaviour
 
         if (_playerInput) _playerInput.enabled = enabled;
         if (_controller) _controller.enabled = enabled;
+        if (enabled) CosmeticCorpse.IgnoreForPlayer(gameObject);
     }
 }

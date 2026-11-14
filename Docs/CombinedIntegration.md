@@ -75,9 +75,43 @@ minimum, fixed feet/root scale, lowered server origin, ceiling rejection and res
 Interactive host/remote crouch, latency, actual rebind device events and low-cover
 shooting remain pending for the one combined Windows batch.
 
+## Stage 2: authoritative effects and cosmetic player ragdolls (implemented)
+
+Source b9147af. Armor grants 100 up to server max 100, absorbs incoming damage before
+HP, survives timed-buff replacement, resets on respawn/match end. Armor collection does
+not replace the timed boost. Invisibility lasts the existing 20s/replaces other timed
+effects; hides remote body rendering only, not collision, damage, sound or network
+position data. Server pickups now cycle the six types. No client grant/collection RPC.
+Native ServerMatchActive/ownership/alive/scene validation selects accepted values.
+
+Server confirmed deaths reset victim streak and increment an eligible killer only
+during GAME. At 5/10/15/... the same authoritative application path grants one random
+original four boost, replacing the previous timed effect. Streak resets at GAME exit,
+death, disconnect and new match. No reward for self-kill, unregistered/inactive killer
+or duplicate HP-zero transition. Existing Health's positive-to-zero death path is the
+only caller; no kill-report RPC. Source bot scoring/difficulty and MatchManager excluded.
+Armor is synchronized on existing Health; streak joins existing scoreboard snapshot.
+HUD shows armor/streak. Shield/Damage and movement allowances retain server ownership.
+
+The source's 11-body/10-joint ragdoll asset is adapted into a new cosmetic resource.
+Removed its local Health, root motor collider and extra animation object; no gameplay
+scripts or NetworkObject remain. Copy live visual pose into a separate corpse, disable
+animation, enable local bone physics. Do not move/replace the live network actor. Bone
+colliders use built-in Ignore Raycast (layer 2), excluded from shots, spawn/standing/
+footstep probes. Explicit collider-ignore pairs prevent blocking existing/new/revived
+players without changing global collision layers. Corpse has no pickup/health ownership.
+At most eight corpses, eight-second lifetime, immediate retirement on respawn/despawn,
+scene-owned cleanup on transitions. Local physical poses may differ between peers;
+they are presentation only. Host has the same query exclusions; dedicated server
+builds skip corpse creation. No collision/authority/detector thresholds are weakened.
+
+Stage checks: 148 pure checks (112 existing + 36 armor/streak rules); 61 native input/
+posture/corpse checks and 48 existing unconnected audio checks passed with Unity/
+FishNet processing. Actual PvP reward delivery, pickup races, invisibility visibility,
+death/respawn corpse physics and connection/scene timing remain user runtime tests.
+
 ## Remaining stages in this authorized batch
 
-2. Authoritative armor/invisibility/PvP streak rewards and bounded cosmetic ragdolls.
 3. Local replay/theater presentation and final combined validation/runtime instructions.
 
 Preserve logical commits between stages. Do not expand detectors, integrate bots/

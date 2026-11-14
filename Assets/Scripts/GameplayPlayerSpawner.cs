@@ -260,7 +260,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
             float radius = Mathf.Max(0.01f, controller.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z)) - 0.01f);
             Vector3 centre3D = position + Vector3.Scale(controller.center, scale);
             Collider[] overlaps = Physics.OverlapCapsule(centre3D + Vector3.up * (halfHeight - radius),
-                centre3D - Vector3.up * (halfHeight - radius), radius, ~0, QueryTriggerInteraction.Ignore);
+                centre3D - Vector3.up * (halfHeight - radius), radius, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
             bool blocked = false;
             foreach (Collider overlap in overlaps)
                 if (excludedPlayer == null || !overlap.transform.IsChildOf(excludedPlayer.transform)) { blocked = true; break; }

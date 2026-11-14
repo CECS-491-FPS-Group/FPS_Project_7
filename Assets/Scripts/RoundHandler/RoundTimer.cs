@@ -120,6 +120,7 @@ public class RoundTimer : MonoBehaviour
 
     private void BeginPhase(gameStates phase, double startTime, int duration)
     {
+        if (phase != gameStates.GAME) MatchScoreboard.Instance?.ResetStreaks();
         SetPhase(phase);
         _deadline = startTime + Math.Max(0, duration);
         _nextIncomeTime = phase == gameStates.GAME
