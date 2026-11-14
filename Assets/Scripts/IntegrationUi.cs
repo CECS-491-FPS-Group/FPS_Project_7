@@ -31,6 +31,13 @@ public static class IntegrationUi
         go.GetComponent<Image>().color = new Color(.045f, .06f, .085f, .98f);
         return rect;
     }
+    public static void Backdrop(Transform parent)
+    {
+        var rect = Panel(parent, "Backdrop", Vector2.zero);
+        rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+        rect.offsetMin = rect.offsetMax = Vector2.zero;
+        rect.GetComponent<Image>().color = new Color(0, 0, 0, .65f);
+    }
     public static TMP_Text Text(Transform parent, string value, Vector2 position, Vector2 size, float font = 18)
     {
         var go = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));

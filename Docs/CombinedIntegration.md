@@ -110,9 +110,73 @@ posture/corpse checks and 48 existing unconnected audio checks passed with Unity
 FishNet processing. Actual PvP reward delivery, pickup races, invisibility visibility,
 death/respawn corpse physics and connection/scene timing remain user runtime tests.
 
-## Remaining stages in this authorized batch
+## Stage 3: local replay presentation (implemented)
 
-3. Local replay/theater presentation and final combined validation/runtime instructions.
+Source theater-mode/recording **8ee49ee05331b90b6661b23915d35ab837f20d12** supplied
+the recording format and theater intent. Dummy matches/unwired Watch are replaced
+with a real local-file list, bounded top-down XZ path, interpolated marker, timeline
+and play/pause. MainMenu -> Theater / Replays opens only outside a running session.
+Escape -> Save movement replay uses the existing owner-local recorder; teardown also
+saves new samples. Playback creates no gameplay scene, physics actor or NetworkManager.
+**Movement-only presentation, not full match/video/shot/other-player reconstruction.**
 
-Preserve logical commits between stages. Do not expand detectors, integrate bots/
-rejoin or loosen enforcement. Both modes remain ReportOnly with host exemption.
+Version 1 captures and prior current/source flat-position formats are supported.
+Files stay under Application.persistentDataPath/Replays; leaf names only, no traversal/
+reparse links, 16 MiB input limit, 36,000 frames, finite bounded samples. Listing
+inspects at most 128 files and displays the newest 12 within that inspected subset.
+Path rendering is capped near 2,048 segments. Invalid/unavailable files show an error.
+Captures are editable/falsifiable local presentation, never anti-cheat evidence.
+
+Compatibility completion: modal backdrops prevent click-through; menus remain usable
+while dead for save/leave without enabling combat. Shot emitters follow crouch head
+height. Damage multiplier is captured once per accepted trigger: a reward earned by
+one pellet affects subsequent shots, not that same shot's remaining pellets.
+
+## Final available validation (agent executed)
+
+- Five deterministic suites: **148 assertions** (18 notice, 31 integrity, 33 movement,
+  30 request validation, 36 armor/streak), via Tests/RunAntiCheatChecks.ps1.
+- Full Unity 6000.3.8f1 graphics-enabled import/compilation/FishNet processing;
+  registration stays **17 prefabs**. TeamIntegrationChecks: **73 native** assertions.
+  AudioIntegrationChecks: **52 unconnected Play Mode lifecycle** assertions, including
+  theater opening/listener continuity. Interactive multiplayer remains pending.
+- Current-source Editor, Development and Release compiler checks: **133 game source
+  files**. Release metadata has no development grant/probe methods or F6-F10 inputs;
+  normal menu replay saving remains available.
+- New asset/meta GUID uniqueness and corpse external GUID resolution passed; 46
+  unique prefab object IDs, 11 bodies/10 joints. Existing player prefab, scenes,
+  registration asset, vendor code and AGENTS.md unchanged in this batch.
+- Road.mat/Water.mat edits match entry backups byte-for-byte, remain uncommitted.
+  Recovery branch remains 9570966. No push/main merge/build regeneration.
+- Read-only AC05 Clean/Test three hashes and client identities match archive
+  **70cb725d6d834c51832442c0e4599570**; default server manifest is byte-identical.
+  No artifacts changed. AC06 has not been built.
+
+Ignored evidence: Logs/CombinedIntegrationFinal.log and Combined-{Editor,Development,
+Release}-compile.log. Existing LobbyCodeUI OnValidate, unused-event/vendor obsolete
+API and package diagnostics remain. Initial licensing token warning did not prevent
+compilation, Play Mode or orderly shutdown. No standalone build, interactive audio/
+multiplayer, actual reward delivery, latency or macOS pass is claimed.
+
+Controls checkpoint **4b8e275**; effects/corpses **3f22c28**; local replay and final
+compatibility follow in their logical commit. Pending combined Windows test batch:
+[CombinedIntegrationRuntime.md](CombinedIntegrationRuntime.md).
+
+## Remaining risks and ranked next batches
+
+1. Run AC06 Windows batch; resolve concrete integration faults before more anti-cheat.
+2. Finish combat/boost/lifecycle/delivery-burst validation on the combined game.
+   Crouch is approved geometry; positions remain client-authoritative. Invisibility
+   hides rendering only, not replicated positions (no fog of war). Pickup proximity
+   inherits movement trust. Neither is trusted remote attestation.
+3. Then revisit the trust-boundary audit for a justified bounded validation improvement.
+   Vertical/fly/repeated-teleport observation needs map/latency evidence first.
+4. Central spawn variety remains a separate follow-up. Bots require authoritative
+   actors/NavMesh; rejoin requires identity/resume/kick policy. Do not import their
+   competing local health/round systems to bypass these dependencies.
+
+Both modes remain ReportOnly with host exemption; no thresholds loosened/new detector.
+Windows is preferred. Broad latency/macOS/release runtime and unreported terrain/
+power-up regressions remain open. Mac Touch Bar alternate development controls are
+optional future work. Malicious clients can falsify hash reports; player-hosted
+servers assume a trusted host. No automatic reconnect or bans.

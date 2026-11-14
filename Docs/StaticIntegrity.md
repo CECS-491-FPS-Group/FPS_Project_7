@@ -1,5 +1,15 @@
 # Build-file integrity (schema 1, ReportOnly by default)
 
+2026-11-13 current combined stage: AC05 audio checklist (including clean startup)
+passed per user. Read-only AC05 Clean/Test selected hashes/client identities and
+installed default server manifest match archive 70cb725d6d834c51832442c0e4599570;
+no baseline/artifact changed. Controls/armor/streak network changes now require all
+peers rebuilt together, next unused AC06 (recheck). Follow CombinedIntegrationRuntime.md
+for Clean -> archived manifest/client metadata -> separate server installation -> Test
+copy order. New combined startup Verified remains pending. Earlier build-number and
+installed-manifest notes below are historical checkpoints. Hash-report trust limits
+and ReportOnly defaults are unchanged.
+
 AC04 follow-up: user-described screenshot confirms remote owner 1 startup Verified.
 Both AC04 copies' checked files/client identities match their archive; installed
 default server manifest is byte-identical (read-only verification). No owner 2 startup

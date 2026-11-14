@@ -4,11 +4,11 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// Adapted from theater-mode recording: local diagnostics only, no playback or network authority.
+// Adapted from theater-mode recording: bounded owner-local captures, never network authority.
 public sealed class LocalReplayCapture : MonoBehaviour
 {
     [Serializable] public struct Frame { public float time; public Vector3 position; public Quaternion rotation; }
-    [Serializable] public class Recording { public string scene; public int owner; public List<Frame> frames = new(); }
+    [Serializable] public class Recording { public int version = 1; public string scene; public int owner; public List<Frame> frames = new(); }
     private Health _health;
     private Recording _recording;
     private float _start, _next;
@@ -22,7 +22,7 @@ public sealed class LocalReplayCapture : MonoBehaviour
             _recording = new Recording { scene = gameObject.scene.name, owner = _health.OwnerId };
             _start = Time.unscaledTime;
         }
-        if (Time.unscaledTime >= _next && _recording.frames.Count < 36000)
+        if (Time.unscaledTime >= _next && _recording.frames.Count < ReplayArchive.MaximumFrames)
         {
             _next = Time.unscaledTime + 0.1f;
             _recording.frames.Add(new Frame { time = Time.unscaledTime - _start, position = transform.position, rotation = transform.rotation });
@@ -37,6 +37,8 @@ public sealed class LocalReplayCapture : MonoBehaviour
         try
         {
             string folder = Path.Combine(Application.persistentDataPath, "Replays"); Directory.CreateDirectory(folder);
+            if ((File.GetAttributes(folder) & FileAttributes.ReparsePoint) != 0) throw new IOException("Linked replay folder is unsupported.");
+            ReplayArchive.Validate(_recording);
             string path = Path.Combine(folder, $"Player{_recording.owner}_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}.json");
             File.WriteAllText(path, JsonUtility.ToJson(_recording)); _savedCount = _recording.frames.Count;
             Debug.Log($"[Replay] Saved local movement capture: {path}");

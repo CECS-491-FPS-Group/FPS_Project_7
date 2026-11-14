@@ -7,6 +7,7 @@ public sealed class PlayerAudio : MonoBehaviour
     private AudioClip _shot, _shotgun, _step;
     private Health _health;
     private CharacterController _capsule;
+    private Transform _emitter;
     private Vector3 _previous;
     private float _distance;
     private readonly RaycastHit[] _groundHits = new RaycastHit[8];
@@ -20,6 +21,7 @@ public sealed class PlayerAudio : MonoBehaviour
 #else
         _health = GetComponent<Health>(); _capsule = GetComponent<CharacterController>();
         var emitter = new GameObject("Shot and Health Audio");
+        _emitter = emitter.transform;
         emitter.transform.SetParent(transform, false);
         emitter.transform.localPosition = Vector3.up * 1.5f;
         _shots = emitter.AddComponent<AudioSource>();
@@ -106,6 +108,7 @@ public sealed class PlayerAudio : MonoBehaviour
 
     private void Update()
     {
+        if (_emitter != null) _emitter.localPosition = Vector3.up * (1.5f * (GetComponent<PlayerPosture>()?.Ratio ?? 1));
         Vector3 delta = transform.position - _previous; _previous = transform.position;
         if (_health == null || !_health.IsClientInitialized || !_health.CanAct ||
             float.IsNaN(delta.sqrMagnitude) || float.IsInfinity(delta.sqrMagnitude) || delta.sqrMagnitude > 9f)

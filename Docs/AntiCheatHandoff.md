@@ -16,21 +16,42 @@ server-selected shot origin. No vendor or movement-authority change. Native inpu
 posture 19 + existing unconnected audio 48 checks pass; interactive multiplayer tests
 remain pending for the combined build. New posture SyncVar/RPC requires all peers rebuilt.
 
-Controls checkpoint: **4b8e275**. Effects/ragdoll stage is now implemented: authoritative
+Controls checkpoint: **4b8e275**. Effects/ragdoll checkpoint **3f22c28**: authoritative
 armor, timed invisibility, PvP 5-kill rewards from original pool, per-player streaks and
 cosmetic 11-body/10-joint corpses (layer/query/player collision exclusions; max 8/8s).
-148 pure checks (112 + 36), native corpse/input checks and 48 unconnected audio checks
-pass; real multiplayer delivery/physics remain pending. No vendor/root authority change.
-Next unfinished stage is local theater/replay presentation, then combined validation.
+148 pure checks (112 + 36) pass; real multiplayer delivery/physics remain pending.
+Local theater is now implemented from 8ee49ee: real local files, bounded top-down
+movement path/marker, timeline/playback; not full match reconstruction. Final native
+suite passes **73** assertions and unconnected Play Mode lifecycle suite **52**.
+Full Unity/FishNet processing passes, registration remains 17. Editor/Development/
+Release current-source compilation passes; Release metadata excludes development
+grant/probe methods and F6-F10 inputs, retains menu replay saving. No vendor/root
+authority change; no standalone build or interactive multiplayer pass claimed.
 
 User decisions already confirmed: random original four buffs at every five consecutive
 PvP kills, resetting on death/match boundary; cosmetic player death ragdolls. Source
 pool is enum 1..4 (Random.Range(1,5)), excludes Armor/Invisibility. Next unfinished
-work is local theater/replay UI, separate commit,
-final compilation/release-exclusion checks and one consolidated Windows runtime batch.
+work is the **user runtime gate**, [CombinedIntegrationRuntime.md](CombinedIntegrationRuntime.md).
+AC06 folders/archive were absent at inspection: recheck, build Clean -> generate
+archived manifest/client descriptor -> preserve/install server approved.json -> copy
+Test after metadata -> restart hosting -> require each remote startup Verified.
+Rebuild every participant (stance/armor/streak protocol changes). No manual UI wiring.
+Read-only AC05 Clean/Test hashes/client identities and installed default server copy
+match archived build 70cb725d6d834c51832442c0e4599570; all artifacts untouched.
+Editor server default: <project>/IntegrityServer/approved.json unless
+FPS_INTEGRITY_MANIFEST overrides it. Desktop archives alone are not installations.
+Keep both policies ReportOnly (including environment overrides). Malicious clients
+can falsify integrity reports; player-hosted servers assume a trusted host.
 Do not restart finished terrain/audio/controls or ask these gameplay choices again.
 Bots and rejoin/host migration remain deferred for concrete authority/identity/NavMesh
 reasons in the audit. Broader latency/macOS/release runtime still pending.
+
+Next session: inspect branch/status, preserve material edits and AC02-AC05, run the
+single AC06 checklist with host + two remotes, record exact per-row evidence. Resolve
+integration failures, then resume a bounded server-validation batch. Limited central
+spawn variety remains separate follow-up. Windows preferred; Touch Bar F-key
+alternatives optional. Historical checkpoint sections below retain their original
+pending results; the current combined status above supersedes their next-build advice.
 
 ## Current: selected audio/settings stage — 2026-11-12
 

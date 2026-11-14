@@ -15,6 +15,7 @@ public sealed class LocalPlayerControls : MonoBehaviour
     private InputActionAsset _ownedAsset;
     private float _nextStance;
     private GameObject _menu;
+    private bool _wasAble;
     public bool MenuOpen => (_menu != null && _menu.activeSelf) || (_input != null && LocalBindingsMenu.IsOpenFor(Actions));
     public InputActionAsset Actions => _input.actions;
     public bool Held(string name) => !MenuOpen && Actions.FindAction(name)?.IsPressed() == true;
@@ -31,10 +32,13 @@ public sealed class LocalPlayerControls : MonoBehaviour
     private void Update()
     {
         if (!_health.IsClientInitialized || !_health.IsOwner) return;
-        if (!_health.CanAct) { LocalBindingsMenu.CloseFor(Actions); CloseMenu(); return; }
+        if (!_health.CanAct && _wasAble) { LocalBindingsMenu.CloseFor(Actions); CloseMenu(); }
+        _wasAble = _health.CanAct;
         // Escape remains a reserved way out even while PlayerInput is disabled for a menu.
-        bool pause = MenuOpen ? Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame : Pressed("Pause");
+        bool pause = MenuOpen || !_health.CanAct ? Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame : Pressed("Pause");
         if (pause && !LocalBindingsMenu.Rebinding) { if (MenuOpen) CloseMenu(); else OpenMenu(); }
+        if (MenuOpen) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
+        if (!_health.CanAct) return;
         bool desired = !MenuOpen && Held("Crouch");
         if (desired != _setup.Crouched && Time.unscaledTime >= _nextStance)
         {
@@ -48,6 +52,7 @@ public sealed class LocalPlayerControls : MonoBehaviour
         if (_menu == null)
         {
             _menu = IntegrationUi.Canvas("Local Match Menu", 110);
+            IntegrationUi.Backdrop(_menu.transform);
             var panel = IntegrationUi.Panel(_menu.transform, "Menu", new Vector2(440, 330));
             IntegrationUi.Text(panel, "Menu — match continues", new Vector2(0, 125), new Vector2(400, 35), 24);
             IntegrationUi.Button(panel, "Resume", new Vector2(0, 65), CloseMenu);
@@ -67,7 +72,7 @@ public sealed class LocalPlayerControls : MonoBehaviour
         if (_menu != null) _menu.SetActive(false);
         if (_values == null) return;
         _values.cursorLocked = true; _values.cursorInputForLook = true;
-        if (_health != null && _health.IsClientInitialized && _health.IsOwner && _health.CanAct)
+        if (_health != null && _health.IsClientInitialized && _health.IsOwner && !ClientDisconnectRecovery.InProgress)
         { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
     }
     private void OnDestroy()

@@ -80,6 +80,9 @@ public static class AudioIntegrationChecks
                 CheckPreferences(root);
                 CheckOwnerHandoff(root);
                 CheckHealthAndFalloff();
+                LocalReplayMenu.Show();
+                Require(UnityEngine.Object.FindFirstObjectByType<LocalReplayMenu>() != null, "local theater opens without network actors");
+                CheckRoot();
                 loading = SceneManager.LoadSceneAsync(Scenes[0]); phase = 1;
             }
             else

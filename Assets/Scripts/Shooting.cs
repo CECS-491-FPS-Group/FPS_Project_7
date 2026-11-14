@@ -276,19 +276,21 @@ public class HitscanShooter : NetworkBehaviour
         _bloom = Mathf.Max(0f, _bloom - (float)System.Math.Max(0d, now - _lastBloomTime - 0.15d) * 8f);
         float spread = Profile.pellets > 1 ? Profile.spread : (_bloom <= 0f ? 0f : Profile.spread + _bloom);
         bool damagedPlayer = false;
+        // A killstreak earned by one pellet affects the next trigger, not this shot's remaining pellets.
+        int acceptedDamage = Mathf.RoundToInt(damage * (MatchBoosts.Instance != null ? MatchBoosts.Instance.DamageMultiplier(Owner) : 1f));
         Quaternion aim = Quaternion.LookRotation(direction);
         for (int pellet = 0; pellet < Mathf.Clamp(Profile.pellets, 1, 16); pellet++)
         {
             Vector2 offset = Random.insideUnitCircle * spread;
             Vector3 pelletDirection = aim * Quaternion.Euler(offset.y, offset.x, 0f) * Vector3.forward;
-            damagedPlayer |= FireServerRay(pelletDirection, origin);
+            damagedPlayer |= FireServerRay(pelletDirection, origin, acceptedDamage);
         }
         _bloom = Mathf.Min(4f, _bloom + 0.4f);
         _lastBloomTime = now;
         PresentAcceptedShot(damagedPlayer, Profile.pellets > 1);
     }
 
-    private bool FireServerRay(Vector3 direction, Vector3 origin)
+    private bool FireServerRay(Vector3 direction, Vector3 origin, int acceptedDamage)
     {
         // Origin is the server's camera mount, never a client-supplied position.
         // RaycastAll lets us exclude self without ignoring intervening world geometry.
@@ -321,8 +323,7 @@ public class HitscanShooter : NetworkBehaviour
 
         int previousHp = victim.CurrentHealth;
         int previousArmor = victim.CurrentArmor;
-        int actualDamage = Mathf.RoundToInt(damage * (MatchBoosts.Instance != null ? MatchBoosts.Instance.DamageMultiplier(Owner) : 1f));
-        victim.TakeDamage(actualDamage, Owner);
+        victim.TakeDamage(acceptedDamage, Owner);
         bool damagedPlayer = victim.CurrentHealth < previousHp;
         if (damagedPlayer) PresentImpact(true, closest.point, closest.normal);
         return damagedPlayer || victim.CurrentArmor < previousArmor;

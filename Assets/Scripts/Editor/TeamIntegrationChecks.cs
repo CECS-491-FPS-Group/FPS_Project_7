@@ -51,6 +51,7 @@ public static class TeamIntegrationChecks
             Require(Mathf.Abs(capsule.height - height) < .001f && Vector3.Distance(posture.AimOrigin, actor.transform.position + aim) < .001f,
                 "standing restores collider and server eye origin");
             CheckEffects(actor);
+            CheckReplays();
             Debug.Log($"[Team CHECK] PASS checks={checks}; controls/posture geometry, network runtime pending.");
         }
         catch (Exception error)
@@ -104,5 +105,34 @@ public static class TeamIntegrationChecks
         foreach (var body in bodies) CosmeticCorpse.Retire(body);
         Require((int)MatchBoosts.Kind.Armor == 5 && (int)MatchBoosts.Kind.Invisibility == 6, "original four effect IDs preserved");
         Require(CombatEffectRules.OriginalReward(5) == 0, "streak cannot select armor");
+    }
+    private static void Invalid(Action action, string label)
+    {
+        try { action(); } catch (System.IO.InvalidDataException) { checks++; return; }
+        throw new InvalidOperationException("[Team CHECK] FAIL invalid data accepted: " + label);
+    }
+    private static void CheckReplays()
+    {
+        var data = new LocalReplayCapture.Recording { scene = "RoundImplementation", owner = 1 };
+        data.frames.Add(new LocalReplayCapture.Frame { time = 0, position = Vector3.zero, rotation = Quaternion.identity });
+        data.frames.Add(new LocalReplayCapture.Frame { time = 2, position = new Vector3(10, 0, 5), rotation = Quaternion.identity });
+        var restored = ReplayArchive.Parse(JsonUtility.ToJson(data));
+        Require(restored.frames.Count == 2 && restored.owner == 1, "current local capture round trip");
+        Require(Vector3.Distance(ReplayArchive.PositionAt(restored, 1), new Vector3(5, 0, 2.5f)) < .001f, "movement playback interpolation");
+        Require(ReplayArchive.PositionAt(restored, 99) == restored.frames[1].position, "playback ends at last sample");
+        var legacy = ReplayArchive.Parse("{\"mapName\":\"Test\",\"frames\":[{\"time\":0,\"posX\":4,\"rotW\":1}]}");
+        Require(legacy.frames[0].position.x == 4, "source theater capture format supported");
+        Invalid(() => ReplayArchive.Load("../outside.json"), "parent traversal");
+        Invalid(() => ReplayArchive.Load("file.txt"), "non-replay extension");
+        data.version = 99; Invalid(() => ReplayArchive.Validate(data), "future schema"); data.version = 1;
+        var bad = data.frames[1]; bad.time = -1; data.frames[1] = bad;
+        Invalid(() => ReplayArchive.Validate(data), "time reversal");
+        bad.time = 2; bad.position.x = float.NaN; data.frames[1] = bad;
+        Invalid(() => ReplayArchive.Validate(data), "nonfinite position");
+        bad.position = Vector3.zero; bad.rotation = new Quaternion(); data.frames[1] = bad;
+        Invalid(() => ReplayArchive.Validate(data), "zero quaternion");
+        data.frames.Clear(); Invalid(() => ReplayArchive.Validate(data), "empty capture");
+        for (int i = 0; i <= ReplayArchive.MaximumFrames; i++) data.frames.Add(new LocalReplayCapture.Frame());
+        Invalid(() => ReplayArchive.Validate(data), "oversized frame list");
     }
 }

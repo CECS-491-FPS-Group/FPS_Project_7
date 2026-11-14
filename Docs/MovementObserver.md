@@ -1,5 +1,13 @@
 # Movement observer (ReportOnly by default)
 
+2026-11-13 combined stage: crouch uses server-approved geometry/clearance and speed
+1 (sprint priority retained); Speed uses the existing multiplier. Invisibility and
+streak rewards use the same timed effect replacement/expiry, Armor does not replace
+Speed. Observer rules/6-9 limits/decay/enforcement are unchanged; both policies default
+ReportOnly, host exempt. 33 pure movement checks pass; interactive combined boost/
+crouch/slope/respawn/delivery-burst cases remain pending in CombinedIntegrationRuntime.md.
+AC05 audio checklist passed per user; no broader movement/latency/macOS inference.
+
 AC04 user evidence: Editor host + two remotes, reported normal movement/shooting/
 power-up collection/F10, screenshot-reported observer startups for owners 0/1/2 at
 6/9 and both modes ReportOnly. This does not complete every boost expiry/replacement,

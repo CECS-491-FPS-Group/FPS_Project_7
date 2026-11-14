@@ -35,6 +35,7 @@ public sealed class LocalBindingsMenu : MonoBehaviour
     {
         if (_open != null) return;
         var go = IntegrationUi.Canvas("Controls", 130);
+        IntegrationUi.Backdrop(go.transform);
         _open = go.AddComponent<LocalBindingsMenu>();
         _open._ownsAsset = asset == null;
         _open._asset = asset != null ? asset : LocalInputBindings.Create();

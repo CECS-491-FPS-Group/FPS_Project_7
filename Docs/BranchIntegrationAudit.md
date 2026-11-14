@@ -3,14 +3,18 @@
 2026-11-13 refresh: see [CombinedIntegration.md](CombinedIntegration.md). All pinned
 team tips remain unchanged; selective terrain/audio ports count as included despite
 nonancestral source commits. User reports all AC05 audio runtime rows passed. Controls/
-posture are now adapted, with effects/ragdolls and local theater work next in the
-authorized combined batch. The historical recommendations below are superseded there.
+posture, authoritative effects/PvP streak rewards, cosmetic player ragdolls and local
+movement theater are now adapted in separate logical stages. Automated checks pass;
+one AC06 multiplayer gate remains in CombinedIntegrationRuntime.md. Bots/rejoin are
+deferred for authority/NavMesh/identity reasons. Historical recommendations below
+are superseded by the refreshed content audit and current handoff.
 
 Audio follow-up: selected presentation/settings work from pinned **11c62b6** is now
 adapted on integration/anti-cheat-merged-test after **17d2c02**. Fetch found no newer
 audio tip. Existing authorities are retained; microphone and alternate combat/Health
 systems were excluded. See [AudioIntegrationStage.md](AudioIntegrationStage.md) for
-checks and pending AC05 gate. Crouch and subsequent stages have not started.
+checks and the now user-passed AC05 gate. The current combined work supersedes this
+historical stage's next-step advice.
 
 Implementation follow-up: the authorized first Soroush stage is now selectively
 ported on **integration/anti-cheat-merged-test**, based on audit descendant `9570966`.
