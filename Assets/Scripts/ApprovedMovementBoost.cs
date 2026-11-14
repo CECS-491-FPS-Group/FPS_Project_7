@@ -5,6 +5,7 @@ using FishNet.Component.Transforming;
 using UnityEngine.InputSystem;
 #endif
 
+[DefaultExecutionOrder(-20)]
 // Owner movement stays local; only the server's broadcast selects the modifier.
 public sealed class ApprovedMovementBoost : MonoBehaviour
 {
@@ -26,7 +27,8 @@ public sealed class ApprovedMovementBoost : MonoBehaviour
         DevelopmentControls();
         if (_developmentExcessSpeed) speed *= 3f;
 #endif
-        _controller.MoveSpeed = ApprovedMovementLimits.WalkSpeed * speed;
+        bool crouched = GetComponent<PlayerCameraSetup>().Crouched;
+        _controller.MoveSpeed = (crouched ? 1f : ApprovedMovementLimits.WalkSpeed) * speed;
         _controller.SprintSpeed = ApprovedMovementLimits.SprintSpeed * speed;
         _controller.JumpHeight = ApprovedMovementLimits.JumpHeight *
             (kind == MatchBoosts.Kind.Jump ? ApprovedMovementLimits.JumpMultiplier : 1f);

@@ -1,5 +1,12 @@
 # Selected audio/settings integration
 
+2026-11-13: the user reports **all AC05 runtime checklist steps passed**. This is
+user-reported Windows runtime evidence (including audio/settings, combat/F10,
+listener lifecycle, recovery and clean startup integrity), not tests executed by
+the agent. It does not complete broader latency/macOS/release or every terrain case.
+AC05 is preserved; the following setup/checklist records that checkpoint. Current
+combined integration work requires a new numbered build/manifest.
+
 ## Scope and source
 
 On `integration/anti-cheat-merged-test`, based on terrain checkpoint **17d2c02**.

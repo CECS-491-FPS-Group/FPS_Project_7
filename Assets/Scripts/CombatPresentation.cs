@@ -68,8 +68,7 @@ public sealed class CombatPresentation : MonoBehaviour
         if (_hud == null) BuildHud();
         if (_hud == null) return;
         _hud.gameObject.SetActive(true);
-        bool showScores = UnityEngine.InputSystem.Keyboard.current != null &&
-            UnityEngine.InputSystem.Keyboard.current.tabKey.isPressed;
+        bool showScores = GetComponent<LocalPlayerControls>()?.Held("Scoreboard") == true;
         _scoreboardPanel.SetActive(showScores);
         if (showScores) UpdateScoreboard();
         _ammoText.text = _weapon == null ? "" : $"{_weapon.WeaponName} [1/2/3]  Ammo: {_weapon.CurrentAmmo} / {_weapon.magazineSize}";

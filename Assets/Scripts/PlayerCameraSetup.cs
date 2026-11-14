@@ -1,4 +1,6 @@
 using FishNet.Object;
+using FishNet.Connection;
+using FishNet.Object.Synchronizing;
 using FishNet.Component.Transforming;
 using StarterAssets;
 using UnityEngine;
@@ -25,6 +27,13 @@ public class PlayerCameraSetup : NetworkBehaviour
     private Collider[] _deathColliders;
     private bool[] _collisionBeforeDeath;
     private bool _collisionSuppressed;
+    private readonly SyncVar<bool> _crouching = new();
+    private PlayerPosture _posture;
+    private LocalPlayerControls _controls;
+    private ServerGameplayValidation.RequestBudget _stanceRequests;
+    private double _nextStanceLog;
+    public bool Crouched => _crouching.Value;
+    public Vector3 ServerShotOrigin => _posture.AimOrigin;
 
     private void Awake()
     {
@@ -35,6 +44,8 @@ public class PlayerCameraSetup : NetworkBehaviour
         if (GetComponent<ApprovedMovementBoost>() == null) gameObject.AddComponent<ApprovedMovementBoost>();
         SetupSoldierVisual();
         SetLocalControl(false);
+        _posture = gameObject.AddComponent<PlayerPosture>();
+        _controls = gameObject.AddComponent<LocalPlayerControls>();
     }
 
     private void SetupSoldierVisual()
@@ -72,6 +83,7 @@ public class PlayerCameraSetup : NetworkBehaviour
         base.OnStartClient();
 
         SetLocalControl(base.IsOwner);
+        _posture.Initialize();
 
         string devices = "none";
         if (_playerInput && _playerInput.devices.Count > 0)
@@ -88,6 +100,7 @@ public class PlayerCameraSetup : NetworkBehaviour
     public override void OnStopClient()
     {
         SetLocalControl(false);
+        _posture.Apply(false);
         base.OnStopClient();
     }
 
@@ -105,12 +118,39 @@ public class PlayerCameraSetup : NetworkBehaviour
     private void Update()
     {
         UpdateDeathCollision();
-        bool allowed = IsClientInitialized && IsOwner && (_health == null || _health.CanAct);
+        if (IsServerInitialized && _health != null && !_health.CanAct) _crouching.Value = false;
+        if (IsClientInitialized || IsServerInitialized) _posture.Apply(_crouching.Value && (_health == null || _health.CanAct));
+        bool allowed = IsClientInitialized && IsOwner && (_health == null || _health.CanAct) && (_controls == null || !_controls.MenuOpen);
         if (allowed != _movementEnabled) SetMovementControl(allowed);
         UpdateBodyVisibility();
     }
 
     private void OnDestroy() => IntegrationAudio.ReleaseOwnerCamera(playerCamera);
+
+    public override void OnStartServer()
+    {
+        base.OnStartServer(); _crouching.Value = false;
+        _stanceRequests = new ServerGameplayValidation.RequestBudget(8, 8);
+        _posture.Initialize();
+    }
+    public void RequestLocalStance(bool crouched) { if (IsClientInitialized && IsOwner) RequestStance(crouched); }
+    [ServerRpc(RequireOwnership = true)]
+    private void RequestStance(bool crouched, NetworkConnection sender = null)
+    {
+        if (!IsServerInitialized || !IsSpawned || sender == null || sender != Owner || !sender.IsActive ||
+            !sender.IsAuthenticated || _health == null || !_health.CanAct ||
+            _stanceRequests == null || !_stanceRequests.TryConsume(Time.realtimeSinceStartupAsDouble)) return;
+        if (!crouched && !_posture.CanStand())
+        {
+            if (Time.realtimeSinceStartupAsDouble >= _nextStanceLog)
+            { _nextStanceLog = Time.realtimeSinceStartupAsDouble + 2; Debug.Log($"[Stance] owner={OwnerId} stand blocked by clearance."); }
+            return;
+        }
+        bool changed = _crouching.Value != crouched;
+        _crouching.Value = crouched;
+        if (changed && Time.realtimeSinceStartupAsDouble >= _nextStanceLog)
+        { _nextStanceLog = Time.realtimeSinceStartupAsDouble + 2; Debug.Log($"[Stance] owner={OwnerId} crouched={crouched} server approved."); }
+    }
 
     private void UpdateDeathCollision()
     {

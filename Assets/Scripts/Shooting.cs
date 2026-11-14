@@ -59,6 +59,8 @@ public class HitscanShooter : NetworkBehaviour
     private Camera _camera;
     private Health _health;
     private CombatPresentation _presentation;
+    private LocalPlayerControls _controls;
+    private PlayerCameraSetup _posture;
     private double _nextServerShotTime;
 
     private void Awake()
@@ -66,6 +68,8 @@ public class HitscanShooter : NetworkBehaviour
         _camera = GetComponent<Camera>();
         _health = GetComponentInParent<Health>();
         _presentation = GetComponentInParent<CombatPresentation>();
+        _controls = GetComponentInParent<LocalPlayerControls>();
+        _posture = GetComponentInParent<PlayerCameraSetup>();
         _normalFov = _camera != null ? _camera.fieldOfView : 60f;
         _selectedWeapon.OnChange += OnWeaponChanged;
         ApplyProfile();
@@ -175,7 +179,7 @@ public class HitscanShooter : NetworkBehaviour
     private void LateUpdate()
     {
         if (!IsClientInitialized || !IsOwner || _camera == null || !_camera.isActiveAndEnabled) return;
-        if (_health == null || !_health.CanAct)
+        if (_health == null || !_health.CanAct || (_controls != null && _controls.MenuOpen))
         {
             _nextLocalShotTime = 0d;
             _scoped = false;
@@ -187,21 +191,26 @@ public class HitscanShooter : NetworkBehaviour
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (Keyboard.current.f10Key.wasPressedThisFrame) DevelopmentRequestProbe();
 #endif
-            if (Keyboard.current.digit1Key.wasPressedThisFrame) RequestWeapon(0);
-            if (Keyboard.current.digit2Key.wasPressedThisFrame) RequestWeapon(1);
-            if (Keyboard.current.digit3Key.wasPressedThisFrame) RequestWeapon(2);
         }
-        _scoped = Mouse.current != null && Mouse.current.rightButton.isPressed;
+        if (_controls != null)
+        {
+            if (_controls.Pressed("Weapon1")) RequestWeapon(0);
+            if (_controls.Pressed("Weapon2")) RequestWeapon(1);
+            if (_controls.Pressed("Weapon3")) RequestWeapon(2);
+        }
+        _scoped = _controls != null ? _controls.Held("Aim") : Mouse.current != null && Mouse.current.rightButton.isPressed;
         _camera.fieldOfView = Mathf.Lerp(_camera.fieldOfView,
-            _scoped ? _normalFov / Mathf.Max(1f, Profile.zoom) : _normalFov, 1f - Mathf.Exp(-12f * Time.deltaTime));
+            _scoped ? _normalFov / Mathf.Max(1f, Profile.zoom) : _controls != null && _controls.Sprinting ? 60f : _normalFov,
+            1f - Mathf.Exp(-12f * Time.deltaTime));
         if (_presentation != null) _presentation.PrepareAim(maxPitch);
-        if (Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
+        if (_controls != null ? _controls.Pressed("Reload") : Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
         {
             RequestReload();
             return;
         }
-        if (Mouse.current == null || IsReloading || CurrentAmmo <= 0) return;
-        bool wantsFire = automaticFire ? Mouse.current.leftButton.isPressed : Mouse.current.leftButton.wasPressedThisFrame;
+        if (IsReloading || CurrentAmmo <= 0) return;
+        bool wantsFire = _controls != null ? automaticFire ? _controls.Held("Shoot") : _controls.Pressed("Shoot") :
+            Mouse.current != null && (automaticFire ? Mouse.current.leftButton.isPressed : Mouse.current.leftButton.wasPressedThisFrame);
         if (wantsFire && (!automaticFire || Time.unscaledTimeAsDouble >= _nextLocalShotTime))
         {
             _nextLocalShotTime = Time.unscaledTimeAsDouble + 1d / Mathf.Max(0.1f, shotsPerSecond);
@@ -219,7 +228,7 @@ public class HitscanShooter : NetworkBehaviour
             return;
         }
         if (!AdmitRequest(sender, "shot")) return;
-        Vector3 origin = transform.position;
+        Vector3 origin = _posture != null ? _posture.ServerShotOrigin : transform.position;
         if (!Finite(origin.x) || !Finite(origin.y) || !Finite(origin.z)) { Reject("invalid server origin"); return; }
         ReconcileServerWeapon();
         if (_health == null || !_health.IsServerInitialized || !_health.CanAct)
@@ -272,18 +281,18 @@ public class HitscanShooter : NetworkBehaviour
         {
             Vector2 offset = Random.insideUnitCircle * spread;
             Vector3 pelletDirection = aim * Quaternion.Euler(offset.y, offset.x, 0f) * Vector3.forward;
-            damagedPlayer |= FireServerRay(pelletDirection);
+            damagedPlayer |= FireServerRay(pelletDirection, origin);
         }
         _bloom = Mathf.Min(4f, _bloom + 0.4f);
         _lastBloomTime = now;
         PresentAcceptedShot(damagedPlayer, Profile.pellets > 1);
     }
 
-    private bool FireServerRay(Vector3 direction)
+    private bool FireServerRay(Vector3 direction, Vector3 origin)
     {
         // Origin is the server's camera mount, never a client-supplied position.
         // RaycastAll lets us exclude self without ignoring intervening world geometry.
-        RaycastHit[] hits = Physics.RaycastAll(transform.position, direction, range, ~0, QueryTriggerInteraction.Ignore);
+        RaycastHit[] hits = Physics.RaycastAll(origin, direction, range, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         Transform shooterRoot = NetworkObject.transform;
         RaycastHit closest = default;
         float closestDistance = float.PositiveInfinity;

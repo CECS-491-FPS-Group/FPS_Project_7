@@ -87,6 +87,7 @@ public sealed class IntegrationAudio : MonoBehaviour
         {
             if (_music.clip != null && !_music.isPlaying) _music.Play();
             LobbyAudioSettingsUI.Install(scene);
+            LocalBindingsMenu.Install(scene);
             foreach (GameObject root in scene.GetRootGameObjects())
                 if (root.GetComponentInChildren<UnityEngine.UI.Button>(true) != null && root.GetComponent<ButtonClickSound>() == null)
                     root.AddComponent<ButtonClickSound>();

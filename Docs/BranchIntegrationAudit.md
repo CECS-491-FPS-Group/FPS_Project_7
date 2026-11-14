@@ -1,5 +1,11 @@
 # Gameplay branch inspection — 2026-11-12
 
+2026-11-13 refresh: see [CombinedIntegration.md](CombinedIntegration.md). All pinned
+team tips remain unchanged; selective terrain/audio ports count as included despite
+nonancestral source commits. User reports all AC05 audio runtime rows passed. Controls/
+posture are now adapted, with effects/ragdolls and local theater work next in the
+authorized combined batch. The historical recommendations below are superseded there.
+
 Audio follow-up: selected presentation/settings work from pinned **11c62b6** is now
 adapted on integration/anti-cheat-merged-test after **17d2c02**. Fetch found no newer
 audio tip. Existing authorities are retained; microphone and alternate combat/Health

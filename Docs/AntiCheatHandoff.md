@@ -1,5 +1,30 @@
 # Anti-cheat continuation handoff
 
+## Current combined integration — 2026-11-13
+
+Resumed at 2130850, integration/anti-cheat-merged-test, with no partial source edits;
+only pre-existing Road.mat/Water.mat edits remain preserved and excluded. AC05 audio
+checklist is **fully passed per the user**, not tests executed by the agent. Previous
+build/manifest pairs and recovery branch 9570966 remain untouched. Refreshed fetch
+found no newer pinned team tips; remote integration branch now contains our existing
+audio checkpoint. See [CombinedIntegration.md](CombinedIntegration.md) for refreshed
+ancestry/content audit, explicit exclusions and source identities.
+
+Controls/crouch stage implemented: project-owned input asset, owner-local rebinding/
+menu, approved stance/clearance and capsule/eye/hitbox adaptation, source sprint FOV,
+server-selected shot origin. No vendor or movement-authority change. Native input/
+posture 19 + existing unconnected audio 48 checks pass; interactive multiplayer tests
+remain pending for the combined build. New posture SyncVar/RPC requires all peers rebuilt.
+
+User decisions already confirmed: random original four buffs at every five consecutive
+PvP kills, resetting on death/match boundary; cosmetic player death ragdolls. Source
+pool is enum 1..4 (Random.Range(1,5)), excludes Armor/Invisibility. Next unfinished
+work is authoritative effects/ragdolls, then local theater/replay UI, separate commits,
+final compilation/release-exclusion checks and one consolidated Windows runtime batch.
+Do not restart finished terrain/audio/controls or ask these gameplay choices again.
+Bots and rejoin/host migration remain deferred for concrete authority/identity/NavMesh
+reasons in the audit. Broader latency/macOS/release runtime still pending.
+
 ## Current: selected audio/settings stage — 2026-11-12
 
 Branch **integration/anti-cheat-merged-test**, source base **17d2c02**, with recovery

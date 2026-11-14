@@ -27,9 +27,11 @@ public sealed class LocalReplayCapture : MonoBehaviour
             _next = Time.unscaledTime + 0.1f;
             _recording.frames.Add(new Frame { time = Time.unscaledTime - _start, position = transform.position, rotation = transform.rotation });
         }
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
         if (Keyboard.current != null && Keyboard.current.f6Key.wasPressedThisFrame) Save();
+#endif
     }
-    private void Save()
+    public void Save()
     {
         if (_recording == null || _recording.frames.Count == _savedCount) return;
         try
