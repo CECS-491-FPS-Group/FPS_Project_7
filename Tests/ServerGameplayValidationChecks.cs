@@ -55,6 +55,42 @@ internal static class ServerGameplayValidationChecks
         Check(!ServerGameplayValidation.WithinPickupRange(0, 0, 0, double.MaxValue), "radius overflow rejected");
         Check(!ServerGameplayValidation.WithinPickupRange(0, 0, 0, double.NaN) &&
             !ServerGameplayValidation.WithinPickupRange(0, 0, 0, -1), "invalid pickup limit rejected");
+        Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 1, 5, 3, 100, 0, 2) == null, "current sidearm semantics valid");
+        Check(ServerGameplayValidation.WeaponConfigurationError(10, 8, 8, 1, 3, 100, 4, 1.3) == null, "current shotgun semantics valid");
+        Check(ServerGameplayValidation.WeaponConfigurationError(1, 200, 1, 100, .25, 200, 0, 1) == null, "future high cadence profile remains valid");
+        foreach (double value in new[] { double.NaN, double.PositiveInfinity, double.NegativeInfinity, 0d, -1d })
+        {
+            Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 1, value, 3, 100, 0, 2) != null, "invalid cadence " + value);
+            Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 1, 5, value, 100, 0, 2) != null, "invalid reload " + value);
+            Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 1, 5, 3, value, 0, 2) != null, "invalid range " + value);
+        }
+        foreach (double value in new[] { double.NaN, double.PositiveInfinity, -1d, 91d })
+            Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 1, 5, 3, 100, value, 2) != null, "invalid spread " + value);
+        foreach (double value in new[] { double.NaN, double.PositiveInfinity, 0d, .9d, 1001d })
+            Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 1, 5, 3, 100, 0, value) != null, "invalid zoom " + value);
+        Check(ServerGameplayValidation.WeaponConfigurationError(0, 30, 1, 5, 3, 100, 0, 2) != null, "nonpositive damage");
+        Check(ServerGameplayValidation.WeaponConfigurationError(int.MaxValue, 30, 1, 5, 3, 100, 0, 2) != null, "damage boost overflow prevented");
+        Check(ServerGameplayValidation.WeaponConfigurationError(int.MaxValue / 2, 30, 1, 5, 3, 100, 0, 2) == null, "safe boosted damage boundary");
+        Check(ServerGameplayValidation.WeaponConfigurationError(40, 0, 1, 5, 3, 100, 0, 2) != null, "empty magazine invalid");
+        Check(ServerGameplayValidation.WeaponConfigurationError(40, 1000001, 1, 5, 3, 100, 0, 2) != null, "magazine safety bound");
+        Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 0, 5, 3, 100, 0, 2) != null, "zero pellets invalid");
+        Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 17, 5, 3, 100, 0, 2) != null, "pellets no longer silently clamped");
+        Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 1, 1001, 3, 100, 0, 2) != null, "processing cadence bound");
+        Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 1, 5, 3601, 100, 0, 2) != null, "reload safety bound");
+        Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 1, 5, 3, 100001, 0, 2) != null, "range safety bound");
+        Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 1, .05, 3, 100, 0, 2) != null, "rate preserves prior 0.1 minimum semantics");
+        Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 1, 5, .05, 100, 0, 2) != null, "reload preserves prior 0.1 minimum semantics");
+        Check(ServerGameplayValidation.WeaponConfigurationError(40, 30, 1, 5, 3, .05, 0, 2) != null, "range preserves prior 0.1 minimum semantics");
+        Check(ServerGameplayValidation.ValidAimConfiguration(45, 89), "current aim envelope valid");
+        Check(ServerGameplayValidation.ValidAimConfiguration(180, 89.9f), "Inspector float pitch boundary valid");
+        Check(!ServerGameplayValidation.ValidAimConfiguration(double.NaN, 89), "nonfinite yaw invalid");
+        Check(!ServerGameplayValidation.ValidAimConfiguration(45, double.PositiveInfinity), "nonfinite pitch invalid");
+        Check(!ServerGameplayValidation.ValidAimConfiguration(181, 89) && !ServerGameplayValidation.ValidAimConfiguration(45, 90), "aim bounds enforced");
+        var ready = new ServerGameplayValidation.RequestBudget(2, 4);
+        var ping = new ServerGameplayValidation.RequestBudget(2, 4);
+        Check(Consume(ready, 0, 32) == 4, "ready churn bounded before lobby mutation");
+        Check(Consume(ping, 0, 32) == 4, "ping independently bounded");
+        Check(Consume(ready, .5, 32) == 1 && Consume(ping, .5, 32) == 1, "legitimate retry refills both lobby budgets");
         Console.WriteLine("Passed " + _passed + " server gameplay validation checks.");
     }
 }

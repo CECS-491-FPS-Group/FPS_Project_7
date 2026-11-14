@@ -34,6 +34,7 @@ public static class BuildIntegrityChecks
             var b = BuildIntegrity.Measure(root, 1, CancellationToken.None);
             var c = BuildIntegrity.Measure(root, 2, CancellationToken.None);
             Check(BuildIntegrity.Compare(m, a, b, c) == "Verified", "clean");
+            LifecycleChecks();
             File.AppendAllText(Path.Combine(root, "resources.assets"), "tamper");
             var tamper = BuildIntegrity.Measure(root, 2, CancellationToken.None);
             Check(BuildIntegrity.Compare(m, a, b, tamper) == "HashMismatch", "tamper");
@@ -75,5 +76,49 @@ public static class BuildIntegrityChecks
             Console.WriteLine("Passed " + _checks + " build integrity checks.");
         }
         finally { Directory.Delete(root, true); }
+    }
+    private static void LifecycleChecks()
+    {
+        string rejected;
+        var state = new IntegrityReportLifecycle(0);
+        Check(state.Result == "Pending" && !state.Verified, "new connection starts unverified");
+        Check(!state.Expire(59.99, true), "deadline not shortened");
+        Check(state.Expire(60, true) && state.Result.StartsWith("MissingReport"), "never received closes at deadline");
+        Check(!state.Expire(120, true), "missing result only once");
+        Check(state.TryAccept(0, 65, true, out rejected), "late initial report may be classified");
+        state.Complete("Verified");
+        Check(!state.Verified && state.Result == "LateReport (matching hashes; not verified)", "late matches never announce Verified");
+        Check(!state.TryAccept(0, 100, true, out rejected), "duplicate startup rejected after cooldown too");
+        Check(state.TryAccept(1, 100, true, out rejected), "monotonic development recheck");
+        state.Complete("HashMismatch");
+        Check(state.Late && !BuildIntegrity.CanEnforce("HashMismatch", state.Late), "recheck cannot erase late state");
+        var normal = new IntegrityReportLifecycle(0);
+        Check(!normal.TryAccept(1, 1, true, out rejected), "recheck cannot substitute for startup");
+        Check(!normal.TryAccept(0, double.NaN, true, out rejected), "invalid report clock");
+        Check(normal.TryAccept(0, 1, true, out rejected), "on-time startup admitted");
+        normal.Complete("Verified");
+        Check(normal.Verified && !normal.Expire(99, true), "matching on-time report closes pending");
+        Check(!normal.TryAccept(1, 15.99, true, out rejected), "cooldown is measured from report receipt");
+        Check(normal.TryAccept(1, 16, true, out rejected), "recheck at exact interval accepted");
+        normal.Complete("UnreadableFile");
+        Check(!normal.Verified && normal.Result == "UnreadableFile", "read error clears verified state");
+        Check(!normal.TryAccept(2, 31, false, out rejected) && rejected.Contains("release"), "release recheck explicit rejection");
+        Check(!normal.TryAccept(0, 40, true, out rejected), "startup replay rejected");
+        Check(!normal.TryAccept(1, 40, true, out rejected), "equal sequence rejected");
+        Check(normal.TryAccept(2, 40, true, out rejected), "higher sequence recovers after rejected requests");
+        normal.Complete("InvalidReport mode/schema");
+        Check(!normal.Verified && !normal.Expire(100, true), "malformed receipt is terminal unverified, not pending");
+        foreach (string result in new[] { "UnsupportedBuild", "ClientConfigurationError", "ServerConfigurationError", "MissingRequiredFile", "EditorSkipped (not verified)" })
+        {
+            var error = new IntegrityReportLifecycle(0);
+            Check(error.TryAccept(0, 1, true, out rejected), "error report admitted for classification " + result);
+            error.Complete(result);
+            Check(!error.Verified && error.Result == result && !error.Expire(100, true), "explicit terminal result " + result);
+        }
+        var noBaseline = new IntegrityReportLifecycle(0);
+        Check(noBaseline.Expire(60, false) && noBaseline.Result.StartsWith("ServerConfigurationError"), "missing baseline and no report distinct from cheating");
+        var reused = new IntegrityReportLifecycle(100);
+        Check(reused.TryAccept(0, 101, true, out rejected) && !reused.Late, "fresh session starts at sequence zero without old deadline");
+        Check(state.Late, "other connection result remains isolated");
     }
 }

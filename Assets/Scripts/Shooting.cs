@@ -35,6 +35,9 @@ public class HitscanShooter : NetworkBehaviour
     private double _lastBloomTime;
     private double _nextSwitchTime;
     private bool _scoped;
+    private WeaponProfile[] _serverWeapons;
+    private bool _localConfigurationValid, _serverConfigurationValid;
+    private float _serverPitch, _serverYaw;
     private float _normalFov;
     private double _nextRejectLog, _serverRequestRate;
     private GameplayPlayerSpawner _requestGate;
@@ -42,8 +45,33 @@ public class HitscanShooter : NetworkBehaviour
     private int _developmentProbe;
     private double _nextDevelopmentProbe;
 #endif
-    public string WeaponName => Profile.label;
-    private WeaponProfile Profile => weapons[Mathf.Clamp(_selectedWeapon.Value, 0, weapons.Length - 1)];
+    public string WeaponName => Profile?.label ?? "Weapon unavailable";
+    private WeaponProfile Profile
+    {
+        get
+        {
+            var definitions = IsServerInitialized ? _serverWeapons : weapons;
+            bool valid = IsServerInitialized ? _serverConfigurationValid : _localConfigurationValid;
+            return valid && definitions != null && _selectedWeapon.Value >= 0 && _selectedWeapon.Value < definitions.Length
+                ? definitions[_selectedWeapon.Value] : null;
+        }
+    }
+
+    public static string ConfigurationError(WeaponProfile[] definitions, float yaw, float pitch)
+    {
+        if (!ServerGameplayValidation.ValidAimConfiguration(yaw, pitch)) return "invalid finite yaw/pitch envelope";
+        if (definitions == null || definitions.Length == 0 || definitions.Length > ServerGameplayValidation.MaximumWeaponDefinitions)
+            return "weapon definitions must contain 1..64 entries";
+        for (int i = 0; i < definitions.Length; i++)
+        {
+            WeaponProfile p = definitions[i];
+            if (p == null) return $"weapon[{i}] is null";
+            string error = ServerGameplayValidation.WeaponConfigurationError(p.damage, p.magazine, p.pellets,
+                p.rate, p.reload, p.range, p.spread, p.zoom);
+            if (error != null) return $"weapon[{i}]: {error}";
+        }
+        return null;
+    }
 
     private readonly SyncVar<int> _ammo = new(new SyncTypeSettings(ReadPermission.OwnerOnly));
     private readonly SyncVar<bool> _reloading = new(new SyncTypeSettings(ReadPermission.OwnerOnly));
@@ -72,6 +100,7 @@ public class HitscanShooter : NetworkBehaviour
         _posture = GetComponentInParent<PlayerCameraSetup>();
         _normalFov = _camera != null ? _camera.fieldOfView : 60f;
         _selectedWeapon.OnChange += OnWeaponChanged;
+        _localConfigurationValid = ConfigurationError(weapons, maxYawDifference, maxPitch) == null;
         ApplyProfile();
     }
 
@@ -79,18 +108,39 @@ public class HitscanShooter : NetworkBehaviour
     {
         base.OnStartServer();
         _nextServerShotTime = 0d;
+        _nextSwitchTime = 0d; _bloom = 0; _lastBloomTime = 0;
         _nextRejectLog = 0d;
         _requestGate = NetworkManager.GetComponent<GameplayPlayerSpawner>();
+        string error = ConfigurationError(weapons, maxYawDifference, maxPitch);
+        _serverConfigurationValid = error == null;
+        if (!_serverConfigurationValid)
+        {
+            Debug.LogError($"[Weapon Config] owner={OwnerId} invalid: {error}; combat disabled. Developer configuration error, not a cheating verdict.", this);
+            _ammo.Value = 0; _reloading.Value = false; _reloadDeadline.Value = 0;
+            return;
+        }
+        // Freeze this server's approved values; client/Inspector presentation fields cannot become limits.
+        _serverWeapons = new WeaponProfile[weapons.Length];
+        for (int i = 0; i < weapons.Length; i++)
+        {
+            WeaponProfile p = weapons[i];
+            _serverWeapons[i] = new WeaponProfile { label = p.label, damage = p.damage, magazine = p.magazine,
+                pellets = p.pellets, rate = p.rate, reload = p.reload, range = p.range, spread = p.spread,
+                zoom = p.zoom, automatic = p.automatic };
+        }
+        _serverPitch = maxPitch; _serverYaw = maxYawDifference;
+        _selectedWeapon.Value = 0;
+        ApplyProfile();
         double fastest = 0d;
-        foreach (WeaponProfile weapon in weapons)
+        foreach (WeaponProfile weapon in _serverWeapons)
             if (weapon != null && Finite(weapon.rate) && weapon.rate > fastest) fastest = weapon.rate;
         _serverRequestRate = ServerGameplayValidation.CombatRequestRate(fastest);
         _ammo.Value = Mathf.Max(1, magazineSize);
         _reloading.Value = false;
         _reloadDeadline.Value = 0d;
         _wasDead = false;
-        _magazines = new int[weapons.Length];
-        for (int i = 0; i < weapons.Length; i++) _magazines[i] = Mathf.Max(1, weapons[i].magazine);
+        _magazines = new int[_serverWeapons.Length];
+        for (int i = 0; i < _serverWeapons.Length; i++) _magazines[i] = _serverWeapons[i].magazine;
     }
 
     private void OnDestroy() => _selectedWeapon.OnChange -= OnWeaponChanged;
@@ -98,9 +148,9 @@ public class HitscanShooter : NetworkBehaviour
     private void ApplyProfile()
     {
         WeaponProfile p = Profile;
-        damage = Mathf.Max(1, p.damage); magazineSize = Mathf.Max(1, p.magazine);
-        shotsPerSecond = Mathf.Max(0.1f, p.rate); reloadDuration = Mathf.Max(0.1f, p.reload);
-        range = Mathf.Max(0.1f, p.range); automaticFire = p.automatic;
+        damage = p?.damage ?? 0; magazineSize = p?.magazine ?? 0;
+        shotsPerSecond = p?.rate ?? 0; reloadDuration = p?.reload ?? 0;
+        range = p?.range ?? 0; automaticFire = p?.automatic ?? false;
         _scoped = false;
         if (_camera != null) _camera.fieldOfView = _normalFov;
     }
@@ -110,9 +160,9 @@ public class HitscanShooter : NetworkBehaviour
     {
         if (!IsServerInitialized || !IsSpawned || sender != Owner || sender == null ||
             !sender.IsActive || !sender.IsAuthenticated) return;
-        if (!AdmitRequest(sender, "switch")) return;
+        if (!_serverConfigurationValid || !AdmitRequest(sender, "switch")) return;
         if (_health == null || !_health.CanAct ||
-            index < 0 || index >= weapons.Length || index == _selectedWeapon.Value || ServerTime < _nextSwitchTime) return;
+            index < 0 || index >= _serverWeapons.Length || index == _selectedWeapon.Value || ServerTime < _nextSwitchTime) return;
         ReconcileServerWeapon();
         _magazines[_selectedWeapon.Value] = CurrentAmmo;
         _reloading.Value = false; _reloadDeadline.Value = 0;
@@ -128,7 +178,7 @@ public class HitscanShooter : NetworkBehaviour
 
     private void ReconcileServerWeapon()
     {
-        if (!IsServerInitialized || !IsSpawned || _health == null) return;
+        if (!IsServerInitialized || !IsSpawned || !_serverConfigurationValid || _health == null) return;
         if (_health.IsDead) _wasDead = true;
         if (_health.IsDead || _health.MatchEnded)
         {
@@ -141,15 +191,15 @@ public class HitscanShooter : NetworkBehaviour
         if (_wasDead)
         {
             _wasDead = false;
-            _ammo.Value = Mathf.Max(1, magazineSize);
-            for (int i = 0; i < _magazines.Length; i++) _magazines[i] = Mathf.Max(1, weapons[i].magazine);
+            _ammo.Value = Profile.magazine;
+            for (int i = 0; i < _magazines.Length; i++) _magazines[i] = _serverWeapons[i].magazine;
             _reloading.Value = false;
             _reloadDeadline.Value = 0d;
             Debug.Log($"[Weapon] Owner={OwnerId} respawn magazine={CurrentAmmo}.", this);
         }
         if (IsReloading && ServerTime >= _reloadDeadline.Value)
         {
-            _ammo.Value = Mathf.Max(1, magazineSize);
+            _ammo.Value = Profile.magazine;
             _reloading.Value = false;
             _reloadDeadline.Value = 0d;
             Debug.Log($"[Weapon] Owner={OwnerId} reload complete; ammo={CurrentAmmo}.", this);
@@ -161,13 +211,12 @@ public class HitscanShooter : NetworkBehaviour
     {
         if (!IsServerInitialized || !IsSpawned || sender == null || sender != Owner ||
             !sender.IsActive || !sender.IsAuthenticated) return;
-        if (!AdmitRequest(sender, "reload")) return;
+        if (!_serverConfigurationValid || !AdmitRequest(sender, "reload")) return;
         ReconcileServerWeapon();
-        if (_health == null || !_health.CanAct || IsReloading || CurrentAmmo >= magazineSize ||
-            magazineSize < 1 || !Finite(reloadDuration) || reloadDuration <= 0f) return;
+        if (_health == null || !_health.CanAct || IsReloading || CurrentAmmo >= Profile.magazine) return;
         _reloading.Value = true;
-        _reloadDeadline.Value = ServerTime + reloadDuration;
-        Debug.Log($"[Weapon] Owner={OwnerId} reload started ({reloadDuration}s); ammo={CurrentAmmo}.", this);
+        _reloadDeadline.Value = ServerTime + Profile.reload;
+        Debug.Log($"[Weapon] Owner={OwnerId} reload started ({Profile.reload}s); ammo={CurrentAmmo}.", this);
     }
 
     public override void OnStopClient()
@@ -179,7 +228,7 @@ public class HitscanShooter : NetworkBehaviour
     private void LateUpdate()
     {
         if (!IsClientInitialized || !IsOwner || _camera == null || !_camera.isActiveAndEnabled) return;
-        if (_health == null || !_health.CanAct || (_controls != null && _controls.MenuOpen))
+        if (_health == null || !_health.CanAct || Profile == null || (_controls != null && _controls.MenuOpen))
         {
             _nextLocalShotTime = 0d;
             _scoped = false;
@@ -200,7 +249,7 @@ public class HitscanShooter : NetworkBehaviour
         }
         _scoped = _controls != null ? _controls.Held("Aim") : Mouse.current != null && Mouse.current.rightButton.isPressed;
         _camera.fieldOfView = Mathf.Lerp(_camera.fieldOfView,
-            _scoped ? _normalFov / Mathf.Max(1f, Profile.zoom) : _controls != null && _controls.Sprinting ? 60f : _normalFov,
+            _scoped ? _normalFov / Profile.zoom : _normalFov,
             1f - Mathf.Exp(-12f * Time.deltaTime));
         if (_presentation != null) _presentation.PrepareAim(maxPitch);
         if (_controls != null ? _controls.Pressed("Reload") : Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
@@ -227,7 +276,7 @@ public class HitscanShooter : NetworkBehaviour
             Reject("invalid ownership");
             return;
         }
-        if (!AdmitRequest(sender, "shot")) return;
+        if (!_serverConfigurationValid || !AdmitRequest(sender, "shot")) return;
         Vector3 origin = _posture != null ? _posture.ServerShotOrigin : transform.position;
         if (!Finite(origin.x) || !Finite(origin.y) || !Finite(origin.z)) { Reject("invalid server origin"); return; }
         ReconcileServerWeapon();
@@ -246,18 +295,12 @@ public class HitscanShooter : NetworkBehaviour
         float pitch = Mathf.Abs(Mathf.Asin(Mathf.Clamp(direction.y, -1f, 1f)) * Mathf.Rad2Deg);
         Vector3 horizontalAim = Vector3.ProjectOnPlane(direction, Vector3.up);
         Vector3 horizontalFacing = Vector3.ProjectOnPlane(NetworkObject.transform.forward, Vector3.up);
-        if (pitch > maxPitch + 0.1f || horizontalAim.sqrMagnitude < 0.000001f ||
-            Vector3.Angle(horizontalFacing, horizontalAim) > maxYawDifference)
+        if (pitch > _serverPitch + 0.1f || horizontalAim.sqrMagnitude < 0.000001f ||
+            Vector3.Angle(horizontalFacing, horizontalAim) > _serverYaw)
         {
             Reject("aim inconsistent with player facing/pitch limits");
             return;
         }
-        if (damage <= 0 || !Finite(range) || range <= 0f || !Finite(shotsPerSecond) || shotsPerSecond <= 0f)
-        {
-            Reject("invalid server weapon configuration");
-            return;
-        }
-
         if (IsReloading || CurrentAmmo <= 0)
         {
             Reject(IsReloading ? "reloading" : "empty magazine");
@@ -269,7 +312,7 @@ public class HitscanShooter : NetworkBehaviour
             Reject("cooldown");
             return;
         }
-        _nextServerShotTime = now + 1d / shotsPerSecond;
+        _nextServerShotTime = now + 1d / Profile.rate;
         _ammo.Value--;
         Debug.Log($"[Weapon] Owner={OwnerId} accepted shot; ammo={CurrentAmmo}/{magazineSize}.", this);
 
@@ -277,7 +320,7 @@ public class HitscanShooter : NetworkBehaviour
         float spread = Profile.pellets > 1 ? Profile.spread : (_bloom <= 0f ? 0f : Profile.spread + _bloom);
         bool damagedPlayer = false;
         // A killstreak earned by one pellet affects the next trigger, not this shot's remaining pellets.
-        int acceptedDamage = Mathf.RoundToInt(damage * (MatchBoosts.Instance != null ? MatchBoosts.Instance.DamageMultiplier(Owner) : 1f));
+        int acceptedDamage = (int)System.Math.Round((double)Profile.damage * (MatchBoosts.Instance != null ? MatchBoosts.Instance.DamageMultiplier(Owner) : 1f));
         Quaternion aim = Quaternion.LookRotation(direction);
         for (int pellet = 0; pellet < Mathf.Clamp(Profile.pellets, 1, 16); pellet++)
         {
@@ -294,7 +337,7 @@ public class HitscanShooter : NetworkBehaviour
     {
         // Origin is the server's camera mount, never a client-supplied position.
         // RaycastAll lets us exclude self without ignoring intervening world geometry.
-        RaycastHit[] hits = Physics.RaycastAll(origin, direction, range, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        RaycastHit[] hits = Physics.RaycastAll(origin, direction, Profile.range, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         Transform shooterRoot = NetworkObject.transform;
         RaycastHit closest = default;
         float closestDistance = float.PositiveInfinity;
@@ -365,6 +408,17 @@ public class HitscanShooter : NetworkBehaviour
     }
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
+    [ContextMenu("Development/Validate weapon configuration fixtures")]
+    private void DevelopmentConfigurationProbe()
+    {
+        if (!IsServerInitialized) { Debug.Log("[Weapon Config TEST] Select a server-spawned shooter."); return; }
+        var invalid = new WeaponProfile { rate = float.NaN };
+        Debug.Log($"[Weapon Config TEST] live={(ConfigurationError(weapons, maxYawDifference, maxPitch) ?? "valid")} " +
+            $"null={(ConfigurationError(null, 45, 89) != null ? "rejected" : "FAILED")} " +
+            $"NaN={(ConfigurationError(new[] { invalid }, 45, 89) != null ? "rejected" : "FAILED")}; " +
+            "validator fixtures only; no live config changed, no player verdict.");
+    }
+
     // Fixed local probes through the existing RPCs/broadcasts, with no privileged server API.
     private void DevelopmentRequestProbe()
     {

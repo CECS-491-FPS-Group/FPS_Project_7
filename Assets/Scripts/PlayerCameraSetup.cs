@@ -33,7 +33,15 @@ public class PlayerCameraSetup : NetworkBehaviour
     private ServerGameplayValidation.RequestBudget _stanceRequests;
     private double _nextStanceLog;
     public bool Crouched => _crouching.Value;
-    public Vector3 ServerShotOrigin => _posture.AimOrigin;
+    public Vector3 ServerShotOrigin
+    {
+        get
+        {
+            // RPC ordering can precede Update: ray origin must reflect approved stance now.
+            _posture.Apply(_crouching.Value && (_health == null || _health.CanAct));
+            return _posture.AimOrigin;
+        }
+    }
 
     private void Awake()
     {
@@ -142,6 +150,7 @@ public class PlayerCameraSetup : NetworkBehaviour
         if (!IsServerInitialized || !IsSpawned || sender == null || sender != Owner || !sender.IsActive ||
             !sender.IsAuthenticated || _health == null || !_health.CanAct ||
             _stanceRequests == null || !_stanceRequests.TryConsume(Time.realtimeSinceStartupAsDouble)) return;
+        if (_crouching.Value == crouched) return;
         if (!crouched && !_posture.CanStand())
         {
             if (Time.realtimeSinceStartupAsDouble >= _nextStanceLog)
@@ -150,6 +159,7 @@ public class PlayerCameraSetup : NetworkBehaviour
         }
         bool changed = _crouching.Value != crouched;
         _crouching.Value = crouched;
+        _posture.Apply(crouched);
         if (changed && Time.realtimeSinceStartupAsDouble >= _nextStanceLog)
         { _nextStanceLog = Time.realtimeSinceStartupAsDouble + 2; Debug.Log($"[Stance] owner={OwnerId} crouched={crouched} server approved."); }
     }

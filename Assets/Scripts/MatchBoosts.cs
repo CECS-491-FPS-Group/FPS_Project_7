@@ -19,7 +19,7 @@ public sealed class MatchBoosts : MonoBehaviour
     public struct State : IBroadcast { public Pickup[] Pickups; public Effect[] Effects; }
     public float duration = 20f;
     private readonly List<Pickup> _pickups = new();
-    private readonly Dictionary<NetworkConnection, Effect> _effects = new();
+    private readonly Dictionary<NetworkConnection, Effect> _effects = new(ConnectionReferenceComparer.Instance);
     private readonly Dictionary<int, GameObject> _visuals = new();
     private readonly Dictionary<int, Effect> _clientEffects = new();
     private NetworkManager _manager;
@@ -38,6 +38,18 @@ public sealed class MatchBoosts : MonoBehaviour
         _visualPrefab = Resources.Load<GameObject>("BoostVisual");
         if (_visualPrefab == null) Debug.LogError("[Boost] Missing Resources/BoostVisual cosmetic prefab.", this);
         _manager.ClientManager.RegisterBroadcast<State>(OnState);
+        _manager.ServerManager.OnRemoteConnectionState += OnRemoteState;
+        _manager.ServerManager.OnServerConnectionState += OnServerState;
+    }
+    private void OnRemoteState(NetworkConnection connection, RemoteConnectionStateArgs args)
+    {
+        if (args.ConnectionState != RemoteConnectionState.Stopped) return;
+        if (_effects.Remove(connection)) _nextSnapshot = 0;
+    }
+    private void OnServerState(ServerConnectionStateArgs args)
+    {
+        if (args.ConnectionState != LocalConnectionState.Stopped) return;
+        _effects.Clear(); _pickups.Clear(); _nextSnapshot = 0;
     }
     public void Clear(NetworkConnection connection) { if (_manager != null && _manager.IsServerStarted) _effects.Remove(connection); }
     private bool Has(NetworkConnection connection, Kind kind) => _manager != null && _manager.IsServerStarted &&
@@ -194,7 +206,12 @@ public sealed class MatchBoosts : MonoBehaviour
     }
     private void OnDestroy()
     {
-        if (_manager != null) _manager.ClientManager.UnregisterBroadcast<State>(OnState);
+        if (_manager != null)
+        {
+            _manager.ClientManager.UnregisterBroadcast<State>(OnState);
+            _manager.ServerManager.OnRemoteConnectionState -= OnRemoteState;
+            _manager.ServerManager.OnServerConnectionState -= OnServerState;
+        }
         foreach (GameObject visual in _visuals.Values) if (visual != null) Destroy(visual.GetComponent<Renderer>().material);
         if (Instance == this) Instance = null;
     }

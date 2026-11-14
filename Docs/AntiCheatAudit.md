@@ -1,5 +1,65 @@
 # Trust-boundary audit and first weekend batch — 2026-11-12
 
+## Merged-game reconciliation / bounded hardening — 2026-11-13
+
+Inspected integration/anti-cheat-merged-test at **06595a6** with only pre-existing
+Road.mat/Water.mat edits. No reset/merge/vendor change. AC06 combined smoke (rebinding,
+effects, killstreaks, ragdolls, movement replay, combat and match lifecycle) passed
+**per user report**. The AC06 anti-cheat disconnect/rejoin test was explicitly skipped.
+This supersedes earlier pending combined-smoke notes, not wider unreported coverage.
+
+| Changed boundary / source reference | Reconciled finding |
+| --- | --- |
+| Shooting.cs:250 LateUpdate; GameplayInput; LocalInputBindings.Create | **Protected/presentation:** ADS only changes local FOV, never damage/cadence/range/spread/speed limits. Default Shift is Sprint, RMB Aim. Separate sprint FOV 60 caused apparent ADS; removed without changing binding IDs or saved overrides. Native binding-resolution checks preserve intentional Shift Aim overrides. Runtime fix pending. |
+| PlayerCameraSetup.cs:148 RequestStance, :36 ServerShotOrigin; PlayerPosture.Apply/CanStand | **Protected + ordering gap fixed:** owned active/authenticated spawned living actor; 8/s burst-8 before clearance; ceiling rejects standing. Duplicate same-stance requests now avoid clearance. Approved stance applies immediately and the server origin refreshes from that state, closing RPC-before-Update eye/collider lag. No client origin accepted; ADS cannot move the server origin. Death/respawn still reset geometry. |
+| Shooting.cs:60 ConfigurationError, :107 OnStartServer; ServerGameplayValidation.WeaponConfigurationError | **Concrete gap fixed:** null/empty/oversized catalogs, null entries, nonfinite/out-of-range weapon and aim values formerly reached indexing/clamps/rays. Validate once, snapshot server definitions and aim envelope, disable that shooter's combat on invalid configuration with one developer error. Shot/switch/reload reject it independently of punitive modes. No cheating verdict/disconnect. Profiles/IDs stay extensible; see bounds below. |
+| Shooting.cs:159 RequestWeapon, :210 RequestReload, :271 RequestShot, :336 FireServerRay | **Already protected, reused:** owner/active/auth/spawn/alive checks, shared processing budget, saved magazines/cooldown/reload deadlines, finite aim envelope, server rays/world obstruction and first-death damage authority. Now use captured server configuration, including range and boosted damage arithmetic. Shot multiplier remains captured per trigger. Combat in pre/postgame follows existing Health.CanAct rule; no new phase restriction invented. |
+| NetworkLobbyUI.cs:292 AdmitLobbyRequest, :172 ReportPingServerRpc, :281 CmdToggleReady | **Concrete gap fixed:** independent 2/s burst-4 ready/ping budgets before scans/mutation/SyncVar-driven UI work. Server initialized/spawned, transition, active/authenticated and registered connection required. Existing sender-attributed roster, ping clamp and start/ready revalidation retained. Log at most once/type/connection/5s; no penalty. |
+| ConnectionReferenceComparer; installed FishNet NetworkConnection.cs:217-241 | **Concrete lifecycle gap fixed:** FishNet equality/hash uses mutable ClientId. Relevant session/player/readiness/combat/query/score/currency/boost tables now use object identity; stop callbacks remove state and server-stop clears tables. New native test proves another object with the same ID cannot inherit a session and ID mutation cannot strand removal. Same-object pooling still requires existing Stopped cleanup, retained. |
+| MatchBoosts.cs:67 ApplyServerBoost, :44 OnRemoteState, :49 OnServerState, :60 ServerHasSpeedBoost | **Already authoritative + cleanup fixed:** server selects pickup/grant, living same-scene actor, active authenticated connection, finite duration and approved kind. Armor adds 100 capped by Health; doesn't replace timed effects. Invisibility replaces timed effect, expires via server dictionary/deadline, only hides remote rendering. Effects clear on death/non-GAME/scene and now explicitly on disconnect/server stop before ID reuse. No grant/collection RPC. Existing Speed allowances/tail unchanged. |
+| Health.cs:76 TakeDamage, :186 AddServerArmor, :102 EndMatch, :155 AcknowledgeRespawn | **Protected, reused:** Shield first, armor absorbs before HP, integer-safe armor arithmetic; armor reset start/respawn/end. Only first positive-to-zero HP transition calls RecordDeath. No client armor/HP/kill/reward amount. |
+| MatchScoreboard.cs:99 RecordDeath, :120 ResetStreaks; MatchBoosts.cs:85 RewardServerStreak; RoundTimer.BeginPhase | **Protected, reused:** one confirmed death increments eligible PvP killer, each 5/10/15... grants original enum 1..4 only (Shield/Speed/Jump/Damage). Death and GAME exit reset, disconnect removes score/streak, scene resets. Server stop now explicitly clears scores too. No client kill/streak RPC or duplicate detector added around this path. |
+| FileAntiCheat.cs:254 Receive/:288 EvaluateReport; IntegrityReportLifecycle.TryAccept/Expire/Complete | **Lifecycle/logging gap fixed:** bounded explicit Pending -> terminal result. Never-report: one MissingReport at 60s. Unsupported/config/read/malformed results close pending without verification. Missed startup receipt remains sticky LateReport; matching late hashes say `LateReport (matching hashes; not verified)` rather than a success label. Duplicate/sequence/frequency rejection logs once, including release recheck rejection formerly silent. Fixed payload/coverage/build checks retained. |
+| FileAntiCheat.cs:137 Update/:211 SendUnavailable/:217 BeginCheck | **Concrete gap fixed:** unexpected worker failure formerly only logged locally, leaving server awaiting a report. Failure/60s watchdog now sends unavailable once, cancels best effort, suppresses stale/timed-out results, retains at most one worker until OS I/O retires. A subsequent session blocked by that worker gets one bounded unavailable result, no automatic worker/retry loop. Rechecks remain development-only/manual/15s. |
+
+Definition safety bounds (developer errors, not player limits): 1..64 profiles; damage
+1..int.MaxValue/2 (current Damage is 2x), magazine 1..1,000,000, pellets 1..16;
+finite rate 0.1..1000/s, reload 0.1..3600s, range 0.1..100000m (prior 0.1 minima
+retained as validation rather than silent clamps), spread 0..90 degrees,
+zoom 1..1000; finite yaw 0..180, pitch 0..89.9f. These include current three weapons
+and future 100Hz fixture; not a hardcoded weapon-ID allowlist. Raise implementation
+bounds deliberately with work/cost validation for future weapons. Server snapshots
+are selected at network spawn; correct definitions and start a fresh spawn/session,
+not a normal Health respawn or hot edit of an active shooter.
+
+Integrity receipt is not admission: an on-time unavailable/malformed report is a
+terminal unverified result; a later valid development recheck may recover it. Missing
+the startup receipt deadline stays late. Only on-time validated HashMismatch or
+MissingRequiredFile can invoke existing optional static enforcement. Unreadable vetoes
+mixed failures; other categories stay log-only. No new unverified-client admission
+restriction was added. A malicious client can suppress/falsify reports/known-good
+hashes; this remains file-integrity detection, not trusted remote attestation.
+
+Actual checks: **230 deterministic assertions**, full Unity/FishNet processing with
+**17 prefabs**, **89 native** and **60 unconnected Play Mode** assertions; 135-source
+Editor/Development/Release compilation; Development probe presence and release
+metadata exclusion (F6-F10/grants/probes/startup-test setting/state). Native checks
+exercise real classifier/connection identity and binding resolution, not transport.
+Play Mode blocked-task fixture exercises real watchdog bookkeeping, not an OS I/O hang.
+Early fixture property/event-routing/import errors were corrected; final run passes.
+Existing unrelated package/compiler/licensing warnings remain. No new standalone/
+interactive network pass claimed. See AntiCheatHardeningRuntime.md and GameplayBacklog.md.
+
+Next movement batch: characterize legitimate crouch/sprint/Speed/Jump, long falls,
+slopes/water/steps, approved respawn and delivery bursts first. Client-authoritative
+root position, absent server-grounded/vertical envelope, no rewind and ray-origin/
+cover geometry remain architectural limits. Crouched sprint is intentionally legal,
+so a 1m/s crouch enforcement ceiling would be wrong. Invisibility still sends positions;
+no fog of war. No new behavioral detector, balance change or threshold relaxation here.
+
+The remaining sections are historical pre-integration audit references; method line
+numbers and the old ranking/build advice there are superseded by this reconciliation.
+
 Checkpoint update: the user supplied AC03-Clean F10 rejection logs for invalid aim,
 switch budget, scoreboard and balance query limits; normal movement/shooting worked
 and no disconnect occurred. Record these as user-observed targeted results, not

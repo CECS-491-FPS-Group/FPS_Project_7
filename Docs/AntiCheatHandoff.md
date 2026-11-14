@@ -1,5 +1,70 @@
 # Anti-cheat continuation handoff
 
+## Current request/configuration/integrity hardening — 2026-11-13
+
+Resumed **integration/anti-cheat-merged-test / 06595a6**; only unrelated Road.mat and
+Water.mat edits existed, preserved byte-for-byte and excluded. AGENTS/vendor/player
+prefab/scene/component-order/registration assets unchanged. Recovery branch stays
+9570966; no push/main merge or generated build/baseline writes.
+
+**AC06 user-reported smoke pass:** rebinding, effects, killstreaks, cosmetic ragdolls,
+local replay, combat and match lifecycle. Not agent-run multiplayer evidence, no
+exhaustive latency/power-up acceptance. **AC06 anti-cheat disconnect/rejoin was NOT
+performed and remains pending**, explicitly carried into the next batch. Follow-ups
+are tracked in [GameplayBacklog.md](GameplayBacklog.md): sprint zoom fixed narrowly;
+proper crouch animation and power-up balancing deferred. User's shared-duration
+suspicion is distinct from our source confirmation of current 20s normal timed grants.
+
+Read-only checks: AC06 Clean/Test three selected hashes and descriptor identities
+match archive **5d276f6feab646a3bbf210b8472fb738**. Installed default server manifest
+is byte-identical to that archive; no inspected process/user policy/manifest override.
+No manifest, build or backup was altered. AC07 folders/archive currently unused,
+recheck before building. Default Editor trusted path <project>/IntegrityServer/approved.json.
+
+Implemented (details and method references in [AntiCheatAudit.md](AntiCheatAudit.md)):
+
+- Independent per-connection ready/ping budgets 2/s, burst 4, before lobby work;
+  bounded rejection logs, no punishment. Lobby F10 demonstrates through existing RPCs.
+- Validate finite server weapon/aim definitions, safe catalog/ammo/damage/pellet/
+  cadence/reload/range/spread/zoom bounds; snapshot server values. Invalid definitions
+  disable that shooter's combat with a developer error, never a cheating verdict.
+- Remove separate sprint-only FOV 60 zoom; no default binding conflict found and no
+  saved override/ID/key reset. Actual Aim and approved movement limits unchanged.
+- Apply crouch geometry immediately and refresh approved server ray origin, avoiding
+  RPC/Update ordering lag. No animation/authority/detector threshold change.
+- Connection tables use reference identity (FishNet hashes mutable ClientId).
+  Explicit boost removal on disconnect/server stop, score clearing on server stop;
+  existing roster/currency/player/session teardown reused.
+- Explicit terminal integrity outcomes, one missing report at 60s; sticky late matching
+  reports say not verified. Release recheck rejection explicit. One-worker 60s watchdog,
+  once-only unavailable result, retired-generation cleanup, no automatic retry loop.
+  Duplicate Ctrl+F9 / fixed startup fixtures development-only. No admission policy.
+
+Both committed modes **ReportOnly**, host exempt. Only prior on-time validated
+HashMismatch/MissingRequiredFile remain statically enforceable; all inability-to-verify
+categories nonpunitive. Client hashes are not trusted attestation; host is trusted.
+Armor/invisibility/streak authority and reset paths were reviewed/reused, not rewritten.
+Original four-reward pool and 5/10/15 PvP decision unchanged. Timing/balance untouched.
+
+Actual validation: **230 deterministic assertions**, full Unity6000.3.8f1/FishNet
+processing (**17 prefabs**), **89 native** and **60 unconnected Play Mode** assertions,
+135-source Editor/Development/Release compilation. Metadata confirms Development
+probes present, release F6-F10/grants/probes/startup-fixture setting/state absent.
+Initial test-harness field/property, editor input-routing and missing-namespace issues
+were corrected; final checks pass. Existing unrelated package/compiler/licensing
+warnings remain. No new standalone build or interactive multiplayer pass claimed.
+
+Next: [AntiCheatHardeningRuntime.md](AntiCheatHardeningRuntime.md), one AC07 gate with
+host + two remotes: finished Clean -> generate archived manifest/client metadata ->
+preserve/install trusted server copy -> copy Test -> startup Verified -> normal/probes
+-> temporary host Dynamic Disconnect / remote F7 -> MainMenu/manual rejoin. Rebuild
+all participants. No manual UI wiring. Then movement-focused terrain/boost/latency/
+lifecycle characterization; add no speculative detector before evidence. Windows
+preferred; wider latency/macOS/release tests and unreported regressions remain pending.
+
+Historical checkpoints below retain their original status/build advice; this section
+supersedes those current/next-step notes.
+
 ## Current combined integration — 2026-11-13
 
 Resumed at 2130850, integration/anti-cheat-merged-test, with no partial source edits;

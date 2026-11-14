@@ -31,18 +31,23 @@ public sealed class FileAntiCheat : MonoBehaviour
     }
     private sealed class Session
     {
-        public double deadline, nextReport;
-        public bool received, missingLogged, invalidLogged, enforcementHandled, hostExemptionLogged;
-        public uint sequence;
+        public IntegrityReportLifecycle reports;
+        public bool invalidLogged, enforcementHandled, hostExemptionLogged;
     }
     private NetworkManager _manager;
-    private readonly Dictionary<NetworkConnection, Session> _sessions = new Dictionary<NetworkConnection, Session>();
+    private readonly Dictionary<NetworkConnection, Session> _sessions = new(ConnectionReferenceComparer.Instance);
     private BuildIntegrity.Manifest _approved;
     private CancellationTokenSource _cancel;
     private Task<Report> _work;
     private int _generation, _workGeneration;
+    private uint _workSequence;
+    private double _workDeadline, _clientStartupDeadline;
+    private bool _workTimedOut;
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     private uint _sequence;
+    private string _developmentStartup;
+    private double _developmentSendAfter;
+    private Report? _developmentLastReport;
 #endif
     private double _clientNext;
     private bool _initialPending;
@@ -95,7 +100,7 @@ public sealed class FileAntiCheat : MonoBehaviour
     private void Authenticated(NetworkConnection connection, bool authenticated)
     {
         if (authenticated && !_sessions.ContainsKey(connection))
-            _sessions.Add(connection, new Session { deadline = Now + Deadline });
+            _sessions.Add(connection, new Session { reports = new IntegrityReportLifecycle(Now, Deadline, RecheckInterval) });
     }
     private void RemoteState(NetworkConnection connection, RemoteConnectionStateArgs args)
     {
@@ -107,8 +112,16 @@ public sealed class FileAntiCheat : MonoBehaviour
         _cancel?.Cancel();
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         _sequence = 0;
+        _developmentLastReport = null;
+        _developmentStartup = Application.isEditor ? null : Environment.GetEnvironmentVariable("FPS_INTEGRITY_TEST_STARTUP");
+        _developmentSendAfter = _developmentStartup == "Delay" ? Now + 65 : 0;
+        if (!string.IsNullOrEmpty(_developmentStartup)) Debug.Log($"[File AC TEST] startup fixture={_developmentStartup}; development only, no admission exemption.");
 #endif
+        _clientStartupDeadline = Now + Deadline;
         _initialPending = true;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (_developmentStartup == "Suppress") _initialPending = false;
+#endif
     }
     private void ClientState(ClientConnectionStateArgs args)
     {
@@ -116,6 +129,9 @@ public sealed class FileAntiCheat : MonoBehaviour
         _generation++;
         _cancel?.Cancel();
         _initialPending = false;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        _developmentLastReport = null;
+#endif
     }
 
     private void Update()
@@ -123,21 +139,45 @@ public sealed class FileAntiCheat : MonoBehaviour
         foreach (var pair in _sessions)
         {
             Session s = pair.Value;
-            if (!s.received && !s.missingLogged && Now >= s.deadline)
-            {
-                s.missingLogged = true;
-                Log(pair.Key, "startup", _approved == null ? "ServerConfigurationError; MissingReport" : "MissingReport");
-            }
+            if (s.reports.Expire(Now, _approved != null)) Log(pair.Key, "startup", s.reports.Result);
         }
-        if (_work != null && _work.IsCompleted)
+        // One worker at most, including retired generations. Cancellation is best effort
+        // for OS I/O; never start an unbounded series of replacement workers.
+        if (_work != null && !_work.IsCompleted && !_workTimedOut && Now >= _workDeadline)
         {
-            if (!_work.IsCanceled && !_work.IsFaulted && _workGeneration == _generation &&
+            _workTimedOut = true; _cancel?.Cancel();
+            if (_workGeneration == _generation) SendUnavailable(_workSequence, "local hash worker timed out");
+        }
+        if (_initialPending && _work != null && Now >= _clientStartupDeadline)
+        {
+            _initialPending = false;
+            SendUnavailable(0, "previous hash worker still retiring");
+        }
+        bool deliveryReady = true;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        deliveryReady = _workGeneration != _generation || _workSequence != 0 || Now >= _developmentSendAfter;
+#endif
+        if (_work != null && _work.IsCompleted && deliveryReady)
+        {
+            if (!_workTimedOut && !_work.IsCanceled && !_work.IsFaulted && _workGeneration == _generation &&
                 _manager.IsClientStarted && _manager.ClientManager.Connection.IsAuthenticated)
             {
-                _manager.ClientManager.Broadcast(_work.Result);
-                Debug.Log($"[File AC] client report sent kind={(_work.Result.sequence == 0 ? "startup" : "recheck")} sequence={_work.Result.sequence}");
+                Report report = _work.Result;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                if (report.sequence == 0 && report.mode == 0)
+                {
+                    if (_developmentStartup == "Malformed") report.first.slot = 2;
+                    else if (_developmentStartup == "Unsupported") report.buildA ^= 1;
+                    else if (_developmentStartup == "Unreadable") report.first = new BuildIntegrity.Digest { slot = 0, status = 2 };
+                }
+#endif
+                SendReport(report);
             }
-            else if (_work.IsFaulted) Debug.LogWarning("[File AC] LocalConfigurationError; worker failed; report unavailable.");
+            else if (_work.IsFaulted)
+            {
+                _ = _work.Exception; // Observe retired faults as well; never send an old session's result.
+                if (!_workTimedOut && _workGeneration == _generation) SendUnavailable(_workSequence, "local hash worker failed");
+            }
             _work = null;
             _cancel?.Dispose();
             _cancel = null;
@@ -146,14 +186,39 @@ public sealed class FileAntiCheat : MonoBehaviour
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         if (Keyboard.current != null && Keyboard.current.f9Key.wasPressedThisFrame && _work == null &&
             _manager.IsClientStarted && _manager.ClientManager.Connection.IsAuthenticated && Now >= _clientNext)
-            BeginCheck(++_sequence);
+        {
+            if ((Keyboard.current.leftCtrlKey.isPressed || Keyboard.current.rightCtrlKey.isPressed) && _developmentLastReport.HasValue)
+            {
+                _clientNext = Now + RecheckInterval;
+                Debug.Log("[File AC TEST] replay last report unchanged; expected InvalidReport frequency/sequence, no new verification.");
+                SendReport(_developmentLastReport.Value);
+            }
+            else if (_sequence < uint.MaxValue) BeginCheck(++_sequence);
+        }
 #endif
+    }
+
+    private void SendReport(Report report)
+    {
+        if (!_manager.IsClientStarted || !_manager.ClientManager.Connection.IsAuthenticated) return;
+        _clientNext = Now + RecheckInterval;
+        _manager.ClientManager.Broadcast(report);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        _developmentLastReport = report;
+#endif
+        Debug.Log($"[File AC] client report sent kind={(report.sequence == 0 ? "startup" : "recheck")} sequence={report.sequence}; awaiting server comparison (not a verification result).");
+    }
+    private void SendUnavailable(uint sequence, string reason)
+    {
+        Debug.LogWarning($"[File AC] ClientConfigurationError: {reason}; not verified, no automatic retry.");
+        SendReport(new Report { sequence = sequence, schema = BuildIntegrity.Schema, mode = 2 });
     }
 
     private void BeginCheck(uint sequence)
     {
         _clientNext = Now + RecheckInterval;
         _workGeneration = _generation;
+        _workSequence = sequence; _workDeadline = Now + Deadline; _workTimedOut = false;
         string root = Application.dataPath;
         byte platform = Application.platform == RuntimePlatform.WindowsPlayer ? (byte)1 :
             Application.platform == RuntimePlatform.OSXPlayer ? (byte)2 : (byte)0;
@@ -190,49 +255,48 @@ public sealed class FileAntiCheat : MonoBehaviour
     {
         if (sender == null || !sender.IsActive || !sender.IsAuthenticated || !_sessions.TryGetValue(sender, out Session s) || s.enforcementHandled) return;
         string kind = report.sequence == 0 ? "startup" : "recheck";
-        if ((s.received && (Now < s.nextReport || report.sequence <= s.sequence)) || (!s.received && report.sequence != 0))
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        const bool rechecks = true;
+#else
+        const bool rechecks = false;
+#endif
+        if (!s.reports.TryAccept(report.sequence, Now, rechecks, out string rejection))
         {
-            if (!s.invalidLogged) { s.invalidLogged = true; Log(sender, kind, "InvalidReport frequency/sequence"); }
+            if (!s.invalidLogged) { s.invalidLogged = true; Log(sender, kind, rejection); }
             return;
         }
-#if !(UNITY_EDITOR || DEVELOPMENT_BUILD)
-        if (report.sequence != 0) return;
-#endif
-        bool late = s.missingLogged || (!s.received && Now >= s.deadline);
-        if (late) s.missingLogged = true; // A later recheck must not erase a missed startup deadline.
-        s.received = true;
-        s.sequence = report.sequence;
-        s.nextReport = Now + RecheckInterval;
-        string result;
-        bool eligible = false;
-        // Only the actual local Editor connection may be skipped; a remote claim is not trusted.
-        if (report.mode > 2 || report.schema != BuildIntegrity.Schema) result = "InvalidReport mode/schema";
-        else if (report.mode == 1) result = Application.isEditor && sender.IsLocalClient ? "EditorSkipped (not verified)" : "UnsupportedBuild (remote Editor claim)";
-        else if (_approved == null) result = "ServerConfigurationError";
-        else if (report.mode == 2) result = "ClientConfigurationError (manifest missing/unreadable/invalid; not verified)";
-        else if (report.backend != 1 ||
-            report.platform != (_approved.platform == "Windows" ? 1 : 2) ||
-            report.buildA != Convert.ToUInt64(_approved.buildId.Substring(0, 16), 16) ||
-            report.buildB != Convert.ToUInt64(_approved.buildId.Substring(16, 16), 16)) result = "UnsupportedBuild";
-        else
+        string result = EvaluateReport(report, _approved, Application.isEditor && sender.IsLocalClient);
+        bool eligible = BuildIntegrity.CanEnforce(result, s.reports.Late);
+        s.reports.Complete(result);
+        if (result == "HashMismatch" || result == "MissingRequiredFile" || result == "UnreadableFile")
         {
-            result = BuildIntegrity.Compare(_approved, report.first, report.second, report.third);
-            eligible = BuildIntegrity.CanEnforce(result, late);
-            if (result == "HashMismatch" || result == "MissingRequiredFile" || result == "UnreadableFile")
+            BuildIntegrity.Digest[] slots = { report.first, report.second, report.third };
+            for (int i = 0; i < slots.Length; i++)
             {
-                BuildIntegrity.Digest[] slots = { report.first, report.second, report.third };
-                for (int i = 0; i < slots.Length; i++)
-                {
-                    var expected = BuildIntegrity.FromHash(i, _approved.files[i].sha256);
-                    var actual = slots[i];
-                    string status = actual.status == 1 ? "missing" : actual.status == 2 ? "unreadable" :
-                        actual.a == expected.a && actual.b == expected.b && actual.c == expected.c && actual.d == expected.d ? "match" : "mismatch";
-                    result += $" {BuildIntegrity.RequiredPaths[i]}={status}";
-                }
+                var expected = BuildIntegrity.FromHash(i, _approved.files[i].sha256);
+                var actual = slots[i];
+                string status = actual.status == 1 ? "missing" : actual.status == 2 ? "unreadable" :
+                    actual.a == expected.a && actual.b == expected.b && actual.c == expected.c && actual.d == expected.d ? "match" : "mismatch";
+                result += $" {BuildIntegrity.RequiredPaths[i]}={status}";
             }
         }
-        Log(sender, kind, (late ? "LateReport result=" : "") + result);
+        Log(sender, kind, s.reports.Late ? s.reports.Result + (result.StartsWith("Verified") ? "" : " details=" + result) : result);
         if (eligible) ApplyPolicy(sender, staticMode, "StaticIntegrity", $"kind={kind} {result}");
+    }
+
+    // Same classifier used by the server and native integration fixtures. No RPC/file input.
+    public static string EvaluateReport(Report report, BuildIntegrity.Manifest approved, bool localEditor)
+    {
+        // Only the actual local Editor connection may be skipped; a remote claim is not trusted.
+        if (report.mode > 2 || report.schema != BuildIntegrity.Schema) return "InvalidReport mode/schema";
+        if (report.mode == 1) return localEditor ? "EditorSkipped (not verified)" : "UnsupportedBuild (remote Editor claim)";
+        if (approved == null) return "ServerConfigurationError";
+        if (report.mode == 2) return "ClientConfigurationError (manifest/check unavailable; not verified)";
+        if (report.backend != 1 ||
+            report.platform != (approved.platform == "Windows" ? 1 : 2) ||
+            report.buildA != Convert.ToUInt64(approved.buildId.Substring(0, 16), 16) ||
+            report.buildB != Convert.ToUInt64(approved.buildId.Substring(16, 16), 16)) return "UnsupportedBuild";
+        return BuildIntegrity.Compare(approved, report.first, report.second, report.third);
     }
 
     private static EnforcementMode ReadMode(string variable, EnforcementMode fallback)

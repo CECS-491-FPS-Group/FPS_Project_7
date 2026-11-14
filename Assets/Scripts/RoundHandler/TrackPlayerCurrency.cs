@@ -17,9 +17,9 @@ public class TrackPlayerCurrency : MonoBehaviour
     public struct BalanceRequest : IBroadcast { }
     public struct BalanceSnapshot : IBroadcast { public int Balance; }
 
-    private readonly Dictionary<NetworkConnection, int> _balances = new();
-    private readonly Dictionary<NetworkConnection, ServerGameplayValidation.RequestBudget> _requests = new();
-    private readonly Dictionary<NetworkConnection, Action<NetworkObject>> _subscriptions = new();
+    private readonly Dictionary<NetworkConnection, int> _balances = new(ConnectionReferenceComparer.Instance);
+    private readonly Dictionary<NetworkConnection, ServerGameplayValidation.RequestBudget> _requests = new(ConnectionReferenceComparer.Instance);
+    private readonly Dictionary<NetworkConnection, Action<NetworkObject>> _subscriptions = new(ConnectionReferenceComparer.Instance);
     private NetworkManager _networkManager;
     private bool _listening;
 

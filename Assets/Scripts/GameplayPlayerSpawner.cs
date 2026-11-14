@@ -33,12 +33,12 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
     [SerializeField] private NetworkObject playerPrefab;
 
     private readonly Dictionary<NetworkConnection, NetworkObject> _players =
-        new Dictionary<NetworkConnection, NetworkObject>();
+        new Dictionary<NetworkConnection, NetworkObject>(ConnectionReferenceComparer.Instance);
     private NetworkManager _networkManager;
-    private readonly Dictionary<NetworkConnection, int> _terrainReady = new();
-    private readonly HashSet<NetworkConnection> _spawnAttempted = new();
-    private readonly Dictionary<NetworkConnection, float> _spawnRetryAt = new();
-    private readonly Dictionary<NetworkConnection, ServerGameplayValidation.RequestBudget> _combatRequests = new();
+    private readonly Dictionary<NetworkConnection, int> _terrainReady = new(ConnectionReferenceComparer.Instance);
+    private readonly HashSet<NetworkConnection> _spawnAttempted = new(ConnectionReferenceComparer.Instance);
+    private readonly Dictionary<NetworkConnection, float> _spawnRetryAt = new(ConnectionReferenceComparer.Instance);
+    private readonly Dictionary<NetworkConnection, ServerGameplayValidation.RequestBudget> _combatRequests = new(ConnectionReferenceComparer.Instance);
     private TerrainGenerator _terrain;
     private bool _reportedTerrainReady;
     private bool _returningToLobby;

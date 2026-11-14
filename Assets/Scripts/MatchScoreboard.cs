@@ -22,8 +22,8 @@ public sealed class MatchScoreboard : MonoBehaviour
     public struct Snapshot : IBroadcast { public Row[] Rows; }
     public struct SnapshotRequest : IBroadcast { }
 
-    private readonly Dictionary<NetworkConnection, Row> _scores = new();
-    private readonly Dictionary<NetworkConnection, ServerGameplayValidation.RequestBudget> _requests = new();
+    private readonly Dictionary<NetworkConnection, Row> _scores = new(ConnectionReferenceComparer.Instance);
+    private readonly Dictionary<NetworkConnection, ServerGameplayValidation.RequestBudget> _requests = new(ConnectionReferenceComparer.Instance);
     private NetworkManager _manager;
     private bool _listening;
     private bool _receivedSnapshot;
@@ -92,7 +92,7 @@ public sealed class MatchScoreboard : MonoBehaviour
 
     private void OnServerState(ServerConnectionStateArgs args)
     {
-        if (args.ConnectionState == LocalConnectionState.Stopped) _requests.Clear();
+        if (args.ConnectionState == LocalConnectionState.Stopped) { _requests.Clear(); _scores.Clear(); }
     }
 
     // Called only from Health's first positive-to-zero server transition, never an RPC.

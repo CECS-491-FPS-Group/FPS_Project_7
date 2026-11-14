@@ -4,6 +4,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -62,6 +63,64 @@ public static class AudioIntegrationChecks
             failure = message;
     }
 
+    private static void CheckBindings()
+    {
+        var controls = UnityEngine.Object.Instantiate(Resources.Load<UnityEngine.InputSystem.InputActionAsset>("GameplayInput"));
+        var keyboard = UnityEngine.InputSystem.InputSystem.AddDevice<UnityEngine.InputSystem.Keyboard>();
+        var mouse = UnityEngine.InputSystem.InputSystem.AddDevice<UnityEngine.InputSystem.Mouse>();
+        try
+        {
+            controls.devices = new UnityEngine.InputSystem.InputDevice[] { keyboard, mouse }; controls.Enable();
+            Require(controls.FindAction("Sprint").controls.Any(c => ReferenceEquals(c, keyboard.leftShiftKey)) &&
+                !controls.FindAction("Aim").controls.Any(c => ReferenceEquals(c, keyboard.leftShiftKey)), "default Shift resolves to sprint only, not Aim");
+            Require(controls.FindAction("Aim").controls.Any(c => ReferenceEquals(c, mouse.rightButton)), "Aim resolves to right mouse");
+            controls.Disable(); controls.FindAction("Aim").ApplyBindingOverride(0, "<Keyboard>/leftShift"); controls.Enable();
+            Require(controls.FindAction("Aim").controls.Any(c => ReferenceEquals(c, keyboard.leftShiftKey)), "intentional Aim override survives");
+        }
+        finally
+        {
+            controls.Disable(); UnityEngine.Object.Destroy(controls);
+            UnityEngine.InputSystem.InputSystem.RemoveDevice(keyboard); UnityEngine.InputSystem.InputSystem.RemoveDevice(mouse);
+        }
+    }
+
+    private static void CheckIntegrityWorker()
+    {
+        var component = UnityEngine.Object.FindFirstObjectByType<FileAntiCheat>();
+        Require(component != null, "integrity lifecycle installed on persistent manager");
+        var type = typeof(FileAntiCheat);
+        object Read(string name) => type.GetField(name, Hidden).GetValue(component);
+        void Write(string name, object value) => type.GetField(name, Hidden).SetValue(component, value);
+        var update = type.GetMethod("Update", Hidden);
+        int generation = (int)Read("_generation");
+        var pending = new System.Threading.Tasks.TaskCompletionSource<FileAntiCheat.Report>();
+        var cancel = new System.Threading.CancellationTokenSource();
+        int timeouts = 0, retiring = 0;
+        Application.LogCallback capture = (message, trace, kind) =>
+        { if (message.Contains("local hash worker timed out")) timeouts++; if (message.Contains("previous hash worker still retiring")) retiring++; };
+        Application.logMessageReceived += capture;
+        try
+        {
+            Write("_work", pending.Task); Write("_cancel", cancel); Write("_workGeneration", generation);
+            Write("_workDeadline", -1d); Write("_workTimedOut", false);
+            update.Invoke(component, null);
+            Require((bool)Read("_workTimedOut") && cancel.IsCancellationRequested, "hash deadline cancels best effort");
+            update.Invoke(component, null);
+            Require(timeouts == 1 && ReferenceEquals(Read("_work"), pending.Task), "one timeout and one retained worker, no unbounded retry");
+            Write("_generation", generation + 1); Write("_initialPending", true); Write("_clientStartupDeadline", -1d);
+            update.Invoke(component, null); update.Invoke(component, null);
+            Require(retiring == 1 && !(bool)Read("_initialPending"), "new session unable to start worker receives one explicit terminal unavailable result");
+            pending.SetResult(new FileAntiCheat.Report { schema = 1, mode = 1 });
+            update.Invoke(component, null);
+            Require(Read("_work") == null && Read("_cancel") == null, "retired worker completion cleaned up");
+        }
+        finally
+        {
+            Application.logMessageReceived -= capture; cancel.Dispose();
+            Write("_work", null); Write("_cancel", null); Write("_initialPending", false); Write("_generation", generation);
+        }
+    }
+
     private static void Tick()
     {
         if (!EditorApplication.isPlaying || SessionState.GetBool(Key + "finished", false)) return;
@@ -80,6 +139,8 @@ public static class AudioIntegrationChecks
                 CheckPreferences(root);
                 CheckOwnerHandoff(root);
                 CheckHealthAndFalloff();
+                CheckBindings();
+                CheckIntegrityWorker();
                 LocalReplayMenu.Show();
                 Require(UnityEngine.Object.FindFirstObjectByType<LocalReplayMenu>() != null, "local theater opens without network actors");
                 CheckRoot();

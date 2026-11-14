@@ -1,5 +1,15 @@
 # Optional server enforcement
 
+2026-11-13 merged-game hardening: committed defaults remain ReportOnly/ReportOnly,
+host exempt, threshold unchanged. Request rejection/configuration errors do not call
+enforcement. Missing/late/malformed/unsupported/read/manifest errors remain nonpunitive;
+no unverified-client admission restriction introduced. Late matching hashes now say
+not verified, without changing their enforcement eligibility. See AntiCheatAudit.md.
+AC06 combined smoke passed per user but its anti-cheat disconnect/rejoin test was
+**not performed**. Carry it into AC07 via AntiCheatHardeningRuntime.md, with temporary
+host Dynamic=Disconnect only for the explicit remote F7 recovery/rejoin step. Earlier
+AC02 recovery evidence is historical and does not establish the AC06 regression pass.
+
 2026-11-12: current source still defaults both modes to ReportOnly and exempts the
 local host. The resumed trust audit and server request/pickup fixes are documented in
 AntiCheatAudit.md. Rejected gameplay requests do not invoke punitive enforcement.

@@ -1,5 +1,23 @@
 # Build-file integrity (schema 1, ReportOnly by default)
 
+2026-11-13 hardening: AC06 Clean/Test three hashes/identities and installed server copy
+match archived 5d276f6feab646a3bbf210b8472fb738 (read-only; untouched). AC06 gameplay
+smoke passed per user; disconnect/rejoin skipped. New runtime source requires AC07,
+recheck unused number. See AntiCheatHardeningRuntime.md for manifest/copy order,
+duplicate/error fixtures and pending runtime. Committed policy remains ReportOnly.
+
+IntegrityReportLifecycle closes startup Pending into an explicit result at receipt or
+the fixed 60s deadline. Missing is logged once; malformed/unsupported/client-unavailable/
+server-config/read errors are terminal unverified, not success or automatic punishment.
+Late matching hashes now log `LateReport (matching hashes; not verified)`; sticky late
+state/enforcement ineligibility unchanged. Receipt is not admission or proof of honesty.
+Release rechecks reject explicitly once; development rechecks retain sequence/15s limits.
+Client hashing now has a 60s watchdog and sends unavailable once on failure/timeout;
+cancellation cannot guarantee interrupting OS I/O, so one retired worker is retained
+until completion, with no replacement/retry loop. A later session blocked by it has a
+bounded unavailable result too. No admission restriction added. Hash reports can be
+falsified; this is not trusted remote attestation. Older status/build notes follow.
+
 2026-11-13 current combined stage: AC05 audio checklist (including clean startup)
 passed per user. Read-only AC05 Clean/Test selected hashes/client identities and
 installed default server manifest match archive 70cb725d6d834c51832442c0e4599570;

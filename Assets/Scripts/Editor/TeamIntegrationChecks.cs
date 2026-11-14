@@ -52,6 +52,7 @@ public static class TeamIntegrationChecks
                 "standing restores collider and server eye origin");
             CheckEffects(actor);
             CheckReplays();
+            CheckHardening();
             Debug.Log($"[Team CHECK] PASS checks={checks}; controls/posture geometry, network runtime pending.");
         }
         catch (Exception error)
@@ -100,11 +101,51 @@ public static class TeamIntegrationChecks
             "creating excess corpses retires oldest bodies");
         var last = bodies[bodies.Count - 1];
         typeof(CosmeticCorpse).GetField("_expires", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(last, -1d);
-        last.SendMessage("Update");
+        typeof(CosmeticCorpse).GetMethod("Update", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).Invoke(last, null);
         Require(last == null, "expired corpse lifetime retires body");
         foreach (var body in bodies) CosmeticCorpse.Retire(body);
         Require((int)MatchBoosts.Kind.Armor == 5 && (int)MatchBoosts.Kind.Invisibility == 6, "original four effect IDs preserved");
         Require(CombatEffectRules.OriginalReward(5) == 0, "streak cannot select armor");
+    }
+    private static void CheckHardening()
+    {
+        var source = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab").GetComponentInChildren<HitscanShooter>(true);
+        Require(HitscanShooter.ConfigurationError(source.weapons, source.maxYawDifference, source.maxPitch) == null, "serialized current weapons valid");
+        Require(HitscanShooter.ConfigurationError(null, 45, 89) != null, "null weapon catalog rejected without dereferencing");
+        Require(HitscanShooter.ConfigurationError(Array.Empty<HitscanShooter.WeaponProfile>(), 45, 89) != null, "empty weapon catalog rejected");
+        Require(HitscanShooter.ConfigurationError(new HitscanShooter.WeaponProfile[1], 45, 89) != null, "null weapon entry rejected");
+        Require(HitscanShooter.ConfigurationError(new HitscanShooter.WeaponProfile[65], 45, 89) != null, "catalog size bounded before scan");
+        var malformed = new HitscanShooter.WeaponProfile { spread = float.NaN };
+        Require(HitscanShooter.ConfigurationError(new[] { malformed }, 45, 89) != null, "nonfinite source profile rejected");
+
+        var left = new FishNet.Connection.NetworkConnection(); var right = new FishNet.Connection.NetworkConnection();
+        left.ClientId = 7; right.ClientId = 7;
+        var type = typeof(FileAntiCheat).Assembly.GetType("ConnectionReferenceComparer");
+        var comparer = (System.Collections.Generic.IEqualityComparer<FishNet.Connection.NetworkConnection>)
+            type.GetField("Instance", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic).GetValue(null);
+        var sessions = new System.Collections.Generic.Dictionary<FishNet.Connection.NetworkConnection, int>(comparer) { [left] = 123 };
+        Require(!sessions.ContainsKey(right), "reused connection ID cannot inherit another object's session");
+        left.ClientId = -1;
+        Require(sessions.Remove(left) && sessions.Count == 0, "mutable client ID cannot strand session cleanup");
+
+        var manifest = new BuildIntegrity.Manifest { schema = 1, buildId = new string('a', 32), platform = "Windows", backend = "Mono", files = new BuildIntegrity.Entry[3] };
+        for (int i = 0; i < 3; i++) manifest.files[i] = new BuildIntegrity.Entry { path = BuildIntegrity.RequiredPaths[i], sha256 = new string('b', 64) };
+        var report = new FileAntiCheat.Report { schema = 1, platform = 1, backend = 1,
+            buildA = Convert.ToUInt64(manifest.buildId.Substring(0, 16), 16), buildB = Convert.ToUInt64(manifest.buildId.Substring(16, 16), 16),
+            first = BuildIntegrity.FromHash(0, manifest.files[0].sha256), second = BuildIntegrity.FromHash(1, manifest.files[1].sha256), third = BuildIntegrity.FromHash(2, manifest.files[2].sha256) };
+        Require(FileAntiCheat.EvaluateReport(report, manifest, false) == "Verified", "server classifier validates matching measured report");
+        var fixture = report; fixture.first.slot = 2;
+        Require(FileAntiCheat.EvaluateReport(fixture, manifest, false) == "InvalidReport", "actual server classifier rejects duplicate slots");
+        fixture = report; fixture.first = new BuildIntegrity.Digest { slot = 0, status = 2 };
+        Require(FileAntiCheat.EvaluateReport(fixture, manifest, false) == "UnreadableFile", "read failure distinguished by actual classifier");
+        fixture = report; fixture.buildA ^= 1;
+        Require(FileAntiCheat.EvaluateReport(fixture, manifest, false) == "UnsupportedBuild", "unsupported build distinct");
+        fixture = report; fixture.mode = 2;
+        Require(FileAntiCheat.EvaluateReport(fixture, manifest, false).StartsWith("ClientConfigurationError"), "client unavailable is not verified");
+        Require(FileAntiCheat.EvaluateReport(report, null, false) == "ServerConfigurationError", "missing baseline is developer error");
+        fixture = report; fixture.mode = 1;
+        Require(FileAntiCheat.EvaluateReport(fixture, manifest, false).StartsWith("UnsupportedBuild"), "remote Editor skip cannot verify");
+        Require(FileAntiCheat.EvaluateReport(fixture, manifest, true) == "EditorSkipped (not verified)", "local Editor skip explicit");
     }
     private static void Invalid(Action action, string label)
     {

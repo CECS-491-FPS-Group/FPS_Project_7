@@ -1,5 +1,11 @@
 # Combined team integration — 2026-11-13
 
+AC06 update: user reports combined gameplay smoke passed (rebinding/effects/streaks/
+ragdolls/replay/combat/match lifecycle). AC06 anti-cheat disconnect/rejoin was explicitly
+not performed and remains pending in AntiCheatHardeningRuntime.md. Current hardening
+and tracked gameplay follow-ups: AntiCheatAudit.md and GameplayBacklog.md. Earlier
+stage-specific pending counts/build advice below are historical, not new test claims.
+
 Base: 2130850, integration/anti-cheat-merged-test. No subsequent source changes were
 present on resume; only pre-existing Road.mat/Water.mat edits, preserved separately.
 Recovery feature/anti-cheat-complete remains 9570966; previous builds/manifests stay.

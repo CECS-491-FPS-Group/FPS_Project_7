@@ -7,7 +7,7 @@ $outputDirectory = Join-Path $projectRoot 'Temp/AntiCheatChecks'
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
 $suites = @{
     DisconnectNotice = @('Assets/Scripts/DisconnectNoticeState.cs')
-    BuildIntegrity = @('Assets/Scripts/BuildIntegrity.cs')
+    BuildIntegrity = @('Assets/Scripts/BuildIntegrity.cs', 'Assets/Scripts/IntegrityReportLifecycle.cs', 'Assets/Scripts/ServerGameplayValidation.cs')
     MovementObserver = @('Assets/Scripts/HorizontalMovementObservation.cs', 'Assets/Scripts/ApprovedMovementLimits.cs')
     ServerGameplayValidation = @('Assets/Scripts/ServerGameplayValidation.cs')
     CombatEffectRules = @('Assets/Scripts/CombatEffectRules.cs')

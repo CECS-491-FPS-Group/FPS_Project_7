@@ -1,5 +1,11 @@
 # Disconnect reason and local menu recovery
 
+2026-11-13: AC06 combined gameplay smoke passed per user. The anti-cheat disconnect/
+MainMenu/manual-rejoin regression was **not performed**, remains pending in the AC07
+AntiCheatHardeningRuntime.md batch. Historical AC02 recovery passes below are retained;
+do not treat them as new combined-game recovery evidence. Connection tables now use
+identity-safe cleanup; targeted disconnect/notice/menu recovery code is unchanged.
+
 2026-11-12 baseline recheck: recovery/message source is unchanged since `fe0f922`.
 The stale exact static/fallback strings in Tests/DisconnectNoticeChecks.cs were
 updated to the user's intended wording; all 18 notice checks now pass. Earlier

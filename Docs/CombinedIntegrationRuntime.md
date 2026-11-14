@@ -1,5 +1,12 @@
 # Combined integration: one Windows runtime batch (AC06)
 
+2026-11-13 user update: combined gameplay smoke (rebinding, effects, killstreaks,
+ragdolls, replay, combat and match lifecycle) passed **per user report**, not agent-run
+runtime tests. **Anti-cheat disconnect/rejoin was NOT performed**; that row remains
+pending and is carried into AntiCheatHardeningRuntime.md (AC07). This smoke report does
+not establish exhaustive per-edge-case boost/latency/macOS acceptance. The checklist
+below records the AC06 instructions; its original pending wording is historical.
+
 **All new rows below are pending user testing.** AC05 audio checklist passed per the
 user; AC04 terrain evidence remains partial. Agent-run evidence: CombinedIntegration.md.
 Use Editor host plus **two** Windows Development clients. Rebuild **every participant**:

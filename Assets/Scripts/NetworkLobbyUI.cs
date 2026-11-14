@@ -9,6 +9,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Collections.Generic;
 
 public class NetworkLobbyUI : NetworkBehaviour
 {
@@ -36,6 +37,12 @@ public class NetworkLobbyUI : NetworkBehaviour
 
     private TimeManager _timeManager;
     private bool _transitionInProgress;
+    private sealed class Requests
+    {
+        internal readonly ServerGameplayValidation.RequestBudget Ready = new(2, 4);
+        internal readonly ServerGameplayValidation.RequestBudget Ping = new(2, 4);
+    }
+    private readonly Dictionary<NetworkConnection, Requests> _requests = new(ConnectionReferenceComparer.Instance);
 
     private void Awake()
     {
@@ -61,6 +68,7 @@ public class NetworkLobbyUI : NetworkBehaviour
         _playerIds.Clear();
         _playerReady.Clear();
         _playerPings.Clear();
+        _requests.Clear();
 
         ServerManager.OnAuthenticationResult += OnAuthenticationResult;
         ServerManager.OnRemoteConnectionState += OnClientConnectionState;
@@ -79,6 +87,7 @@ public class NetworkLobbyUI : NetworkBehaviour
     {
         ServerManager.OnAuthenticationResult -= OnAuthenticationResult;
         ServerManager.OnRemoteConnectionState -= OnClientConnectionState;
+        _requests.Clear();
         base.OnStopServer();
     }
 
@@ -115,6 +124,7 @@ public class NetworkLobbyUI : NetworkBehaviour
         _playerNames.Add(playerName);
 
         _playerPings[connection.ClientId] = 0;
+        _requests[connection] = new Requests();
     }
     
     private void OnAuthenticationResult(NetworkConnection connection, bool authenticated)
@@ -125,6 +135,7 @@ public class NetworkLobbyUI : NetworkBehaviour
     private void OnClientConnectionState(NetworkConnection connection, RemoteConnectionStateArgs args)
     {
         if (args.ConnectionState != RemoteConnectionState.Stopped) return;
+        _requests.Remove(connection);
 
         int playerIndex = _playerIds.IndexOf(connection.ClientId);
         if (playerIndex >= 0)
@@ -160,7 +171,7 @@ public class NetworkLobbyUI : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     private void ReportPingServerRpc(int pingMs, NetworkConnection sender = null)
     {
-        if (sender == null || !sender.IsActive || !sender.IsAuthenticated) return;
+        if (!AdmitLobbyRequest(sender, false)) return;
         int playerIndex = _playerIds.IndexOf(sender.ClientId);
         if (playerIndex < 0) return;
 
@@ -253,6 +264,9 @@ public class NetworkLobbyUI : NetworkBehaviour
 
     private void Update()
     {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (UnityEngine.InputSystem.Keyboard.current?.f10Key.wasPressedThisFrame == true) DevelopmentLobbyProbe();
+#endif
         // Overrides the FPS controller's attempt to lock the mouse while the Lobby is open
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
@@ -267,13 +281,35 @@ public class NetworkLobbyUI : NetworkBehaviour
     public void CmdToggleReady(NetworkConnection caller = null)
     {
         // FishNet injects the authenticated sender; clients cannot name another roster entry.
-        if (_transitionInProgress || caller == null || !caller.IsActive || !caller.IsAuthenticated) return;
+        if (!AdmitLobbyRequest(caller, true)) return;
         int index = _playerIds.IndexOf(caller.ClientId);
         if (index != -1)
         {
             _playerReady[index] = !_playerReady[index];
         }
     }
+
+    private bool AdmitLobbyRequest(NetworkConnection sender, bool ready)
+    {
+        if (!IsServerInitialized || !IsSpawned || _transitionInProgress || sender == null ||
+            !sender.IsActive || !sender.IsAuthenticated || !_requests.TryGetValue(sender, out Requests requests)) return false;
+        var budget = ready ? requests.Ready : requests.Ping;
+        double now = Time.realtimeSinceStartupAsDouble;
+        if (budget.TryConsume(now)) return true;
+        if (budget.PermitRejectionLog(now)) Debug.Log($"[Request Limit] owner={sender.ClientId} kind={(ready ? "ready" : "ping")} rejected; no lobby mutation.");
+        return false;
+    }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    private double _nextDevelopmentProbe;
+    private void DevelopmentLobbyProbe()
+    {
+        if (!IsClientInitialized || !LocalConnection.IsAuthenticated || Time.unscaledTimeAsDouble < _nextDevelopmentProbe) return;
+        _nextDevelopmentProbe = Time.unscaledTimeAsDouble + 5;
+        Debug.Log("[Request TEST] F10 lobby: 32 ready toggles and 32 ping reports. Inspect final readiness before starting.");
+        for (int i = 0; i < 32; i++) { CmdToggleReady(); ReportPingServerRpc(i * 100); }
+    }
+#endif
 
     public void StartGameClicked()
     {

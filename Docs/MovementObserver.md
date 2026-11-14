@@ -1,5 +1,14 @@
 # Movement observer (ReportOnly by default)
 
+2026-11-13 hardening: AC06 combined gameplay smoke passed per user; remote F7
+disconnect/MainMenu/rejoin regression was skipped and remains pending in AC07
+(AntiCheatHardeningRuntime.md). Observer limits/thresholds/grace/authority unchanged.
+Sprint-only zoom was removed; ADS remains local presentation, no new speed allowance.
+Approved crouch geometry/origin now applies immediately rather than waiting for Update.
+Next movement batch should measure Speed/Jump/Armor/Invisibility replacement, crouched
+sprint, slopes/ceilings/water/long falls, respawn and delivery bursts. No new detector
+or strict crouch-speed ceiling: sprint while crouched remains legal source behavior.
+
 2026-11-13 combined stage: crouch uses server-approved geometry/clearance and speed
 1 (sprint priority retained); Speed uses the existing multiplier. Invisibility and
 streak rewards use the same timed effect replacement/expiry, Armor does not replace

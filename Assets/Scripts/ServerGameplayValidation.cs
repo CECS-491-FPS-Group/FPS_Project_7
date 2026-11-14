@@ -3,6 +3,24 @@ using System;
 // Small pure admission helpers; no verdicts, enforcement, networking or Unity state.
 internal static class ServerGameplayValidation
 {
+    // Generous implementation safety bounds, not weapon IDs or detector thresholds.
+    internal const int MaximumWeaponDefinitions = 64;
+    internal static string WeaponConfigurationError(int damage, int magazine, int pellets,
+        double rate, double reload, double range, double spread, double zoom)
+    {
+        if (damage < 1 || damage > int.MaxValue / 2) return "damage must fit a positive integer including the 2x Damage boost";
+        if (magazine < 1 || magazine > 1000000) return "magazine must be 1..1000000";
+        if (pellets < 1 || pellets > 16) return "pellets must be 1..16 (ray work bound)";
+        if (!Finite(rate) || rate < .1 || rate > 1000) return "rate must be finite, 0.1..1000 shots/s";
+        if (!Finite(reload) || reload < .1 || reload > 3600) return "reload must be finite, 0.1..3600 seconds";
+        if (!Finite(range) || range < .1 || range > 100000) return "range must be finite, 0.1..100000 metres";
+        if (!Finite(spread) || spread < 0 || spread > 90) return "spread must be finite, 0..90 degrees";
+        if (!Finite(zoom) || zoom < 1 || zoom > 1000) return "zoom must be finite, 1..1000";
+        return null;
+    }
+    internal static bool ValidAimConfiguration(double yaw, double pitch) =>
+        Finite(yaw) && yaw >= 0 && yaw <= 180 && Finite(pitch) && pitch >= 0 && pitch <= 89.9f;
+
     internal static bool Finite(double value) => !double.IsNaN(value) && !double.IsInfinity(value);
 
     internal static bool WithinPickupRange(double dx, double dy, double dz, double radius)
