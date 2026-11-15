@@ -96,6 +96,21 @@ public sealed class LobbyReturnController : MonoBehaviour
             (InstanceFinder.ServerManager != null &&
              InstanceFinder.ServerManager.Started);
 
+        // A graceful LAN host sends the elected successor a handoff plan before
+        // shutting down. With no eligible successor, normal shutdown continues.
+        bool migrationPrepared = false;
+        if (wasHosting && LanHostMigrationManager.Instance != null)
+        {
+            migrationPrepared = LanHostMigrationManager.Instance
+                .TryBeginGracefulHostMigration();
+        }
+
+        if (migrationPrepared)
+        {
+            yield return new WaitForSecondsRealtime(
+                LanHostMigrationManager.Instance.HandoffNoticeSeconds);
+        }
+
         // Remove a hosted room immediately instead of waiting for its heartbeat
         // entry to become stale in the local registry.
         if (wasHosting)
@@ -173,6 +188,11 @@ public sealed class LobbyReturnController : MonoBehaviour
     private void OnClientConnectionStateChanged(ClientConnectionStateArgs args)
     {
         if (args.ConnectionState != LocalConnectionState.Stopped || _returning)
+            return;
+
+        // During host migration, LanHostMigrationManager keeps this scene open
+        // and reconnects the client to the elected replacement host.
+        if (LanHostMigrationManager.MigrationInProgress)
             return;
 
         // A persistent RejoinManager owns unexpected non-host disconnects.

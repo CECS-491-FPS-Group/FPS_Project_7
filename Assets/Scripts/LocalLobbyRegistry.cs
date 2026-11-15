@@ -115,6 +115,103 @@ public static class LocalLobbyRegistry
         return true;
     }
 
+    // Creates the replacement host's local registry entry while preserving the
+    // lobby code players already know. The old host removes its entry before
+    // disconnecting; removing the same code here also handles a same-PC test
+    // where the registry file is shared by several game processes.
+    public static bool TryReserveMigratedRoom(
+        string requestedCode,
+        string requestedRoomName,
+        bool isListed,
+        int maxPlayers,
+        int preferredPort,
+        out LocalLobbyRecord reservedRoom,
+        out string error)
+    {
+        string normalizedCode = LobbyCodeUtility.Normalize(requestedCode);
+        LocalLobbyRecord result = null;
+
+        if (!LobbyCodeUtility.IsValid(normalizedCode))
+        {
+            reservedRoom = null;
+            error = "The migration plan contained an invalid lobby code.";
+            return false;
+        }
+
+        bool accessed = TryAccessRegistry(database =>
+        {
+            for (int i = database.rooms.Count - 1; i >= 0; i--)
+            {
+                if (string.Equals(
+                        database.rooms[i].code,
+                        normalizedCode,
+                        StringComparison.Ordinal))
+                {
+                    database.rooms.RemoveAt(i);
+                }
+            }
+
+            HashSet<int> usedPorts = new HashSet<int>();
+            for (int i = 0; i < database.rooms.Count; i++)
+                usedPorts.Add(database.rooms[i].port);
+
+            int availablePort = -1;
+            if (preferredPort >= FirstPort && preferredPort <= LastPort &&
+                !usedPorts.Contains(preferredPort))
+            {
+                availablePort = preferredPort;
+            }
+            else
+            {
+                for (int port = FirstPort; port <= LastPort; port++)
+                {
+                    if (usedPorts.Contains(port))
+                        continue;
+
+                    availablePort = port;
+                    break;
+                }
+            }
+
+            if (availablePort < 0)
+                return;
+
+            string roomName = string.IsNullOrWhiteSpace(requestedRoomName)
+                ? $"Room {normalizedCode}"
+                : requestedRoomName.Trim();
+
+            result = new LocalLobbyRecord
+            {
+                code = normalizedCode,
+                roomName = roomName,
+                address = "127.0.0.1",
+                port = availablePort,
+                playerCount = 1,
+                maxPlayers = Mathf.Max(1, maxPlayers),
+                isListed = isListed,
+                state = StateStarting,
+                ownerToken = Guid.NewGuid().ToString("N"),
+                lastHeartbeatUtcTicks = DateTime.UtcNow.Ticks,
+                gameVersion = Application.version
+            };
+
+            database.rooms.Add(result);
+        }, out error);
+
+        reservedRoom = result?.Copy();
+
+        if (!accessed)
+            return false;
+
+        if (reservedRoom == null)
+        {
+            error = $"No local lobby slot was available. Ports {FirstPort}-{LastPort} may already be reserved.";
+            return false;
+        }
+
+        return true;
+    }
+
     public static bool TryFindOpenRoom(
         string enteredCode,
         out LocalLobbyRecord room,

@@ -237,6 +237,7 @@ public sealed class RejoinManager : MonoBehaviour
 
         if (args.ConnectionState != LocalConnectionState.Stopped ||
             _applicationQuitting ||
+            LanHostMigrationManager.MigrationInProgress ||
             LocalLobbySession.IsIntentionalDisconnect ||
             LocalLobbySession.IsHosting ||
             !LocalLobbySession.CanReconnect)

@@ -12,6 +12,9 @@ public static class LocalLobbySession
     public static string PlayerToken { get; private set; } = string.Empty;
     public static string Address { get; private set; } = string.Empty;
     public static ushort Port { get; private set; }
+    public static string RoomName { get; private set; } = string.Empty;
+    public static int MaxPlayers { get; private set; } = 4;
+    public static bool IsListed { get; private set; }
 
     // A room code is deliberately not required here. Players who joined with
     // the LAN/direct-IP field still need to be able to rejoin that address.
@@ -31,13 +34,7 @@ public static class LocalLobbySession
     public static void BeginHosting(LocalLobbyRecord room)
     {
         BeginNewPlayerSession();
-        IsHosting = true;
-        HasConnected = false;
-        IsIntentionalDisconnect = false;
-        LobbyCode = room.code;
-        OwnerToken = room.ownerToken;
-        Address = room.address;
-        Port = (ushort)room.port;
+        ApplyHostedRoom(room);
     }
 
     public static void BeginJoining(LocalLobbyRecord room)
@@ -50,6 +47,39 @@ public static class LocalLobbySession
         OwnerToken = string.Empty;
         Address = room.address;
         Port = (ushort)room.port;
+        RoomName = room.roomName ?? string.Empty;
+        MaxPlayers = Mathf.Max(1, room.maxPlayers);
+        IsListed = room.isListed;
+    }
+
+    // Used only after this player was elected to replace a departing LAN host.
+    // Unlike BeginHosting, this deliberately preserves the player's stable token.
+    public static void BeginMigratedHosting(LocalLobbyRecord room)
+    {
+        EnsurePlayerToken();
+        ApplyHostedRoom(room);
+    }
+
+    // Updates the endpoint after LAN migration without changing player identity.
+    public static void BeginMigrationReconnect(
+        string lobbyCode,
+        string address,
+        ushort port,
+        string roomName,
+        int maxPlayers,
+        bool isListed)
+    {
+        EnsurePlayerToken();
+        IsHosting = false;
+        HasConnected = true;
+        IsIntentionalDisconnect = false;
+        LobbyCode = lobbyCode ?? string.Empty;
+        OwnerToken = string.Empty;
+        Address = address ?? string.Empty;
+        Port = port;
+        RoomName = roomName ?? string.Empty;
+        MaxPlayers = Mathf.Max(1, maxPlayers);
+        IsListed = isListed;
     }
 
     public static void MarkConnected()
@@ -72,6 +102,26 @@ public static class LocalLobbySession
         PlayerToken = Guid.NewGuid().ToString("N");
     }
 
+    private static void EnsurePlayerToken()
+    {
+        if (string.IsNullOrWhiteSpace(PlayerToken))
+            BeginNewPlayerSession();
+    }
+
+    private static void ApplyHostedRoom(LocalLobbyRecord room)
+    {
+        IsHosting = true;
+        HasConnected = false;
+        IsIntentionalDisconnect = false;
+        LobbyCode = room.code;
+        OwnerToken = room.ownerToken;
+        Address = room.address;
+        Port = (ushort)room.port;
+        RoomName = room.roomName ?? string.Empty;
+        MaxPlayers = Mathf.Max(1, room.maxPlayers);
+        IsListed = room.isListed;
+    }
+
     public static void ClearHostedRoom(string ownerToken)
     {
         if (!IsHosting || OwnerToken != ownerToken)
@@ -90,5 +140,8 @@ public static class LocalLobbySession
         PlayerToken = string.Empty;
         Address = string.Empty;
         Port = 0;
+        RoomName = string.Empty;
+        MaxPlayers = 4;
+        IsListed = false;
     }
 }
