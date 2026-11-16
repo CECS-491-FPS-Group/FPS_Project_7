@@ -44,6 +44,33 @@ public sealed class RejoinManager : MonoBehaviour
         _activeInstance.isActiveAndEnabled &&
         _activeInstance.rejoinOverlay != null;
 
+    // Called after host-migration code confirms that the original host is
+    // still alive. This preserves the normal Rejoin/Cancel popup for a
+    // client-only disconnect.
+    public static bool TryShowDisconnectPrompt()
+    {
+        if (!CanHandleDisconnect ||
+            _activeInstance._applicationQuitting ||
+            LocalLobbySession.IsIntentionalDisconnect ||
+            LocalLobbySession.IsHosting ||
+            !LocalLobbySession.CanReconnect)
+        {
+            return false;
+        }
+
+        _activeInstance._reconnectAttemptInProgress = false;
+
+        if (_activeInstance._timeoutRoutine != null)
+        {
+            _activeInstance.StopCoroutine(
+                _activeInstance._timeoutRoutine);
+            _activeInstance._timeoutRoutine = null;
+        }
+
+        _activeInstance.ShowOverlay();
+        return true;
+    }
+
     private void Awake()
     {
         if (_activeInstance != null && _activeInstance != this)
@@ -237,10 +264,17 @@ public sealed class RejoinManager : MonoBehaviour
 
         if (args.ConnectionState != LocalConnectionState.Stopped ||
             _applicationQuitting ||
-            LanHostMigrationManager.MigrationInProgress ||
             LocalLobbySession.IsIntentionalDisconnect ||
             LocalLobbySession.IsHosting ||
             !LocalLobbySession.CanReconnect)
+        {
+            return;
+        }
+
+        // Pause the normal popup while the LAN migration manager checks
+        // whether the server disappeared or only this client disconnected.
+        if (LanHostMigrationManager.TryStartUnexpectedHostRecovery() ||
+            LanHostMigrationManager.MigrationInProgress)
         {
             return;
         }

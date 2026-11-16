@@ -190,6 +190,11 @@ public sealed class LobbyReturnController : MonoBehaviour
         if (args.ConnectionState != LocalConnectionState.Stopped || _returning)
             return;
 
+        // Let LAN host-loss detection run before either the rejoin popup or
+        // the fallback menu return handles this stopped connection.
+        if (LanHostMigrationManager.TryStartUnexpectedHostRecovery())
+            return;
+
         // During host migration, LanHostMigrationManager keeps this scene open
         // and reconnects the client to the elected replacement host.
         if (LanHostMigrationManager.MigrationInProgress)

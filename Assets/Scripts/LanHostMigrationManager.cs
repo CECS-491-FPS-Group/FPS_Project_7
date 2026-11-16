@@ -11,9 +11,9 @@ using UnitySceneManager = UnityEngine.SceneManagement.SceneManager;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(NetworkManager))]
-// Coordinates graceful LAN lobby host migration. The current host sends a
-// reliable handoff plan, the elected client starts a replacement FishNet
-// server, and the remaining clients find it over LAN before reconnecting.
+// Coordinates graceful and unexpected LAN lobby host migration. The elected
+// client starts a replacement FishNet server, and the remaining clients find
+// it over LAN before reconnecting.
 public sealed class LanHostMigrationManager : MonoBehaviour
 {
     private const string LobbySceneName = "LobbyScene_v1";
@@ -32,6 +32,11 @@ public sealed class LanHostMigrationManager : MonoBehaviour
         public int Generation;
         public uint Revision;
         public MigrationPlayer[] Players;
+        public string LobbyCode;
+        public string RoomName;
+        public int MaxPlayers;
+        public bool IsListed;
+        public ushort PreferredPort;
     }
 
     public struct GracefulMigrationPlan : IBroadcast
@@ -54,7 +59,7 @@ public sealed class LanHostMigrationManager : MonoBehaviour
 
     public event Action<MigrationRosterSnapshot> ClientSnapshotChanged;
 
-    [Header("Graceful LAN handoff")]
+    [Header("LAN host migration")]
     [Tooltip("Time given to deliver the handoff plan before the old host stops.")]
     [SerializeField, Min(0.25f)]
     private float handoffNoticeSeconds = 0.75f;
@@ -66,6 +71,11 @@ public sealed class LanHostMigrationManager : MonoBehaviour
     [Tooltip("Small delay that lets the old host release its gameplay port.")]
     [SerializeField, Min(0f)]
     private float successorStartDelaySeconds = 0.5f;
+
+    [Header("Unexpected host loss")]
+    [Tooltip("How long a disconnected client checks whether the original host is still responding before starting migration.")]
+    [SerializeField, Min(0.5f)]
+    private float hostLossConfirmationSeconds = 2.5f;
 
     [SerializeField]
     private string fallbackMainMenuSceneName = "MainMenu";
@@ -104,7 +114,6 @@ public sealed class LanHostMigrationManager : MonoBehaviour
     private int _serverGeneration;
     private int _nextJoinOrder;
     private uint _serverRevision;
-    private float _hostDiscoveryStopTime;
 
     private bool _subscribed;
     private bool _hasPendingPlan;
@@ -114,6 +123,8 @@ public sealed class LanHostMigrationManager : MonoBehaviour
     private bool _startingReplacementServer;
     private bool _replacementLobbyLoadPending;
     private bool _migrationConnectAttemptInProgress;
+    private bool _checkingOriginalHost;
+    private bool _applicationQuitting;
 
     private void Awake()
     {
@@ -146,12 +157,11 @@ public sealed class LanHostMigrationManager : MonoBehaviour
             return;
 
         _migrationDiscovery.Poll();
+    }
 
-        if (_hostDiscoveryStopTime > 0f &&
-            Time.realtimeSinceStartup >= _hostDiscoveryStopTime)
-        {
-            DisposeMigrationDiscovery();
-        }
+    private void OnApplicationQuit()
+    {
+        _applicationQuitting = true;
     }
 
     private void OnDisable()
@@ -176,6 +186,15 @@ public sealed class LanHostMigrationManager : MonoBehaviour
     {
         playerToken = ElectedSuccessorToken;
         return IsValidPlayerToken(playerToken);
+    }
+
+    // RejoinManager and LobbyReturnController may receive FishNet's stopped
+    // event before this component. Let either one start the same idempotent
+    // host-loss check so event subscription order cannot open the wrong UI.
+    public static bool TryStartUnexpectedHostRecovery()
+    {
+        return Instance != null &&
+               Instance.TryBeginUnexpectedHostRecovery();
     }
 
     // Called by LobbyReturnController before a host intentionally leaves.
@@ -234,6 +253,65 @@ public sealed class LanHostMigrationManager : MonoBehaviour
         return true;
     }
 
+    private bool TryBeginUnexpectedHostRecovery()
+    {
+        if (_migrationInProgress)
+            return true;
+
+        if (_applicationQuitting ||
+            _networkManager == null ||
+            _networkManager.IsServerStarted ||
+            LocalLobbySession.IsHosting ||
+            LocalLobbySession.IsIntentionalDisconnect ||
+            !LocalLobbySession.CanReconnect ||
+            !HasClientSnapshot ||
+            !ContainsPlayer(
+                _clientSnapshot.Players,
+                LocalLobbySession.PlayerToken))
+        {
+            return false;
+        }
+
+        string successorToken =
+            FindSuccessorToken(_clientSnapshot.Players);
+        if (!IsValidPlayerToken(successorToken))
+            return false;
+
+        GracefulMigrationPlan plan = new GracefulMigrationPlan
+        {
+            SessionId = _clientSnapshot.SessionId,
+            Generation = _clientSnapshot.Generation + 1,
+            SuccessorToken = successorToken,
+            Players = _clientSnapshot.Players,
+            LobbyCode = _clientSnapshot.LobbyCode,
+            RoomName = _clientSnapshot.RoomName,
+            MaxPlayers = _clientSnapshot.MaxPlayers,
+            IsListed = _clientSnapshot.IsListed,
+            PreferredPort = _clientSnapshot.PreferredPort
+        };
+
+        if (!TryValidatePlan(plan, out GracefulMigrationPlan safePlan))
+            return false;
+
+        _pendingPlan = safePlan;
+        _hasPendingPlan = true;
+        _migrationInProgress = true;
+        _checkingOriginalHost = true;
+
+        Debug.Log(
+            "[HostMigration] Connection stopped unexpectedly. " +
+            "Checking whether the original host is still on the LAN.",
+            this);
+
+        if (_migrationRoutine == null)
+        {
+            _migrationRoutine = StartCoroutine(
+                CheckOriginalHostThenMigrate());
+        }
+
+        return true;
+    }
+
     private void Subscribe()
     {
         if (_subscribed || _networkManager == null ||
@@ -265,7 +343,12 @@ public sealed class LanHostMigrationManager : MonoBehaviour
         _subscribed = true;
 
         if (_networkManager.IsServerStarted)
+        {
             EnsureServerSession();
+
+            if (!_startingReplacementServer)
+                StartCurrentHostPresenceResponder();
+        }
     }
 
     private void Unsubscribe()
@@ -299,10 +382,13 @@ public sealed class LanHostMigrationManager : MonoBehaviour
 
             if (_startingReplacementServer)
                 LoadFreshReplacementLobby();
+            else
+                StartCurrentHostPresenceResponder();
         }
         else if (args.ConnectionState == LocalConnectionState.Stopped)
         {
             CancelReplacementLobbyLoad();
+            DisposeMigrationDiscovery();
             ClearServerState();
         }
     }
@@ -334,15 +420,100 @@ public sealed class LanHostMigrationManager : MonoBehaviour
             return;
         }
 
-        if (!_migrationInProgress || !_hasPendingPlan)
+        if (!_migrationInProgress)
         {
+            if (TryBeginUnexpectedHostRecovery())
+                return;
+
             if (LocalLobbySession.IsIntentionalDisconnect)
                 ClearClientState();
             return;
         }
 
+        if (_checkingOriginalHost || !_hasPendingPlan)
+            return;
+
         if (_migrationRoutine == null)
             _migrationRoutine = StartCoroutine(RunPendingMigration());
+    }
+
+    private IEnumerator CheckOriginalHostThenMigrate()
+    {
+        GracefulMigrationPlan plan = _pendingPlan;
+
+        DisposeMigrationDiscovery();
+        _migrationDiscovery = new LanHostMigrationDiscovery(
+            false,
+            plan.SessionId,
+            plan.Generation - 1,
+            plan.LobbyCode);
+
+        if (!string.IsNullOrEmpty(_migrationDiscovery.Error))
+        {
+            CancelUnexpectedRecoveryAndShowRejoin(
+                "The original host could not be checked on this device.");
+            yield break;
+        }
+
+        float deadline =
+            Time.realtimeSinceStartup + hostLossConfirmationSeconds;
+
+        while (_migrationInProgress &&
+               _checkingOriginalHost &&
+               Time.realtimeSinceStartup < deadline)
+        {
+            if (_migrationDiscovery.TryGetEndpoint(
+                    out string address,
+                    out ushort port))
+            {
+                Debug.Log(
+                    $"[HostMigration] Original host is still responding at " +
+                    $"{address}:{port}. Opening the normal rejoin prompt.",
+                    this);
+
+                CancelUnexpectedRecoveryAndShowRejoin(string.Empty);
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        if (!_migrationInProgress || !_checkingOriginalHost)
+        {
+            _migrationRoutine = null;
+            yield break;
+        }
+
+        DisposeMigrationDiscovery();
+        _checkingOriginalHost = false;
+
+        Debug.LogWarning(
+            $"[HostMigration] Original host did not answer for " +
+            $"{hostLossConfirmationSeconds:0.0} seconds. " +
+            $"Starting emergency migration to generation {plan.Generation}.",
+            this);
+
+        yield return RunPendingMigration();
+        _migrationRoutine = null;
+    }
+
+    private void CancelUnexpectedRecoveryAndShowRejoin(string reason)
+    {
+        DisposeMigrationDiscovery();
+        _checkingOriginalHost = false;
+        _migrationInProgress = false;
+        _hasPendingPlan = false;
+        _pendingPlan = default;
+        _migrationRoutine = null;
+
+        if (!string.IsNullOrWhiteSpace(reason))
+            Debug.LogWarning("[HostMigration] " + reason, this);
+
+        if (!RejoinManager.TryShowDisconnectPrompt())
+        {
+            BeginMigrationFailure(
+                "The normal rejoin prompt was unavailable after the host check.");
+        }
     }
 
     private IEnumerator RunPendingMigration()
@@ -579,9 +750,6 @@ public sealed class LanHostMigrationManager : MonoBehaviour
             return;
         }
 
-        _hostDiscoveryStopTime =
-            Time.realtimeSinceStartup + migrationTimeoutSeconds;
-
         _migrationConnectAttemptInProgress =
             _networkManager.ClientManager.StartConnection(
                 "127.0.0.1",
@@ -601,11 +769,13 @@ public sealed class LanHostMigrationManager : MonoBehaviour
         _hasPendingPlan = false;
         _startingReplacementServer = false;
         _prepareServerFromMigrationPlan = false;
+        _checkingOriginalHost = false;
         CancelReplacementLobbyLoad();
         _migrationConnectAttemptInProgress = false;
 
-        // The new host keeps answering migration discovery briefly so every
-        // other client has time to find it. Ordinary clients can close theirs.
+        // The host keeps its responder for the whole session. Besides helping
+        // waiting clients reconnect, it lets a future disconnect distinguish
+        // a living host from a crashed host. Ordinary clients can close theirs.
         if (!becameHost)
             DisposeMigrationDiscovery();
 
@@ -657,6 +827,7 @@ public sealed class LanHostMigrationManager : MonoBehaviour
         _prepareServerFromMigrationPlan = false;
         _replacementLobbyLoadPending = false;
         _migrationConnectAttemptInProgress = false;
+        _checkingOriginalHost = false;
         LocalLobbySession.Clear();
         LobbyReturnController.RequestHostJoinAfterReturn();
 
@@ -714,6 +885,46 @@ public sealed class LanHostMigrationManager : MonoBehaviour
         Debug.Log(
             $"[HostMigration] Server created migration session " +
             $"{ShortToken(_serverSessionId)}.",
+            this);
+    }
+
+    private void StartCurrentHostPresenceResponder()
+    {
+        if (_networkManager == null ||
+            !_networkManager.IsServerStarted ||
+            !LocalLobbySession.IsHosting ||
+            string.IsNullOrWhiteSpace(_serverSessionId) ||
+            !LobbyCodeUtility.IsValid(LocalLobbySession.LobbyCode) ||
+            _networkManager.TransportManager == null ||
+            _networkManager.TransportManager.Transport == null)
+        {
+            return;
+        }
+
+        ushort actualPort =
+            _networkManager.TransportManager.Transport.GetPort();
+
+        DisposeMigrationDiscovery();
+        _migrationDiscovery = new LanHostMigrationDiscovery(
+            true,
+            _serverSessionId,
+            _serverGeneration,
+            LocalLobbySession.LobbyCode,
+            actualPort);
+
+        if (!string.IsNullOrEmpty(_migrationDiscovery.Error))
+        {
+            Debug.LogWarning(
+                "[HostMigration] Host-loss detection is unavailable: " +
+                _migrationDiscovery.Error,
+                this);
+            DisposeMigrationDiscovery();
+            return;
+        }
+
+        Debug.Log(
+            $"[HostMigration] Host presence responder started for " +
+            $"generation {_serverGeneration} on gameplay port {actualPort}.",
             this);
     }
 
@@ -787,7 +998,12 @@ public sealed class LanHostMigrationManager : MonoBehaviour
             SessionId = _serverSessionId,
             Generation = _serverGeneration,
             Revision = ++_serverRevision,
-            Players = GetSortedServerPlayers()
+            Players = GetSortedServerPlayers(),
+            LobbyCode = LocalLobbySession.LobbyCode,
+            RoomName = LocalLobbySession.RoomName,
+            MaxPlayers = Mathf.Clamp(LocalLobbySession.MaxPlayers, 1, 16),
+            IsListed = LocalLobbySession.IsListed,
+            PreferredPort = LocalLobbySession.Port
         };
 
         _networkManager.ServerManager.Broadcast(
@@ -902,6 +1118,9 @@ public sealed class LanHostMigrationManager : MonoBehaviour
         if (!IsValidPlayerToken(snapshot.SessionId) ||
             snapshot.Generation < 0 ||
             snapshot.Revision == 0 ||
+            !LobbyCodeUtility.IsValid(snapshot.LobbyCode) ||
+            snapshot.MaxPlayers < 1 || snapshot.MaxPlayers > 16 ||
+            snapshot.PreferredPort < 1 ||
             !TryValidatePlayers(
                 snapshot.Players,
                 false,
@@ -910,12 +1129,23 @@ public sealed class LanHostMigrationManager : MonoBehaviour
             return false;
         }
 
+        string roomName = string.IsNullOrWhiteSpace(snapshot.RoomName)
+            ? $"Room {snapshot.LobbyCode}"
+            : snapshot.RoomName.Trim();
+        if (roomName.Length > 128)
+            return false;
+
         safeSnapshot = new MigrationRosterSnapshot
         {
             SessionId = snapshot.SessionId,
             Generation = snapshot.Generation,
             Revision = snapshot.Revision,
-            Players = players
+            Players = players,
+            LobbyCode = LobbyCodeUtility.Normalize(snapshot.LobbyCode),
+            RoomName = roomName,
+            MaxPlayers = snapshot.MaxPlayers,
+            IsListed = snapshot.IsListed,
+            PreferredPort = snapshot.PreferredPort
         };
         return true;
     }
@@ -1113,6 +1343,7 @@ public sealed class LanHostMigrationManager : MonoBehaviour
         _migrationInProgress = false;
         _prepareServerFromMigrationPlan = false;
         _startingReplacementServer = false;
+        _checkingOriginalHost = false;
         CancelReplacementLobbyLoad();
         _migrationConnectAttemptInProgress = false;
         _replacementRoom = null;
@@ -1123,7 +1354,6 @@ public sealed class LanHostMigrationManager : MonoBehaviour
     {
         _migrationDiscovery?.Dispose();
         _migrationDiscovery = null;
-        _hostDiscoveryStopTime = 0f;
     }
 
     private static bool IsValidPlayerToken(string value)
