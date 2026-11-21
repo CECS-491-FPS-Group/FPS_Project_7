@@ -48,6 +48,7 @@ public sealed class FileAntiCheat : MonoBehaviour
     private string _developmentStartup;
     private double _developmentSendAfter;
     private Report? _developmentLastReport;
+    private bool _developmentNetworkConfigured;
 #endif
     private double _clientNext;
     private bool _initialPending;
@@ -69,6 +70,9 @@ public sealed class FileAntiCheat : MonoBehaviour
     {
         if (args.ConnectionState == LocalConnectionState.Stopped) { _sessions.Clear(); _approved = null; }
         if (args.ConnectionState != LocalConnectionState.Started) return;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        DevelopmentConfigureNetwork();
+#endif
         _sessions.Clear();
         _approved = null;
         staticMode = ReadMode("FPS_STATIC_AC_MODE", staticMode);
@@ -108,6 +112,9 @@ public sealed class FileAntiCheat : MonoBehaviour
     }
     private void ClientAuthenticated()
     {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        DevelopmentConfigureNetwork();
+#endif
         _generation++;
         _cancel?.Cancel();
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -123,6 +130,23 @@ public sealed class FileAntiCheat : MonoBehaviour
         if (_developmentStartup == "Suppress") _initialPending = false;
 #endif
     }
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    private void DevelopmentConfigureNetwork()
+    {
+        if (_developmentNetworkConfigured) return;
+        _developmentNetworkConfigured = true;
+        string profile = Environment.GetEnvironmentVariable("FPS_MOVEMENT_TEST_NETWORK");
+        if (string.IsNullOrEmpty(profile) || profile == "Off") return;
+        if (profile != "100ms" && profile != "150ms-loss2")
+        { Debug.LogWarning("[Network TEST] Unknown profile; no simulation setting changed."); return; }
+        var simulator = _manager.TransportManager.LatencySimulator;
+        simulator.SetLatency(profile == "100ms" ? 100 : 150);
+        simulator.SetPacketLoss(profile == "100ms" ? 0 : .02);
+        simulator.SetOutOfOrder(0);
+        simulator.SetEnabled(true);
+        Debug.Log($"[Network TEST] profile={profile} outgoing-only instance simulation. Apply to both endpoints for both directions; no jitter; reliable loss adds 30% delay, not packet drop.");
+    }
+#endif
     private void ClientState(ClientConnectionStateArgs args)
     {
         if (args.ConnectionState != LocalConnectionState.Stopped) return;

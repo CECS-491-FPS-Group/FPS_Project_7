@@ -58,6 +58,8 @@ public sealed class MatchBoosts : MonoBehaviour
     public float DamageMultiplier(NetworkConnection connection) => Has(connection, Kind.Damage) ? 2f : 1f;
     // Uses this server's effect dictionary and deadline; never the client snapshot/LocalKind.
     public bool ServerHasSpeedBoost(NetworkConnection connection) => Has(connection, Kind.Speed);
+    public Kind ServerKind(NetworkConnection connection) => _manager != null && _manager.IsServerStarted &&
+        connection != null && _effects.TryGetValue(connection, out Effect effect) && effect.Expires > Now ? effect.Type : Kind.None;
     public bool ServerMatchActive => _manager != null && _manager.IsServerStarted && _timer.timerIsRunning &&
         _timer.currentState == RoundTimer.gameStates.GAME;
     public bool ClientInvisible(int clientId) => _clientEffects.TryGetValue(clientId, out Effect effect) &&

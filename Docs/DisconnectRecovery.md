@@ -1,5 +1,11 @@
 # Disconnect reason and local menu recovery
 
+2026-11-21: user reports latest AC07 batch passed in aggregate, including its required
+F7 disconnect/MainMenu/manual-rejoin regression. This supersedes the previously skipped
+AC06/AC07 pending status below. No per-step logs/timings supplied, none invented. New
+movement controls/listener cleanup require AC08 regression, still pending; recovery/
+notice code itself is unchanged. See MovementExpansionRuntime.md.
+
 2026-11-13: AC06 combined gameplay smoke passed per user. The anti-cheat disconnect/
 MainMenu/manual-rejoin regression was **not performed**, remains pending in the AC07
 AntiCheatHardeningRuntime.md batch. Historical AC02 recovery passes below are retained;

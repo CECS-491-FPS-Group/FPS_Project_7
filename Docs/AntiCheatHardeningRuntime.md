@@ -1,5 +1,11 @@
 # AC07: request/configuration and integrity lifecycle runtime gate
 
+2026-11-21 update: the user reports this latest AC07 batch **passed as a whole**.
+Record user-reported aggregate runtime evidence, including its required F7 recovery/
+rejoin step; no detailed logs/measurements or optional-fixture breakdown supplied.
+The original pending instructions below are historical. New movement/latency work
+remains pending in MovementExpansionRuntime.md (AC08), not covered by this report.
+
 Pending user tests. AC06 combined gameplay smoke passed per user; **AC06 anti-cheat
 disconnect/rejoin was NOT performed**. This gate carries that test forward. Windows
 preferred; no new detector/threshold, crouch animation or power-up balance change.

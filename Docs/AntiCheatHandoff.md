@@ -1,5 +1,69 @@
 # Anti-cheat continuation handoff
 
+## Current movement expansion — 2026-11-21
+
+Resumed **integration/anti-cheat-merged-test / ad26fe8**. Since 28a3482 only the
+user's Road/Water material commit existed; initial tree clean. That work, recovery
+branch, scene/prefab references and all available build/manifest pairs are preserved.
+No branch integration, vendor/authority/layout edits, push or main merge.
+
+**AC07 latest runtime batch passed per user report**, in aggregate; this includes its
+required remote F7 disconnect/MainMenu/rejoin regression carried from AC06. No detailed
+logs/measurements or optional-fixture breakdown supplied; none invented. It is not
+agent-run evidence and does not establish AC08/new network-simulation acceptance.
+
+Implemented on existing SpeedHackDetector, separate from old punitive evidence:
+
+- Copy FishNet OnDataReceived goals before smoothing, latest-slot/coalesced at <=4Hz;
+  server receipt clock, remote owner validation, ticks for novelty only.
+- Three independent unexplained large horizontal/upward changes in 15s, >=1s apart;
+  raw-goal rebasing prevents render smoothing counting as extra events.
+- Excessive unsupported ascent above approved launch/slope envelope; clear endpoint
+  support proximity, fresh contiguous samples and elapsed evidence required.
+- Unsupported level-motion candidate with changing positions and >=4s sufficient
+  data. **Silent/stationary hovering is not reliably detected.** No generic noclip,
+  strict ballistic replay or slow-fly coverage claimed.
+- Conservative server collision queries: nearby geometry suppresses air inference;
+  dynamic/actor/saturated/unready support ambiguous. Crouch feet reference invariant.
+  Resets reuse spawn/death/respawn/ownership/despawn/scene lifecycle and phase changes;
+  server stalls reset, network silence/unchanged goals never prove hovering.
+
+All three rules **always report-only**, never call policy or add old suspicion.
+Original HorizontalMovementObservation source, 6/9 limits, thresholds/decay/boost tail,
+ReportOnly defaults and host exemption unchanged. New receive-based rules skip local
+host (no remote sample stream). Existing optional horizontal/static disconnect remains.
+Nothing corrects/prevents client-authoritative position changes themselves.
+
+Development owner menu directly selects Repeated Teleports / Ascent / Level Motion /
+Reset. Resume starts; auto-reset/return after 12s. Alt+F8 cycles, Alt+F7 disables all
+movement probes/reset/returns active start; plain F7/F8 remain old speed/single jump.
+Death/ownership loss cancels without overwriting respawn placement. Server Inspector
+sample-quality snapshot available. New network-test profiles use installed FishNet
+outgoing simulator; no jitter capability fabricated. All test controls excluded release.
+
+Actual checks: **288 pure assertions** (230 previous + 58 new), Unity6000.3.8f1 full
+import/compile/FishNet processing (**17 prefabs**), **102 native** support/geometry/
+callback checks and **60 unconnected Play Mode** lifecycle checks. Editor/Development/
+Release current-source compile (137 files) and probe/setting/state exclusion pass.
+GUID/meta references checked; existing unrelated warnings remain. No new standalone,
+interactive probe or simulated-network run performed. Source model, exact thresholds,
+limitations and evidence: [MovementExpansion.md](MovementExpansion.md).
+
+Read-only AC07 Clean/Test hashes/descriptors match archived
+**84e29324cc274267be86f92042703d49**; default installed server approved.json is byte-
+identical. No artifacts changed. AC08 folders/archive unused at inspection: recheck.
+Next [MovementExpansionRuntime.md](MovementExpansionRuntime.md): build all peers,
+finished Clean -> archived manifest/client descriptor -> preserve/install trusted
+<project>/IntegrityServer/approved.json (or FPS_INTEGRITY_MANIFEST) -> copy Test after
+metadata -> restart host -> each remote startup Verified. No manual UI wiring.
+
+Run host + two remotes baseline, legitimate boosts/terrain/respawn, each 12s probe,
+two small outgoing-delay/loss profiles, then plain F7 disconnect/MainMenu/manual rejoin
+regression. All new acceptance pending. New rules remain report-only even after it.
+Highest-value remaining gaps: slow/silent flight, missing contact/trajectory truth,
+intra-frame coalescing, latency/cover geometry, falsifiable client hashes/trusted host.
+Defer crouch animation, balance, bots/migration. Earlier sections below are historical.
+
 ## Current request/configuration/integrity hardening — 2026-11-13
 
 Resumed **integration/anti-cheat-merged-test / 06595a6**; only unrelated Road.mat and

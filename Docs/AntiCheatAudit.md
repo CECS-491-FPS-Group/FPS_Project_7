@@ -1,5 +1,34 @@
 # Trust-boundary audit and first weekend batch — 2026-11-12
 
+## Movement evidence expansion — 2026-11-21
+
+Current base ad26fe8 (only Road/Water material commit since 28a3482). AC07 batch
+reported passed by user in aggregate, required F7 recovery/rejoin included; no logs/
+measurements invented and optional cases not itemized. Prior pending AC07 notes below
+are historical. This is movement coverage, not another branch integration.
+
+| Changed evidence boundary | Protection / limitation |
+| --- | --- |
+| SpeedHackDetector.OnReceivedGoal; installed NetworkTransform.ServerUpdateTransform/DataReceived/OnDataReceived | New remote samples before smoothing, authenticated active owner/server guard. Copy pooled data; one latest slot, monotonic server receipt time. Tick only deduplicates novelty, never grants elapsed time/velocity. Original LateUpdate smoothed-transform horizontal enforcement untouched. |
+| ReceivedMovementObservation.Observe | Separate report-only repeated displacement, excessive clear-air ascent and unsupported level-motion candidate. Ring three/15s/1s separation; current-frame coalescing and rebase prevent replay/smoothing overcounts. Explicit sparse/stationary/invalid/support-quality states; no client grounded/velocity entitlement. |
+| MovementSupportQuery.Evaluate; PlayerPosture | Server broad endpoint geometry, finite parameters, ready terrain, fixed feet reference; own/trigger/corpse excluded. Nearby geometry suppresses, dynamic/saturated/unsupported roots ambiguous. Contact between sparse samples is not established. No path-based noclip or trustworthy motionless-hover claim. |
+| SpeedHackDetector.ResetReceived/ObserveReceivedGoals/OnStopServer | Existing lifecycle resets plus phase/server-gap reset, clean listener removal; fixed-size per-actor state and <=4Hz bounded nonalloc queries. Three independently throttled rule logs. No call from new evidence to FileAntiCheat.EvaluateDynamic; old suspicion/enforcement untouched. |
+| ApprovedMovementBoost; LocalPlayerControls; FileAntiCheat.DevelopmentConfigureNetwork | Bounded owner-only local development probes, reset/death/12s auto-return; no exception RPC. Outgoing-only latency profiles via installed simulator, no promised jitter/real retransmission model. Controls/fields/setting absent release. |
+
+Actual model, parameters, missing-data reasoning and all limitations:
+[MovementExpansion.md](MovementExpansion.md). Agent checks pass: 288 deterministic,
+102 native, 60 unconnected Play Mode, full Unity/FishNet17 and three compiler profiles/
+release exclusions. No interactive/simulation pass claimed. New AC08 acceptance:
+[MovementExpansionRuntime.md](MovementExpansionRuntime.md).
+
+New rules only observe. Existing server combat/request/state checks prevent invalid
+gameplay requests; optional validated static/sustained-horizontal policies can remove
+remote connections, with host exemption/default ReportOnly unchanged. Root motion is
+still client-authoritative; slow flight, silent hovering, goal/coalescing ambiguity,
+missing contact/ground truth, cover/lag compensation and forged hashes remain gaps.
+Characterize AC08 network/terrain evidence before considering any new enforcement or
+authority work. No threshold loosening, signatures/kernel tools or aim punishment.
+
 ## Merged-game reconciliation / bounded hardening — 2026-11-13
 
 Inspected integration/anti-cheat-merged-test at **06595a6** with only pre-existing

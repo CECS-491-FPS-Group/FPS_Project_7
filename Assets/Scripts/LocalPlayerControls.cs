@@ -60,6 +60,17 @@ public sealed class LocalPlayerControls : MonoBehaviour
             IntegrationUi.Button(panel, "Save movement replay", new Vector2(0, -45), () => GetComponent<LocalReplayCapture>()?.Save());
             IntegrationUi.Button(panel, _health.NetworkManager.IsServerStarted ? "Stop host and return" : "Leave to MainMenu",
                 new Vector2(0, -100), ClientDisconnectRecovery.ReturnToMenu);
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            panel.sizeDelta = new Vector2(440, 650);
+            IntegrationUi.Button(panel, "Development: repeated teleports", new Vector2(0, -155),
+                () => GetComponent<ApprovedMovementBoost>()?.DevelopmentSetMovementProbe(1));
+            IntegrationUi.Button(panel, "Development: excessive ascent", new Vector2(0, -200),
+                () => GetComponent<ApprovedMovementBoost>()?.DevelopmentSetMovementProbe(2));
+            IntegrationUi.Button(panel, "Development: unsupported level motion", new Vector2(0, -245),
+                () => GetComponent<ApprovedMovementBoost>()?.DevelopmentSetMovementProbe(3));
+            IntegrationUi.Button(panel, "Development: reset / return probe", new Vector2(0, -290),
+                () => GetComponent<ApprovedMovementBoost>()?.DevelopmentResetMovementProbe());
+#endif
         }
         _menu.SetActive(true);
         GetComponent<FirstPersonController>().enabled = false;

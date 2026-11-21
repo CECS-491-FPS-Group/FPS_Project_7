@@ -1,5 +1,13 @@
 # Build-file integrity (schema 1, ReportOnly by default)
 
+2026-11-21: AC07 batch reported passed by user as a whole, without detailed logs/
+measurements. Read-only AC07 Clean/Test hashes/descriptors and installed default server
+manifest match archive 84e29324cc274267be86f92042703d49; untouched. New movement runtime
+source requires AC08 (recheck unused number), all peers rebuilt and matching manifest.
+Follow MovementExpansionRuntime.md: finished Clean -> generate archive/client metadata
+-> install separate trusted server copy -> Test copy. No new static rule/enforcement/
+admission change; client reports remain falsifiable, host trusted. AC08 pending.
+
 2026-11-13 hardening: AC06 Clean/Test three hashes/identities and installed server copy
 match archived 5d276f6feab646a3bbf210b8472fb738 (read-only; untouched). AC06 gameplay
 smoke passed per user; disconnect/rejoin skipped. New runtime source requires AC07,

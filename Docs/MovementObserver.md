@@ -1,5 +1,20 @@
 # Movement observer (ReportOnly by default)
 
+2026-11-21: **AC07 batch passed per user aggregate report**, required recovery/rejoin
+included; no detailed logs/measurements supplied. New received-goal movement rules are
+implemented separately: repeated unexplained displacement, excessive unsupported
+ascent, and fresh unsupported level-motion candidate. They **always report-only**;
+no contribution to existing suspicion or disconnect eligibility. See
+[MovementExpansion.md](MovementExpansion.md) for actual controller/network model,
+source references, freshness/support limits and 288/102/60 checks. Silent stationary
+hovering remains inconclusive. No generic sparse-path noclip test.
+
+New pending Windows gate: [MovementExpansionRuntime.md](MovementExpansionRuntime.md),
+AC08 after rechecking unused number. Existing horizontal source/thresholds/authority
+unchanged. The earlier XZ-only descriptions below refer to the original horizontal
+measurement class, not the newly added received-goal observations. Historical pending
+AC07 notes are superseded by the user's aggregate result, not extra inferred metrics.
+
 2026-11-13 hardening: AC06 combined gameplay smoke passed per user; remote F7
 disconnect/MainMenu/rejoin regression was skipped and remains pending in AC07
 (AntiCheatHardeningRuntime.md). Observer limits/thresholds/grace/authority unchanged.

@@ -1,5 +1,14 @@
 # Optional server enforcement
 
+2026-11-21: AC07 runtime batch reported passed by user in aggregate, including required
+remote F7 recovery/rejoin; no per-case logs/measurements or optional breakdown supplied.
+New received-goal rules (repeated unexplained displacement, excessive unsupported
+ascent, unsupported level-motion) **never call policy or add horizontal suspicion**.
+They remain report-only even with Dynamic=Disconnect. Existing static eligibility,
+exact sustained-horizontal rule/threshold, committed ReportOnly defaults and local
+host exemption unchanged. AC08 runtime/network characterization remains pending in
+MovementExpansionRuntime.md. No correction, bans or new client admission restriction.
+
 2026-11-13 merged-game hardening: committed defaults remain ReportOnly/ReportOnly,
 host exempt, threshold unchanged. Request rejection/configuration errors do not call
 enforcement. Missing/late/malformed/unsupported/read/manifest errors remain nonpunitive;
