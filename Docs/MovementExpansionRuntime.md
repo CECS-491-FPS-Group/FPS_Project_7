@@ -1,4 +1,10 @@
-# AC08 Windows movement / network characterization (pending)
+# AC08 Windows movement / network characterization (user-reported pass)
+
+AC09 update: the user reports completing this AC08 checklist successfully. This is
+aggregate user-reported runtime evidence, not agent-run testing; no per-case logs,
+timings or optional-fixture detail supplied. Broad latency/macOS and new aim paths
+are not completed by inference. The pending labels below describe the original
+instructions; current new gate is [OccludedAimRuntime.md](OccludedAimRuntime.md).
 
 AC07 was reported passed by the user in aggregate, including its required recovery/
 rejoin regression. No detailed logs/timings or optional-fixture breakdown supplied.

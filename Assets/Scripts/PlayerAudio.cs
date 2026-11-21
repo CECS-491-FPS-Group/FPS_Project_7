@@ -3,6 +3,7 @@ using UnityEngine;
 // Server-result shots/HP and movement-derived footsteps. Presentation never authorizes gameplay.
 public sealed class PlayerAudio : MonoBehaviour
 {
+    public const float NearbyCueRange = 40f, ShotCueRange = 90f;
     private AudioSource _shots, _steps, _damage;
     private AudioClip _shot, _shotgun, _step;
     private Health _health;
@@ -30,12 +31,12 @@ public sealed class PlayerAudio : MonoBehaviour
         foreach (AudioSource source in new[] { _shots, _steps, _damage })
         {
             source.playOnAwake = false; source.spatialBlend = 1f;
-            source.minDistance = 2f; source.maxDistance = 40f;
+            source.minDistance = 2f; source.maxDistance = NearbyCueRange;
             source.rolloffMode = AudioRolloffMode.Linear; source.dopplerLevel = 0f;
         }
-        _shots.minDistance = 6f; _shots.maxDistance = 90f;
+        _shots.minDistance = 6f; _shots.maxDistance = ShotCueRange;
         _shots.rolloffMode = AudioRolloffMode.Custom;
-        _shots.SetCustomCurve(AudioSourceCurveType.CustomRolloff, ShotRolloff(6f, 90f));
+        _shots.SetCustomCurve(AudioSourceCurveType.CustomRolloff, ShotRolloff(6f, ShotCueRange));
         _shot = Resources.Load<AudioClip>("IntegrationAudio/Shot");
         _shotgun = Resources.Load<AudioClip>("IntegrationAudio/Shotgun");
         _step = Resources.Load<AudioClip>("IntegrationAudio/Step");

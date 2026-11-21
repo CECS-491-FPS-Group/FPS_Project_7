@@ -1,5 +1,12 @@
 # Movement observer (ReportOnly by default)
 
+AC09 update: **AC08 checklist passed per user aggregate report**; no per-case logs,
+measurements or optional breakdown supplied. Earlier AC08 pending labels below are
+historical. Existing movement thresholds/enforcement/authority remain unchanged.
+The new occluded-aim signal is independent, alwaysreport-only and never feeds movement
+suspicion, even DynamicDisconnect. New interactive tests: OccludedAimRuntime.md.
+Broad latency/macOS/live aim coverage is still pending, not inferred from this pass.
+
 2026-11-21: **AC07 batch passed per user aggregate report**, required recovery/rejoin
 included; no detailed logs/measurements supplied. New received-goal movement rules are
 implemented separately: repeated unexplained displacement, excessive unsupported

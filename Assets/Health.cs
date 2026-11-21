@@ -18,6 +18,7 @@ public class Health : NetworkBehaviour
     private readonly SyncVar<double> _respawnAt = new SyncVar<double>();
     private double _nextRespawnCheck;
     private uint _sequence;
+    internal uint ServerLifeVersion => _sequence;
     private uint _pendingSequence;
     private uint _localSequence;
     private bool _localPlacementPending;

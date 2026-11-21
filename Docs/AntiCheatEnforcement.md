@@ -1,5 +1,13 @@
 # Optional server enforcement
 
+AC09 update: AC08 checklist passed per user aggregate report, without new detailed
+logs/measurements. New occluded-aim correlation is **alwaysreport-only**, with no
+policy call/punitive suspicion/damage/correction even DynamicDisconnect. Both committed
+defaults remainReportOnly and host exemption is unchanged. New enclosed-world-origin
+shot rejection is nonpunitive in all modes. AC09 remote regression remains pending;
+follow OccludedAimRuntime.md for temporary host DynamicDisconnect plus plainF7
+MainMenu/manual-rejoin, then restoreReportOnly. Scripted aim positive never kicks.
+
 2026-11-21: AC07 runtime batch reported passed by user in aggregate, including required
 remote F7 recovery/rejoin; no per-case logs/measurements or optional breakdown supplied.
 New received-goal rules (repeated unexplained displacement, excessive unsupported

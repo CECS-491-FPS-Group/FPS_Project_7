@@ -10,6 +10,12 @@ is included in that aggregate report, superseding the earlier AC06 skipped statu
 No per-step logs, timings, measurements or optional-fixture breakdown were supplied.
 No new AC08 or simulated-network runtime acceptance is inferred.
 
+AC09 status: AC08 checklist now passed per user aggregate report, with no supplied
+measurements/per-case logs/optional breakdown. New occluded-aim signal is separate
+and alwaysreport-only; original movement thresholds/suspicion/policy untouched.
+AC09 interactive acceptance remains pending in OccludedAimRuntime.md. Broader latency
+and macOS coverage are not inferred; earlier AC08 pending labels are historical.
+
 ## Actual movement model / evidence boundary
 
 | Source inspected | Current behavior and implication |

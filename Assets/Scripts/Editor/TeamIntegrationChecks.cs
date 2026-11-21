@@ -54,6 +54,7 @@ public static class TeamIntegrationChecks
             CheckReplays();
             CheckHardening();
             checks += MovementObservationChecks.Run(actor);
+            checks += OcclusionGeometryChecks.Run(actor);
             Debug.Log($"[Team CHECK] PASS checks={checks}; controls/posture geometry, network runtime pending.");
         }
         catch (Exception error)

@@ -91,6 +91,11 @@ public class HitscanShooter : NetworkBehaviour
     private PlayerCameraSetup _posture;
     private double _nextServerShotTime;
     private readonly CombatRayGeometry _shotGeometry = new();
+    private OccludedAimObserver _aimObserver;
+    private double _nextLocalAim;
+    private uint _aimSequence;
+    internal float ApprovedAimRange => _serverConfigurationValid ? Profile.range : 0;
+    internal float ApprovedAimPitch => _serverPitch;
 
     private void Awake()
     {
@@ -112,6 +117,8 @@ public class HitscanShooter : NetworkBehaviour
         _nextSwitchTime = 0d; _bloom = 0; _lastBloomTime = 0;
         _nextRejectLog = 0d;
         _requestGate = NetworkManager.GetComponent<GameplayPlayerSpawner>();
+        _aimObserver = _health.GetComponent<OccludedAimObserver>() ?? _health.gameObject.AddComponent<OccludedAimObserver>();
+        _aimObserver.Begin(this);
         string error = ConfigurationError(weapons, maxYawDifference, maxPitch);
         _serverConfigurationValid = error == null;
         if (!_serverConfigurationValid)
@@ -226,6 +233,23 @@ public class HitscanShooter : NetworkBehaviour
         base.OnStopClient();
     }
 
+    public override void OnStopServer()
+    {
+        if (_aimObserver != null) _aimObserver.End();
+        base.OnStopServer();
+    }
+
+    // Presentation-only telemetry: no target ID, origin, entitlement or damage input.
+    [ServerRpc(RequireOwnership = true)]
+    private void ReportAim(Vector3 direction, uint sequence, FishNet.Transporting.Channel channel = FishNet.Transporting.Channel.Unreliable, NetworkConnection sender = null)
+        => ProcessServerAim(direction, sequence, sender);
+
+    internal void ProcessServerAim(Vector3 direction, uint sequence, NetworkConnection sender)
+    {
+        if (!IsServerInitialized || !IsSpawned || sender == null || !ReferenceEquals(sender, Owner) || !sender.IsActive || !sender.IsAuthenticated) return;
+        if (_aimObserver != null) _aimObserver.Receive(direction, sequence);
+    }
+
     private void LateUpdate()
     {
         if (!IsClientInitialized || !IsOwner || _camera == null || !_camera.isActiveAndEnabled) return;
@@ -253,6 +277,11 @@ public class HitscanShooter : NetworkBehaviour
             _scoped ? _normalFov / Profile.zoom : _normalFov,
             1f - Mathf.Exp(-12f * Time.deltaTime));
         if (_presentation != null) _presentation.PrepareAim(maxPitch);
+        if (Time.unscaledTimeAsDouble >= _nextLocalAim)
+        {
+            _nextLocalAim = Time.unscaledTimeAsDouble + .2d;
+            ReportAim(_camera.ViewportPointToRay(new Vector3(.5f, .5f, 0)).direction, ++_aimSequence);
+        }
         if (_controls != null ? _controls.Pressed("Reload") : Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame)
         {
             RequestReload();
@@ -321,6 +350,7 @@ public class HitscanShooter : NetworkBehaviour
         }
         _nextServerShotTime = now + 1d / Profile.rate;
         _ammo.Value--;
+        if (_aimObserver != null) _aimObserver.AcceptedShot();
         Debug.Log($"[Weapon] Owner={OwnerId} accepted shot; ammo={CurrentAmmo}/{magazineSize}.", this);
 
         _bloom = Mathf.Max(0f, _bloom - (float)System.Math.Max(0d, now - _lastBloomTime - 0.15d) * 8f);

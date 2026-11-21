@@ -1,5 +1,15 @@
 # Build-file integrity (schema 1, ReportOnly by default)
 
+AC09 update: AC08 checklist passed per user aggregate report; no per-case logs or
+measurements supplied. AC08 Clean/Test three hashes/descriptors and installed default
+server copy match archive **a70a4853fb014589aaa7e703be232ef2**, read-only, unchanged.
+New owner aim RPC/runtime code requires all peers rebuilt as next unusedAC09 (recheck).
+Follow OccludedAimRuntime.md: completed Clean -> generate archive/client descriptor
+-> preserve/install trusted server copy -> copy Test after metadata -> restart host
+-> explicit remote startupVerified. Do not regenerate AC08 baseline. No integrity
+protocol/policy/default/admission changes; client reports still falsifiable and host
+trusted. AC09 runtime acceptance, broader macOS/latency coverage remain pending.
+
 2026-11-21: AC07 batch reported passed by user as a whole, without detailed logs/
 measurements. Read-only AC07 Clean/Test hashes/descriptors and installed default server
 manifest match archive 84e29324cc274267be86f92042703d49; untouched. New movement runtime

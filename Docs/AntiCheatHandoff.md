@@ -1,5 +1,74 @@
 # Anti-cheat continuation handoff
 
+## AC09 occluded aim / obstruction — 2026-11-21
+
+Resumed **integration/anti-cheat-merged-test / 384a6c6**, clean tree, no subsequent
+commits at inspection. **User reports the AC08 checklist passed in aggregate**; no
+per-case logs, measurements or optional-test breakdown invented. This supersedes
+earlier AC08 pending labels below, not broader latency/macOS or new AC09 acceptance.
+
+AC08 Clean/Test three hashes and client identities match archived
+**a70a4853fb014589aaa7e703be232ef2**. Default installed
+`<project>/IntegrityServer/approved.json` is byte-identical, verified read-only.
+No build/manifest regenerated/installed. AC09 folders/archive unused at inspection.
+AGENTS, recovery branch, Road/Water materials, scenes/prefabs/GUIDs and registration
+unchanged. No branch integration, vendor changes, authority rewrite, push or main merge.
+
+**Hard protection checkpoint 170fafa:** native PhysX reproduced the enclosing-origin
+ray blind spot. CombatRayGeometry.OriginClear rejects an eye inside solid world cover
+or saturated overlap before ammo/damage. Existing nearest-hit server obstruction is
+retained. Real-prefab server-only Play Mode HP/ammo tests cover wall/open/exposed shots
+and immediate approved crouch/stand. See [CombatObstruction.md](CombatObstruction.md).
+
+**New review signal:** root yaw is replicated, full direction previously arrived
+only at shots; local replay has no camera aim. A bounded owner-only 5Hz unreliable
+direction/sequence RPC on existing HitscanShooter adds between-shot observation.
+OccludedAimObserver uses fresh client-reported aim, recent target position receipts,
+approved stance/effects and server geometry. Covered requires padded bounds behind
+one static box; partial/mixed/mesh/moving/uncertain geometry suppresses. Stationary
+observer/moving target, 2s grace then 6s correlated angular motion. Potential audio cues,
+invisibility, stale data and lifecycle ambiguity suppress/reset. Maximum 16 actors,
+one target/player, 5Hz, one report/10s, idempotent stop/owner/life/round cleanup.
+
+Always ReportOnly, separate from punitive movement; no damage, aim correction,
+admission restriction or disconnect path even Dynamic=Disconnect. Both committed
+policy defaults remain ReportOnly; host exemption unchanged. Aim/root/hash reports
+are falsifiable; physical occlusion is not proof of what a client saw or intent.
+
+Actual checks: **312 pure assertions** (24 new), **118 Unity native** (16 new),
+**60 unconnected Play Mode** lifecycle checks, separate **22 server-only Play Mode**
+assertions with real prefab/HP/ammo and simulated owner identities (not transport).
+Full Unity import/compile/FishNet processing (17 prefabs); 141-source Editor/Development/Release compile,
+release fixture/punitive-call inspection and new metadata/GUID checks pass. Existing
+unrelated warnings remain. Synthetic 800 evaluations/12,000 queries/16.759ms total is
+fixture timing, not live performance. Details: [OccludedAimObservation.md](OccludedAimObservation.md).
+
+Server Inspector development-only quality log and isolated 12s scripted fixture
+run/stop: shared geometry/temporal logic with synthetic inputs bypassing live admission,
+candidate/cue/freshness gates. Logs source=scripted-fixture, never human evidence.
+Actual coroutine positive/scene cleanup tested automatically with Dynamic=Disconnect:
+duration 6.00s, 31 samples, 5.60 matched seconds; no actor HP/position/activity change.
+No new key/UI wiring/live actor changes; controls and fixture absent Release.
+**All AC09 interactive acceptance remains pending.**
+
+### Next session
+
+1. Inspect source/status; follow [OccludedAimRuntime.md](OccludedAimRuntime.md).
+   Recheck AC09 unused; rebuild all participants for the new aim RPC. Preserve AC08.
+2. Finished Windows Mono Clean -> archive/client metadata -> preserve/install trusted
+   server copy -> Test copy after metadata -> restart host -> both remotes startup Verified.
+3. Editor host + A/B remotes: opening/solid/partial/crouch HP, doorway hold/brief follow/
+   cue clean cases, labeled synthetic positive, no aim kick with Dynamic=Disconnect,
+   then short existing plain F7 disconnect/MainMenu/manual rejoin. Restore ReportOnly.
+4. Record human vs fixture evidence separately. Review clean alerts; live profiling
+   and adverse-network aim characterization precede confidence expansion. Ranked gaps
+   in AntiCheatAudit: forged poses, missing lag/contact truth, falsifiable telemetry/
+   hashes, conservative cover/cue blind spots, slow/silent flight. No ML/filtering/
+   authority rewrite. Defer cosmetic crouch, balance, bots/migration. Windows preferred;
+   macOS and broad latency remain pending. Touch Bar F-key alternatives optional.
+
+Earlier sections below are historical checkpoints.
+
 ## Current movement expansion — 2026-11-21
 
 Resumed **integration/anti-cheat-merged-test / ad26fe8**. Since 28a3482 only the

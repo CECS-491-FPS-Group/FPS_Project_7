@@ -1,5 +1,55 @@
 # Trust-boundary audit and first weekend batch — 2026-11-12
 
+## Current capstone coverage: AC08 / AC09
+
+AC08 `384a6c6` checklist passed **per user aggregate report**, no supplied per-case
+logs/measurements or optional breakdown. Initial tree clean, no branch integration.
+New AC09 interactive acceptance remains pending. Current source is authoritative.
+Details: [OccludedAimObservation.md](OccludedAimObservation.md),
+[CombatObstruction.md](CombatObstruction.md), [OccludedAimRuntime.md](OccludedAimRuntime.md).
+
+| Area / entry points | Prevented, rejected, reported, disconnect | Strongest evidence | Important limitation |
+| --- | --- | --- | --- |
+| Static — FileAntiCheat.Receive; BuildIntegrity; IntegrityReportLifecycle | Trusted server baseline, exact bounded coverage/session/deadline, explicit terminal unavailable/error results. Only validated mismatch/missing required file optionally disconnect; default ReportOnly. | Historical Windows tamper/startup rejection/recovery/MainMenu user tests;65 pure checks and lifecycle fixtures; AC08 aggregate pass; archived/installed/Clean/Test hashes rechecked read-only. | Client can forge hashes; limited3-file coverage, trusted host/deployment, no attestation or unverified-client admission restriction. |
+| Movement — SpeedHackDetector; HorizontalMovementObservation; ReceivedMovementObservation | Approved boosts/placement/respawn tolerances. Sustained horizontal suspicion optionally disconnects; single/repeated displacement/ascent/level-motion always report-only. No correction. | AC08 user aggregate checklist pass; historical Windows F7 disconnect/recovery;33+58 pure movement and native support checks. | Client-authoritative positions, sparse paths/contact uncertainty, silent/slow flight, coalescing; no dependable generic noclip. |
+| Combat — HitscanShooter.ProcessServerShot/RequestWeapon/RequestReload; CombatRayGeometry; Health | Server weapon snapshot, finite/unit/facing/state/cadence/ammo/reload checks, approved effects. Nearest solid blocks HP; new enclosed-origin rejects before ammo. Ordinary rejection nonpunitive. |78 pure validation checks; new real-prefab server-only HP/ammo/stance harness (22 assertions including aim admission/fixture), native blind-spot reproduction; AC08 normal combat user pass. | Current replicated geometry, no lag rewind; forged root can change legal origin. Decorative windows may be solid; actual AC09 remote collision/stance acceptance pending. |
+| Requests — GameplayPlayerSpawner.TryConsumeCombatRequest; ready/ping/scoreboard/currency; PlayerCameraSetup.RequestStance | Active/auth/owner/state/ID/finite gates; session-reference budgets before expensive work, duplicate stance avoids clearance. Pending disconnect immediately inactive. No rejection auto-kick. | AC03 supplied F10 rejection logs, AC07/08 aggregate user passes; pure budgets/validation and lifecycle checks. | Transport/deserialization before gameplay gate; DDoS and broader burst/load characterization outside this protection. |
+| Effects/rewards — MatchBoosts.ApplyServerBoost/ServerKind; Health; MatchScoreboard | Server pickup consumption/eligibility, armor/damage/shield, expiration/replacement/death/round reset. Five-consecutive-PvP milestones once per confirmed kill, original boost pool. |36 pure effect checks/native fixtures; AC06 combined and later AC07/08 user aggregate passes. | Shared20s duration source-confirmed; balance and detailed power-up/latency permutations not all independently established. |
+| Occluded aim — ProcessServerAim; OccludedAimObserver; AimOcclusionGeometry; OccludedAimTracking | Bounded owner 5Hz aim, fresh target receipts, stance/geometry, conservative same-box coverage/grace/elapsed angular correlation. Alwaysreport-only; no damage/correction/punitive suspicion. |24 pure clean/positive/cue/gap/lifecycle cases,16 new native checks, server admission/session/listener checks; actual synthetic coroutine positive/cleanup in Dynamic=Disconnect with no actor state change.800 synthetic evaluations/12,000 queries/16.759ms. | Falsifiable/omittable aim/pose; no proof of client visibility/intent. Nearby cues, moving observer, mesh/mixed/partial cover and stale data suppress. Live AC09 acceptance pending; no aim-based bans. |
+
+### Changed trust boundaries and justified fixes
+
+- **Already protected:** accepted-shot server damage, weapon/effect entitlement,
+  nearest world hit and approved crouch origin preserved; no duplicate health/weapon/
+  round system or threshold adjustment.
+- **Concrete missing validation fixed (170fafa):** ray inside enclosing world collider
+  missed it. Native reproduction and server HP/ammo regression justify bounded origin
+  overlap rejection, before damage/ammo; uncertainty is not a cheating verdict.
+- **New bounded observation:** root yaw/full direction at shots did not support
+  continuous tracking. Owner telemetry adds between-shot samples, not camera truth.
+  Local replay lacks aim and is not used. Server owns geometry/stance/effects/cue
+  timestamps/receipt clock; clients still report root poses and directions.
+- **Protected but not AC09 runtime-tested:** live collision/stance edges, remote
+  telemetry freshness/candidate selection/cue suppression and lifecycle isolation.
+  Scripted positives explicitly bypass these gates; they are not human/transport tests.
+- **Architectural/deferred:** lag compensation, enemy replication filtering, movement
+  authority, kernel/process tools, signatures and ML. Release IL checks aim classes
+  cannot call FileAntiCheat, Disconnect or TakeDamage. Host trust/hash limitations stay.
+
+### Ranked remaining gaps
+
+| Rank / next bounded work | Impact / effort / false-positive risk / demonstration |
+| --- | --- |
+|1. AC09 remote collision and clean aim acceptance; retain any clean-alert fixture; live profiling | High acceptance value, small effort, no new punitive risk; supplied Windows batch immediately demonstrable. |
+|2. Aim/movement delay/loss and terrain/stance edge characterization | High confidence value, medium testing effort; uncertainty must suppress evidence. Installed simulator outgoing-only, no independent jitter. No thresholds loosened. |
+|3. Slow/silent flight and contact truth | Meaningful missing coverage, medium/high architecture effort and false-positive risk without server data. Instrument before claims. |
+|4. Combat lag/pose history and forged movement/origin | High gameplay impact, substantial networking/design effort. Current guards cannot prove actual travel or lagged visibility. Separate design batch. |
+|5. Aim cue/cover blind spots and falsified telemetry | Medium review value, high false-positive risk if relaxed. Expand only from observed cases; malicious client can omit feed. |
+|6. Stronger integrity/admission/replication trust | High theoretical impact, substantial scope; explicitly limited capstone claims, no broad architecture introduced. |
+
+Finish AC09 runtime before more detectors. Broad latency/stress/Release runtime,
+macOS, cosmetic crouch, balance, bots/migration remain deferred. Older notes follow.
+
 ## Movement evidence expansion — 2026-11-21
 
 Current base ad26fe8 (only Road/Water material commit since 28a3482). AC07 batch
