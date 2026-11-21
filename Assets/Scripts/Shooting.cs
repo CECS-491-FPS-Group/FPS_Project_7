@@ -90,6 +90,7 @@ public class HitscanShooter : NetworkBehaviour
     private LocalPlayerControls _controls;
     private PlayerCameraSetup _posture;
     private double _nextServerShotTime;
+    private readonly CombatRayGeometry _shotGeometry = new();
 
     private void Awake()
     {
@@ -269,6 +270,10 @@ public class HitscanShooter : NetworkBehaviour
 
     [ServerRpc(RequireOwnership = true)]
     private void RequestShot(Vector3 direction, NetworkConnection sender = null)
+        => ProcessServerShot(direction, sender);
+
+    // Same guarded server path used by the RPC and Editor server-only regression harness.
+    internal void ProcessServerShot(Vector3 direction, NetworkConnection sender)
     {
         if (!IsServerInitialized) return;
         if (sender == null || !sender.IsActive || !sender.IsAuthenticated || sender != Owner || !IsSpawned)
@@ -279,6 +284,8 @@ public class HitscanShooter : NetworkBehaviour
         if (!_serverConfigurationValid || !AdmitRequest(sender, "shot")) return;
         Vector3 origin = _posture != null ? _posture.ServerShotOrigin : transform.position;
         if (!Finite(origin.x) || !Finite(origin.y) || !Finite(origin.z)) { Reject("invalid server origin"); return; }
+        if (!_shotGeometry.OriginClear(origin, NetworkObject.transform))
+        { Reject("server origin inside solid cover or overlap query uncertain"); return; }
         ReconcileServerWeapon();
         if (_health == null || !_health.IsServerInitialized || !_health.CanAct)
         {
@@ -337,19 +344,7 @@ public class HitscanShooter : NetworkBehaviour
     {
         // Origin is the server's camera mount, never a client-supplied position.
         // RaycastAll lets us exclude self without ignoring intervening world geometry.
-        RaycastHit[] hits = Physics.RaycastAll(origin, direction, Profile.range, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-        Transform shooterRoot = NetworkObject.transform;
-        RaycastHit closest = default;
-        float closestDistance = float.PositiveInfinity;
-        foreach (RaycastHit hit in hits)
-        {
-            if (hit.collider.transform.IsChildOf(shooterRoot) || hit.distance >= closestDistance) continue;
-            // Invisible dead bodies must not shield living players behind them.
-            Health hitPlayer = hit.collider.GetComponentInParent<Health>();
-            if (hitPlayer != null && hitPlayer.IsDead) continue;
-            closest = hit;
-            closestDistance = hit.distance;
-        }
+        CombatRayGeometry.FirstHit(origin, direction, Profile.range, NetworkObject.transform, out RaycastHit closest);
 
         Debug.Log($"[Combat] Accepted shot shooter={OwnerId} hit={(closest.collider != null ? closest.collider.name : "miss")}.", this);
         if (closest.collider == null)
