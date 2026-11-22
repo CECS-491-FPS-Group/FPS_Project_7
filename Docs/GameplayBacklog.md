@@ -1,5 +1,12 @@
 # Tracked gameplay / validation follow-ups
 
+Incident closeout: bounded match-scoped occluded-aim capture and Theater review/notes
+implemented at1c7f5b7.337 pure/118 native/60 lifecycle/22 server-fixture +29 incident
+integration assertions pass; costs measured with16-actor fixtures, not live load.
+No AC09 live pass supplied. Next acceptance is AimIncidentRuntime.md (next unused
+AC09 at inspection): real exterior-corner clean behavior/map shots, saved fixture
+review, clean second client and F7/rejoin. Full-match replay/ML/new detectors deferred.
+
 AC09 update: **AC08 checklist passed per user aggregate report**, no supplied
 measurements/per-case logs or optional breakdown. This supersedes AC08 pending labels
 below, not broad latency/macOS. New bounded occluded-aim observation and enclosed-eye

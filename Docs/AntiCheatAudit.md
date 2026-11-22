@@ -1,6 +1,39 @@
 # Trust-boundary audit and first weekend batch — 2026-11-12
 
-## Current capstone coverage: AC08 / AC09
+## Current capstone coverage: incident review closeout
+
+Source 1c7f5b7/81fddd9, based on152fc8e. AC08 user-reported pass; **no AC09 live
+multiplayer pass supplied**.337 deterministic/118 native/60 unconnected lifecycle/
+22 server-fixture/29 incident integration assertions passed. Source findings,
+precise limits/cost and actual fixture scope: [AimIncidentReview.md](AimIncidentReview.md).
+Pending combined live gate: [AimIncidentRuntime.md](AimIncidentRuntime.md).
+
+| Area | What the server prevents/rejects | What can disconnect | Review flag | Strongest evidence / claim still needing live evidence |
+| --- | --- | --- | --- | --- |
+| Static integrity | Client cannot choose server expected hashes; bounded exact coverage, deadlines and explicit error results | Optional validated mismatch/missing required file only; default ReportOnly, host exempt | None in this focused incident stage | Historical Windows tamper/recovery user results,65 pure checks; AC08 preserved matching pair rechecked. New clean cohortVerified pending. Client hashes falsifiable, not attestation. |
+| Movement | Approved allowances/lifecycle validation; client movement itself not corrected | Existing sustained-horizontal suspicion threshold8, optionalDynamic=Disconnect; host exempt. New displacement/ascent/level-motion observations report-only | None here | AC08 user checklist pass; original F7 recovery evidence,33+58 pure movement cases. Current remote F7/rejoin/clean-B regression and real load pending. Slow/silent flight/contact truth remain gaps. |
+| Combat obstruction/weapon state | Server cadence/ammo/reload/weapon values/alive/facing/direction and nearest solid collision; enclosed origin rejects before ammo/HP | No ordinary rejection kick | None here | Native and actual server-prefab HP/stance checks, AC08 gameplay report. Actual map open-ground hit/solid-wall block/exposed exterior corner still needs current live evidence. No lag rewind, roots falsifiable. |
+| Requests | Owned/authenticated active sender, IDs/finite/range/state, per-connection ready/ping/combat/scoreboard/balance/stance budgets before expensive work | No ordinary duplicate/malformed/rejected request kick | None here | Existing automated budgets and historical F10 user logs; later AC08 aggregate pass. Transport/DDoS and broader bursts remain outside this gate. |
+| Effects/rewards | Server-owned boosts/armor/shield/damage/pickup consumption; timed expiry/replacement and once-per-kill milestone rewards | No effect/reward rejection kick | None here |36 pure effect cases and combined user AC06/AC08 reports. Current legitimate boost/respawn/lifecycle regression pending; balance deferred. |
+| Occluded aim | No new gameplay prevention or aim correction; bounded validated aim feed and conservative server classification | **Never**, evenDynamic=Disconnect; separate from punitive suspicion | Existing alert flags shooter in match; GUID identity, bounded lead/follow, grouped partial-capable incident |24 pure aim cases plus25 capture cases, native geometry, actual scripted save/select/play/review with Dynamic=Disconnect. No human tracking/corner-clean live pass, no proof of what client saw/heard or intent. |
+| Developer review | Bounded local schema/files/notes; step playback and explicit gaps/source/partial state | **Never**; no policy/network API | Reviewed/note is local workflow only, not another detector or score |29 automatic pipeline assertions including reused connection ID, gap UI, retention/disk failure and note persistence. Visual usability, actual human live capture and supported-size real load still pending. Ordinary Theater remains movement-only, not full-match replay. |
+
+Main changed boundary: OccludedAimObserver supplies existing decisions/poses to
+AimIncidentRecorder; RoundTimer starts/ends the match, connection-reference identity
+is removed on leave. The observer's detection/enforcement thresholds and permissions
+are unchanged. Lead-in recording does no additional physics or network replication.
+File serialization/IO runs on one bounded worker. Review reads local files only after
+leaving the session. Release metadata checks incident classes have no RPC/NetworkBehaviour
+or FileAntiCheat/Disconnect/TakeDamage call. No general anti-cheat framework.
+
+Highest-value remaining work: (1) combined Windows live acceptance; (2) retain any
+clean-alert route as regression and profile real 16-player load/latency; (3) consider
+better movement contact/pose history only as a separate design. Broad authority,
+enemy replication filtering, ML/full-match replay, bots/migration, cosmetic crouch
+and balance stay deferred. Local host/server and client hash/aim reports remain trust
+limitations. The table above is the current coverage claim; earlier audits follow.
+
+## Previous AC09 implementation audit (historical)
 
 AC08 `384a6c6` checklist passed **per user aggregate report**, no supplied per-case
 logs/measurements or optional breakdown. Initial tree clean, no branch integration.

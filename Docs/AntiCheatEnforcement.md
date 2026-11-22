@@ -1,5 +1,12 @@
 # Optional server enforcement
 
+Incident closeout: occluded-aim match flags, saved clips and Reviewed notes are
+**always report-only** and have no policy/suspicion/damage/network-admission path.
+DynamicDisconnect does not make them punitive. Both committed defaults remain
+ReportOnly, host exempt and sustained-speed thresholds unchanged. AC09 live F7/
+MainMenu/rejoin and clean second-client isolation remain pending in
+AimIncidentRuntime.md; scripted/automated incident passes do not complete that gate.
+
 AC09 update: AC08 checklist passed per user aggregate report, without new detailed
 logs/measurements. New occluded-aim correlation is **alwaysreport-only**, with no
 policy call/punitive suspicion/damage/correction even DynamicDisconnect. Both committed

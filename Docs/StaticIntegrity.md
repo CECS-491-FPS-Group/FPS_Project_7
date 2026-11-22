@@ -1,5 +1,13 @@
 # Build-file integrity (schema 1, ReportOnly by default)
 
+Incident closeout: AC08 Clean/Test/installed server archive still match preserved
+a70a4853fb014589aaa7e703be232ef2, read-only. No AC09 live pass supplied; AC09 build/
+archive still absent at inspection. Rebuild all peers for new runtime assembly/UI,
+then finished Clean -> archive/client metadata -> separate trusted server install
+-> Test copy. See AimIncidentRuntime.md. Incident JSON/notes live under persistent
+user data, outside checked game files; recording/review does not invalidate hashes.
+No integrity/admission/enforcement change or trusted-attestation claim.
+
 AC09 update: AC08 checklist passed per user aggregate report; no per-case logs or
 measurements supplied. AC08 Clean/Test three hashes/descriptors and installed default
 server copy match archive **a70a4853fb014589aaa7e703be232ef2**, read-only, unchanged.

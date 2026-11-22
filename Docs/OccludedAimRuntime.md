@@ -1,5 +1,11 @@
 # AC09 Windows capstone runtime batch (pending)
 
+Incident closeout update: no AC09 live pass has been reported. Use the consolidated
+[AimIncidentRuntime.md](AimIncidentRuntime.md) instead of this older checklist. It
+uses an exterior corner, solid cover and open ground on the actual map, includes
+saved incident playback/notes and the pending F7 regression. AC09 is still unused on
+disk at inspection, so that number is retained after rechecking destinations.
+
 AC08 checklist passed **per user aggregate report**; no individual logs/measurements
 supplied. Preserve its tested build/manifest pair. AC09 folders/archive were unused
 at inspection; recheck all three destinations before building. All actions below

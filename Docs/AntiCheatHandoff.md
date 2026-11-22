@@ -1,5 +1,83 @@
 # Anti-cheat continuation handoff
 
+## Current closeout: reviewable aim incidents — 2026-11-21
+
+Resumed integration/anti-cheat-merged-test at **152fc8e**, clean tree;170fafa present,
+no later source/unrelated changes to discard. New local source checkpoints:
+**81fddd9** capture model, **1c7f5b7** recorder/archive/Theater integration. No push,
+main merge, branch integration, vendor/prefab/scene/authority rewrite. AGENTS unchanged.
+
+Evidence boundary: **AC08 passed per user report**. AC09 had automated/scripted
+fixture checks, **no reported live multiplayer pass**. That remains pending along
+with new incident acceptance. Do not infer human play, real latency/load or macOS.
+
+Existing occluded-aim alerts now flag the shooter in a server-local match incident.
+Server match/participant/encounter/incident GUIDs; connection numbers debug-only,
+actual connection-reference identity prevents reused IDs inheriting flags. Record
+server poses, approved eye, reported aim, ages, cue/freshness, stance/effects and
+cover/evidence decisions. Up to 10s lead,12s follow-up, grouped alerts,30s/160-frame/
+4-alert clip cap.16 contexts,32 incidents/match. Life/target/leave/round/scene/server
+end finalize usable partials; gap markers prevent invented continuity.
+
+One writer,16 coalesced pending immutable snapshots, <=256 KiB/file,32 retained/7days;
+normal archive Application.persistentDataPath/AimIncidents. Immediate incomplete
+snapshot, then final revision. Worker/queue/disk failure is neutral, bounded and
+cannot affect gameplay/policy. No hidden position broadcast, client read RPC or new
+network component layout. Host/local files remain trusted, not tamper-proof evidence.
+
+MainMenu -> Theater / Replays -> **Server aim incidents**, after leaving session.
+Select match/player/incident; scrub/play Top XZ/Side XY, both actors' recorded sample
+dots and reported aim ray. Explicit visibility/decision/age/cue and partial/gap/source
+labels. No map reconstruction/client POV/full-match replay claim. Existing local
+movement recorder/viewer retained. **Reviewed + Save note** writes a separate local,
+revision-scoped280-character note; no policy or suspicion change. No manual UI wiring.
+
+Script fixture is a separate synthetic match/actors, never flags context host/player.
+Its actual coroutine -> archive -> Theater button/selection/playback/review-note path
+tested automatically with Dynamic=Disconnect, plus reused-ID and round-end bridge
+fixtures. All such bridge injections/archives isolated under project Temp. Human
+clean/positive behavior is not established by this.
+
+Actual checks: **337 deterministic**, **118 native**, **60 unconnected lifecycle**,
+existing **22 server/fixture**, additional **29 incident integration assertions**.
+Full Unity6000.3.8f1 import/compile/FishNet17,147-source Editor/Development/Release
+compiler profiles and release exclusion/metadata checks passed. New incident classes
+have no RPC/NetworkBehaviour/policy/disconnect/damage path. Abuse fixture controls/
+state absent Release; legitimate local review stays. Actual Release export/runtime
+pending. Existing unrelated warnings retained. Details: [AimIncidentReview.md](AimIncidentReview.md).
+
+Measured fixtures at 16 actors /5 Hz /30 virtual seconds:2,416 samples,48 snapshots,
+pure capture 3.595 ms; one151-frame serialization0.634 ms/71,388 bytes. Approx heap delta
+536,576 bytes. Clean actual-prefab bridge 14.426 ms total, approximate heap delta524,288 bytes;
+includes reflection/GetComponent/posture sampling, excludes spawn/network/physics
+queries/disk/GC measurement. Not per-frame or real supported-size live profiling.
+
+Preserved AC08 Clean/Test three hashes/descriptors and installed default server copy
+still match archive **a70a4853fb014589aaa7e703be232ef2** (read-only). No baseline/build
+regeneration or deployment edit. **AC09 folders/archive are still absent**, so next
+unused number is9, not assumed 10. Recheck before building. Use the updated combined
+[AimIncidentRuntime.md](AimIncidentRuntime.md), replacing the older pending AC09 run.
+
+### Short next-session checklist
+
+1. Verify current branch/status; keep source/checks local until user pushes/merges.
+2. Build all peers fresh AC09-Clean (or next unused if9 now exists); finished Clean
+   -> generate archive/client metadata -> preserve/install trusted server copy ->
+   copy Test after metadata -> restart host -> both remotes startup Verified.
+3. Editor host + A/B remotes: open-ground hit, solid exterior-wall block, clean
+   exterior-corner holding/brief follow, fixture saved/playback/note, clean B continues,
+   existing remote F7 disconnect/MainMenu/manual rejoin. Restore Dynamic=ReportOnly.
+   Ordinary movement replay and normal boosts/respawn/round/intentional leave too.
+4. Record actual observations separately from fixture evidence. Live acceptance,
+   real load, adverse-network aim characterization, broad latency/macOS/Release
+   remain pending. No more detectors/full-match replay/ML in this batch. Root/aim/hash
+   claims remain falsifiable; trusted host, no lag rewind/contact truth/slow-hover
+   guarantees. Windows preferred; Touch Bar alternatives optional future work.
+
+Both committed enforcement defaults remain ReportOnly; host exemption and old speed
+thresholds unchanged. A review flag or Reviewed note can never kick/ban/correct aim.
+Earlier sections are historical and do not override this evidence status.
+
 ## AC09 occluded aim / obstruction — 2026-11-21
 
 Resumed **integration/anti-cheat-merged-test / 384a6c6**, clean tree, no subsequent

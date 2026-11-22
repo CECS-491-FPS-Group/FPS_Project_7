@@ -1,5 +1,12 @@
 # Occluded aim review signal (AC09)
 
+Current extension: alerts now become bounded host-local match incidents with GUID
+identities, lead/follow samples, gap-aware Theater review and local notes. No new
+detector or policy. See [AimIncidentReview.md](AimIncidentReview.md) and
+[AimIncidentRuntime.md](AimIncidentRuntime.md). AC09 has automated/scripted evidence
+only; no user live multiplayer pass supplied. Earlier implementation counts below
+are historical; current checks337/118/60/22 plus29 incident integration assertions.
+
 Based on tested AC08 `384a6c6`, on integration/anti-cheat-merged-test. **AC08 checklist
 passed per user aggregate report**; no per-case logs, timings or optional-test detail
 were supplied. This does not establish AC09 acceptance or broader macOS/latency coverage.
