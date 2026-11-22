@@ -34,7 +34,7 @@ public static class CombatServerChecks
     {
         if (!SessionState.GetBool(Key + "running", false)) return;
         if (state == PlayModeStateChange.EnteredPlayMode)
-        { phase = checks = fixtureReports = 0; deadline = EditorApplication.timeSinceStartup + 90; EditorApplication.update += Tick; }
+        { phase = checks = fixtureReports = 0; deadline = EditorApplication.timeSinceStartup + 180; AimIncidentIntegrationChecks.Prepare(); EditorApplication.update += Tick; }
         if (state == PlayModeStateChange.EnteredEditMode && SessionState.GetBool(Key + "finished", false))
         {
             SessionState.SetBool(Key + "running", false);
@@ -50,6 +50,11 @@ public static class CombatServerChecks
             {
                 manager = UnityEngine.Object.FindFirstObjectByType<NetworkManager>(); if (manager == null) return;
                 Check(manager.ServerManager.StartConnection(29991), "start isolated server"); phase++; return;
+            }
+            if (phase >= 3)
+            {
+                if (AimIncidentIntegrationChecks.Tick()) Finish(true);
+                return;
             }
             if (!manager.IsServerStarted) return;
             if (phase == 1)
@@ -67,7 +72,7 @@ public static class CombatServerChecks
                 phase = 2; return;
             }
             if (typeof(OccludedAimObserver).GetField("_fixture", Hidden).GetValue(fixtureObserver) != null ||
-                UnityEngine.SceneManagement.SceneManager.sceneCount != initialScenes) return;
+                UnityEngine.SceneManagement.SceneManager.sceneCount != initialScenes || AimIncidentArchive.Busy) return;
             Check(fixtureReports > 0, "actual isolated scripted coroutine emits report-only positive");
             Check(fixtureActor.GetComponent<Health>().CurrentHealth == 100 && fixtureActor.GetComponent<Health>().Owner.IsActive,
                 "fixture in DynamicDisconnect changes neither health nor owner activity");
@@ -75,7 +80,7 @@ public static class CombatServerChecks
             var fixtureScene = (UnityEngine.SceneManagement.Scene)typeof(OccludedAimObserver).GetField("_fixtureScene", Hidden).GetValue(fixtureObserver);
             Check(!fixtureScene.IsValid(), "fixture scene handle and scene count cleaned");
             Debug.Log($"[Combat SERVER CHECK] COMPLETE checks={checks}; fixtureReports={fixtureReports}; isolated physics scene cleaned, DynamicDisconnect; simulated owners, remote runtime pending.");
-            Finish(true);
+            AimIncidentIntegrationChecks.Start(manager, fixtureObserver); phase = 3;
         }
         catch (Exception error) { Debug.LogException(error); Finish(false); }
     }
@@ -169,6 +174,7 @@ public static class CombatServerChecks
     private static void Finish(bool passed)
     {
         EditorApplication.update -= Tick;
+        AimIncidentIntegrationChecks.Restore();
         Application.logMessageReceived -= FixtureLog;
         if (manager != null && fixtureActor != null && fixtureActor.GetComponent<Health>().IsSpawned) manager.ServerManager.Despawn(fixtureActor);
         if (manager != null && manager.IsServerStarted) manager.ServerManager.StopConnection(true);

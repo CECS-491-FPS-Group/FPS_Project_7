@@ -33,12 +33,18 @@ public sealed class OccludedAimObserver : MonoBehaviour
     private Matrix4x4 _coverMatrix;
     private Vector3 _coverSize, _coverCentre;
     private TerrainGenerator _terrain;
+    private AimIncidentRecorder _recorder;
+    private double _nextReview;
+    private AimIncidentData.Frame _reviewFrame;
+    private AimIncidentData.Alert? _reviewAlert;
+    private OccludedAimObserver _reviewTarget;
     private static double Now => Time.realtimeSinceStartupAsDouble;
     internal void Begin(HitscanShooter shooter)
     {
         End(); _shooter = shooter; _health = GetComponent<Health>(); _posture = GetComponent<PlayerCameraSetup>();
         _capsule = GetComponent<CharacterController>(); _networkTransform = GetComponent<NetworkTransform>();
         _terrain = FindFirstObjectByType<TerrainGenerator>();
+        _recorder = shooter.NetworkManager.GetComponent<AimIncidentRecorder>(); _nextReview = 0;
         _running = true; ResetSession();
         if (Actors.Count >= MaximumActors) { _running = false; Debug.LogWarning("[Aim AC] observer unavailable: capacity 16; not a player verdict.", this); return; }
         Actors.Add(this);
@@ -47,6 +53,7 @@ public sealed class OccludedAimObserver : MonoBehaviour
     }
     internal void End()
     {
+        if (_recorder != null) _recorder.ActorStopped(this);
         _running = false; Actors.Remove(this);
         if (_networkTransform != null) _networkTransform.OnDataReceived -= ReceivedPosition;
         if (_health != null) _health.HealthPresentationChanged -= HealthChanged;
@@ -113,19 +120,32 @@ public sealed class OccludedAimObserver : MonoBehaviour
     private void LateUpdate()
     {
         if (!_running || _shooter == null || !_shooter.IsServerInitialized) return;
+        _reviewTarget = null; _reviewAlert = null;
+        _reviewFrame = new AimIncidentData.Frame { visibility = "Uncertain", decision = "awaiting-evaluation", cover = "",
+            shooterEffect = "None", targetEffect = "None" };
+        try { ObserveLive(); }
+        finally
+        {
+            if (_recorder != null && (_reviewAlert.HasValue || Now >= _nextReview))
+            { _nextReview = Now + .2; _recorder.Record(this, _reviewTarget, _reviewFrame, _reviewAlert); }
+        }
+    }
+    private void ObserveLive()
+    {
+        if (!_running || _shooter == null || !_shooter.IsServerInitialized) return;
         double now = Now;
         if (!ReferenceEquals(_owner, _shooter.Owner)) ResetSession();
         bool reset = !Eligible || _life != _health.ServerLifeVersion || _stance != _posture.Crouched || now - _lastFrame > .65;
         _life = _health.ServerLifeVersion; _stance = _posture.Crouched; _lastFrame = now;
-        if (reset) { Clear(now); _previousPosition = transform.position; _graceUntil = now + 1.5; return; }
+        if (reset) { _reviewFrame.decision = "lifecycle/geometry/stall"; Clear(now); _previousPosition = transform.position; _graceUntil = now + 1.5; return; }
         if (now < _nextSample) return;
         _nextSample = now + .2;
         Vector3 position = transform.position;
         float travel = Vector3.Distance(position, _previousPosition); _previousPosition = position;
         // Viewer movement produces bearing changes too. This first rule requires a stationary observer.
         if (travel > 4) _graceUntil = now + 1.5;
-        if (travel > .05f || now - _aimAt > .65) { Clear(now); return; }
-        if (now < _graceUntil || _aimVersion == _usedAim) return;
+        if (travel > .05f || now - _aimAt > .65) { _reviewFrame.decision = "viewer-moving or stale aim"; Clear(now); return; }
+        if (now < _graceUntil || _aimVersion == _usedAim) { _reviewFrame.decision = "grace or duplicate aim"; return; }
         _usedAim = _aimVersion;
         Vector3 eye = _posture.ServerShotOrigin;
         OccludedAimObserver best = null; float bestAngle = 10, secondAngle = 180;
@@ -138,14 +158,17 @@ public sealed class OccludedAimObserver : MonoBehaviour
             if (angle < bestAngle) { secondAngle = bestAngle; bestAngle = angle; best = actor; }
             else if (angle < secondAngle) secondAngle = angle;
         }
-        if (best == null || secondAngle - bestAngle < 2) { Clear(now); return; }
+        if (best == null || secondAngle - bestAngle < 2) { _reviewFrame.decision = "no candidate or ambiguous targets"; Clear(now); return; }
+        _reviewTarget = best;
         if (_target != best || _targetLife != best._life || !ReferenceEquals(_targetOwner, best._owner))
         {
+            _reviewFrame.decision = "new encounter/life grace";
             Clear(now); _target = best; _targetLife = best._life; _targetOwner = best._owner; _usedGoal = best._goalVersion; return;
         }
         bool fresh = best._owner.IsLocalClient || (best._goalVersion != _usedGoal && now - best._goalAt <= .65 &&
             Vector3.Distance(best._goal, best.transform.position) < .9f);
-        if (!fresh && now - best._goalAt <= .65) return; // wait for a new pair, never count a duplicate
+        _reviewFrame.fresh = fresh;
+        if (!fresh && now - best._goalAt <= .65) { _reviewFrame.decision = "await fresh target"; return; } // no duplicate evidence
         _usedGoal = best._goalVersion;
         float distance = Vector3.Distance(eye, best._capsule.bounds.center);
         // Potential cues, not an assertion of hearing. Moving targets nearby could be making footsteps.
@@ -153,7 +176,8 @@ public sealed class OccludedAimObserver : MonoBehaviour
         bool cue = distance <= PlayerAudio.NearbyCueRange + cueMargin ||
             (distance <= PlayerAudio.ShotCueRange + cueMargin && now - best._shotAt < 2.5) ||
             (distance <= PlayerAudio.NearbyCueRange + cueMargin && now - best._hurtAt < 2.5);
-        if (!fresh || cue) { _tracking.Reset(now); _cover = null; return; }
+        _reviewFrame.cue = cue;
+        if (!fresh || cue) { _reviewFrame.decision = cue ? "possible audio cue" : "stale target"; _tracking.Reset(now); _cover = null; return; }
         Vector3 targetEye = best._posture.ServerShotOrigin; // apply approved stance before sampling collision bounds
         Bounds bounds = best._capsule.bounds;
         if (!best._owner.IsLocalClient)
@@ -165,6 +189,7 @@ public sealed class OccludedAimObserver : MonoBehaviour
         }
         OccludedAimTracking.Visibility visibility = _geometry.Evaluate(Physics.defaultPhysicsScene, eye, eye, bounds, transform, best.transform);
         BoxCollider cover = _geometry.Cover;
+        _reviewFrame.visibility = visibility.ToString(); _reviewFrame.cover = cover != null ? Short(cover.name) : "";
         if (cover != _cover || (cover != null && (cover.transform.localToWorldMatrix != _coverMatrix || cover.size != _coverSize || cover.center != _coverCentre)))
         {
             _tracking.Reset(now); _cover = cover;
@@ -173,8 +198,12 @@ public sealed class OccludedAimObserver : MonoBehaviour
         Vector3 bearing = (bounds.center - eye).normalized;
         bool report = _tracking.Observe(new OccludedAimTracking.Sample { Time = now, Fresh = fresh, PossibleCue = cue, Cover = visibility,
             AimYaw = Yaw(_aim), AimPitch = Pitch(_aim), TargetYaw = Yaw(bearing), TargetPitch = Pitch(bearing) });
+        _reviewFrame.decision = _tracking.Samples == 0 ? "grace/alignment/uncertain" : "correlation window";
         if (!report || now < _nextLog) return;
         _nextLog = now + 10;
+        _reviewFrame.decision = "report-only alert";
+        _reviewAlert = new AimIncidentData.Alert { duration = _tracking.Duration, matched = _tracking.MatchedTime, samples = _tracking.Samples,
+            aimTravel = _tracking.AimTravel, targetTravel = _tracking.TargetTravel, error = bestAngle, queries = _geometry.Queries };
         Debug.LogWarning($"[Aim AC] action=ReportOnly rule=correlated-occluded-aim source=client-aim owner={_owner.ClientId} object={_shooter.ObjectId} " +
             $"target={best._owner.ClientId}/{best._shooter.ObjectId} duration={_tracking.Duration:F2}s samples={_tracking.Samples} matched={_tracking.MatchedTime:F2}s " +
             $"aimTravel={_tracking.AimTravel:F2}deg targetTravel={_tracking.TargetTravel:F2}deg error={bestAngle:F2}deg distance={distance:F1}m " +
@@ -185,9 +214,29 @@ public sealed class OccludedAimObserver : MonoBehaviour
     public static float Yaw(Vector3 v) => Mathf.Atan2(v.x, v.z) * Mathf.Rad2Deg;
     public static float Pitch(Vector3 v) => Mathf.Asin(Mathf.Clamp(v.normalized.y, -1, 1)) * Mathf.Rad2Deg;
     private static bool Finite(Vector3 v) => ServerGameplayValidation.Finite(v.x) && ServerGameplayValidation.Finite(v.y) && ServerGameplayValidation.Finite(v.z);
+    private static string Short(string value) => value.Length <= 64 ? value : value.Substring(0, 64);
+    internal NetworkConnection ReviewConnection => _owner;
+    internal bool ReviewPresent => _running && _shooter != null && _shooter.IsSpawned && _health.CanAct;
+    internal AimIncidentData.Actor ReviewActor(string participant) => new AimIncidentData.Actor {
+        participantId = participant, connectionId = _owner.ClientId, objectId = _shooter.ObjectId, life = _health.ServerLifeVersion };
+    internal static AimIncidentData.Point ReviewPoint(Vector3 v) => Finite(v) ? new AimIncidentData.Point(v.x, v.y, v.z) : default;
+    internal void FillReviewPoses(OccludedAimObserver target, ref AimIncidentData.Frame frame)
+    {
+        frame.shooterKnown = ReviewPresent && Finite(transform.position); frame.targetKnown = target.ReviewPresent && Finite(target.transform.position);
+        frame.shooter = ReviewPoint(transform.position); frame.target = ReviewPoint(target.transform.position);
+        frame.eye = ReviewPoint(_posture.ServerShotOrigin); frame.aim = ReviewPoint(_aim);
+        frame.aimAge = System.Math.Max(0, Now - _aimAt); frame.aimKnown = _haveSequence && frame.aimAge <= .65;
+        frame.targetAge = target._owner.IsLocalClient ? 0 : System.Math.Max(0, Now - target._goalAt);
+        frame.shooterCrouched = _posture.Crouched; frame.targetCrouched = target._posture.Crouched;
+        frame.shooterEffect = (MatchBoosts.Instance != null ? MatchBoosts.Instance.ServerKind(_owner) : MatchBoosts.Kind.None).ToString();
+        frame.targetEffect = (MatchBoosts.Instance != null ? MatchBoosts.Instance.ServerKind(target._owner) : MatchBoosts.Kind.None).ToString();
+    }
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     private Coroutine _fixture;
     private UnityEngine.SceneManagement.Scene _fixtureScene;
+    private AimIncidentCapture _fixtureCapture;
+    private double _fixtureTime;
+    private string _lastFixtureMatch;
     [ContextMenu("Development/Log aim observation state (server only)")]
     private void DevelopmentAimQuality()
     {
@@ -206,6 +255,7 @@ public sealed class OccludedAimObserver : MonoBehaviour
     [ContextMenu("Development/Stop occluded aim fixture")]
     private void DevelopmentStopAimFixture()
     {
+        _fixtureCapture?.End(_fixtureTime, "fixture stopped"); _fixtureCapture = null;
         if (_fixture != null) { StopCoroutine(_fixture); _fixture = null; }
         if (_fixtureScene.IsValid()) UnityEngine.SceneManagement.SceneManager.UnloadSceneAsync(_fixtureScene);
         _fixtureScene = default;
@@ -219,19 +269,31 @@ public sealed class OccludedAimObserver : MonoBehaviour
         wall.transform.position = new Vector3(0, 2, 25); wall.GetComponent<BoxCollider>().size = new Vector3(20, 10, 1);
         var scene = _fixtureScene.GetPhysicsScene(); scene.Simulate(.02f);
         var geometry = new AimOcclusionGeometry(); var tracking = new OccludedAimTracking(); tracking.Reset(0);
+        _fixtureCapture = new AimIncidentCapture("scripted-fixture", "isolated synthetic geometry", AimIncidentRecorder.QueueSave);
+        _lastFixtureMatch = _fixtureCapture.MatchId;
+        var fixtureShooter = new AimIncidentData.Actor { participantId = System.Guid.NewGuid().ToString("N"), connectionId = -1, objectId = -1 };
+        var fixtureTarget = new AimIncidentData.Actor { participantId = System.Guid.NewGuid().ToString("N"), connectionId = -2, objectId = -2 };
         Debug.Log("[Aim AC FIXTURE] started: isolated synthetic target/aim/physics, not human-play evidence; 12s auto cleanup.", this);
         for (int i = 0; i <= 60; i++)
         {
-            double time = i * .2; Vector3 eye = Vector3.up;
+            double time = i * .2; _fixtureTime = time; Vector3 eye = Vector3.up;
             var bounds = new Bounds(new Vector3(5 * Mathf.Sin((float)time), 1, 50), new Vector3(1, 2, 1));
             Vector3 bearing = (bounds.center - eye).normalized;
             var visibility = geometry.Evaluate(scene, eye, eye, bounds);
-            if (tracking.Observe(new OccludedAimTracking.Sample { Time = time, Fresh = true, Cover = visibility,
-                AimYaw = Yaw(bearing), AimPitch = Pitch(bearing), TargetYaw = Yaw(bearing), TargetPitch = Pitch(bearing) }))
+            bool report = tracking.Observe(new OccludedAimTracking.Sample { Time = time, Fresh = true, Cover = visibility,
+                AimYaw = Yaw(bearing), AimPitch = Pitch(bearing), TargetYaw = Yaw(bearing), TargetPitch = Pitch(bearing) });
+            _fixtureCapture.Observe(fixtureShooter, fixtureTarget, new AimIncidentData.Frame { time = time,
+                shooterKnown = true, targetKnown = true, aimKnown = true, fresh = true, eye = ReviewPoint(eye), aim = ReviewPoint(bearing),
+                target = ReviewPoint(bounds.center), visibility = visibility.ToString(), decision = report ? "report-only alert" : "scripted correlation window",
+                cover = "Synthetic solid cover", shooterEffect = "None", targetEffect = "None" },
+                report ? new AimIncidentData.Alert { duration = tracking.Duration, matched = tracking.MatchedTime, samples = tracking.Samples,
+                    aimTravel = tracking.AimTravel, targetTravel = tracking.TargetTravel, queries = geometry.Queries } : (AimIncidentData.Alert?)null);
+            if (report)
                 Debug.LogWarning($"[Aim AC FIXTURE] action=ReportOnly rule=correlated-occluded-aim source=scripted-fixture contextOwner={_shooter.OwnerId} target=synthetic " +
                     $"duration={tracking.Duration:F2}s samples={tracking.Samples} matched={tracking.MatchedTime:F2}s visibility={visibility} queries={geometry.Queries}; no connection or policy action.", this);
             yield return new WaitForSecondsRealtime(.2f);
         }
+        _fixtureCapture.End(_fixtureTime, "fixture completed"); _fixtureCapture = null;
         UnityEngine.SceneManagement.SceneManager.UnloadSceneAsync(_fixtureScene); _fixtureScene = default; _fixture = null;
         Debug.Log("[Aim AC FIXTURE] finished/cleaned; live actors unchanged.", this);
     }

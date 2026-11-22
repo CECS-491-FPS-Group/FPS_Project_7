@@ -63,6 +63,12 @@ internal static class AimIncidentChecks
         Check(files[files.Count - 1].final && files[files.Count - 1].partial, "missing follow-up finalizes on bounded deadline even without samples");
         bool rejected = false; g.frames[0].time = double.NaN; try { Validate(g); } catch (InvalidDataException) { rejected = true; }
         Check(rejected, "nonfinite persisted evidence rejected");
+        var offCadence = new AimIncidentCapture("client-aim", "scene", _ => { });
+        offCadence.Observe(a, b, Frame(0)); offCadence.Observe(a, b, Frame(.05), Evidence);
+        Check(offCadence.IsFlagged(a.participantId), "alert between recorder cadence ticks cannot be dropped");
+        var encounters = new AimIncidentCapture("client-aim", "scene", _ => { });
+        for (int i = 0; i <= 250; i++) encounters.Observe(a, b, Frame(i * .2), i == 0 || i == 200 ? (Alert?)Evidence : null);
+        Check(encounters.Incidents == 2, "quiet nonoverlapping encounter permits a new bounded clip for same pair");
         Console.WriteLine($"AimIncident: {count} assertions passed; no Unity/network/policy dependency.");
     }
 }

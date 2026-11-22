@@ -46,6 +46,7 @@ public sealed class GameplayPlayerSpawner : MonoBehaviour
     private void Awake()
     {
         _networkManager = GetComponent<NetworkManager>();
+        if (GetComponent<AimIncidentRecorder>() == null) gameObject.AddComponent<AimIncidentRecorder>();
         ClientDisconnectRecovery.Install(_networkManager);
         if (GetComponent<FileAntiCheat>() == null) gameObject.AddComponent<FileAntiCheat>();
         _networkManager.SceneManager.OnLoadEnd += OnSceneLoadEnd;

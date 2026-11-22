@@ -13,7 +13,7 @@ public sealed class AimIncidentCapture
         public readonly List<Frame> frames = new List<Frame>(MaximumFrames);
         public readonly List<Alert> alerts = new List<Alert>(MaximumAlerts);
         public string incidentId;
-        public double closeAt, limit, lastTime = -1;
+        public double closeAt, limit, lastTime = -1, lastAlert = double.NegativeInfinity;
         public bool finished;
         public int revision;
     }
@@ -49,7 +49,13 @@ public sealed class AimIncidentCapture
             Finish(context, frame.time, "encounter/life changed", true);
             _contexts[shooter.participantId] = context = new Encounter { shooter = shooter, target = target };
         }
-        if (frame.time <= context.lastTime || frame.time - context.lastTime < .19) return;
+        if (context.finished && alert.HasValue && frame.time - context.lastAlert > LeadSeconds + FollowSeconds)
+        {
+            var next = new Encounter { shooter = shooter, target = target, lastTime = context.lastTime };
+            foreach (var sample in context.lead) next.lead.Enqueue(sample);
+            _contexts[shooter.participantId] = context = next;
+        }
+        if (frame.time <= context.lastTime || (frame.time - context.lastTime < .19 && !alert.HasValue)) return;
         if (context.incidentId != null && !context.finished && frame.time > context.closeAt + .001)
             Finish(context, context.closeAt, "follow-up complete", false);
         frame.gapBefore |= context.lastTime >= 0 && frame.time - context.lastTime > GapSeconds;
@@ -71,6 +77,7 @@ public sealed class AimIncidentCapture
             context.closeAt = Math.Min(context.limit, frame.time + FollowSeconds);
             Save(context, false, false, "capturing follow-up");
         }
+        if (alert.HasValue) context.lastAlert = frame.time;
         if (context.incidentId != null && !context.finished && (frame.time >= context.closeAt || context.frames.Count >= MaximumFrames))
             Finish(context, Math.Min(frame.time, context.closeAt), frame.time >= context.limit ? "capture duration cap" : "follow-up complete", frame.time >= context.limit);
     }

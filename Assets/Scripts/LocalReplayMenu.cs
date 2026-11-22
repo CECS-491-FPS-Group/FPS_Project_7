@@ -40,6 +40,7 @@ public sealed class LocalReplayMenu : MonoBehaviour
     {
         var panel = IntegrationUi.Panel(transform, "Theater", new Vector2(1100, 660));
         IntegrationUi.Text(panel, "THEATER — LOCAL MOVEMENT", new Vector2(0, 300), new Vector2(1000, 40), 26);
+        IntegrationUi.Button(panel, "Server aim incidents", new Vector2(-370, -295), AimIncidentReviewMenu.Show, new Vector2(330, 40));
         _status = IntegrationUi.Text(panel, "Select a capture. Movement only; top-down view.", new Vector2(100, 250), new Vector2(850, 40));
         string[] files;
         try { files = ReplayArchive.Files(); }

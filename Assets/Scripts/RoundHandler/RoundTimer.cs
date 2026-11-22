@@ -58,6 +58,7 @@ public class RoundTimer : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (_networkManager != null && _networkManager.IsServerStarted) _networkManager.GetComponent<AimIncidentRecorder>()?.FinishScene(gameObject.scene);
         if (_networkManager != null)
             _networkManager.ClientManager.UnregisterBroadcast<RoundSnapshot>(OnSnapshot);
     }
@@ -120,6 +121,9 @@ public class RoundTimer : MonoBehaviour
 
     private void BeginPhase(gameStates phase, double startTime, int duration)
     {
+        var incidents = _networkManager.GetComponent<AimIncidentRecorder>();
+        if (phase == gameStates.GAME) incidents?.BeginMatch(gameObject.scene);
+        else incidents?.FinishMatch("round ended");
         if (phase != gameStates.GAME) MatchScoreboard.Instance?.ResetStreaks();
         SetPhase(phase);
         _deadline = startTime + Math.Max(0, duration);
