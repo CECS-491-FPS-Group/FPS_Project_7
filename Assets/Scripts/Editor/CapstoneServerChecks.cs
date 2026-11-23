@@ -22,8 +22,10 @@ internal static class CapstoneServerChecks
         var owned = new List<GameObject>(); var world = new GameObject("Server collection/configuration fixture");
         SceneManager.MoveGameObjectToScene(world, scene);
         var timer = world.AddComponent<RoundTimer>(); timer.enabled = false; timer.timerIsRunning = true; timer.currentState = RoundTimer.gameStates.GAME;
-        var boosts = world.AddComponent<MatchBoosts>(); boosts.enabled = false; Set(boosts, "_manager", manager);
-        var scores = world.AddComponent<MatchScoreboard>(); scores.enabled = false; Set(scores, "_manager", manager); Set(scores, "_listening", true);
+        Call(timer, "Start"); // Exercise the active round's installer, rather than manually assembling its helpers.
+        timer.timerIsRunning = true; timer.currentState = RoundTimer.gameStates.GAME;
+        var boosts = world.GetComponent<MatchBoosts>(); boosts.enabled = false; Set(boosts, "_manager", manager);
+        var scores = world.GetComponent<MatchScoreboard>(); scores.enabled = false; Set(scores, "_manager", manager); Set(scores, "_listening", true);
         NetworkConnection Owner(int id)
         {
             var c = new NetworkConnection(manager, id, 0, true); Call(c, "ConnectionAuthenticated"); Call(c, "SetLoadedStartScenes", true); return c;
@@ -41,6 +43,11 @@ internal static class CapstoneServerChecks
         var wall = new GameObject("Cover regression", typeof(BoxCollider)); SceneManager.MoveGameObjectToScene(wall, scene);
         try
         {
+            Check(manager.GetComponent<FileAntiCheat>() != null && manager.GetComponent<AimIncidentRecorder>() != null &&
+                UnityEngine.Object.FindFirstObjectByType<ClientDisconnectRecovery>() != null, "actual MainMenu spawner installs integrity, recorder and client recovery");
+            Check(player.GetComponent<OccludedAimObserver>() != null && player.GetComponent<ApprovedMovementBoost>() != null &&
+                player.GetComponent<PlayerPosture>() != null && player.GetComponent<LocalPlayerControls>() != null, "actual spawned variant installs live aim/effects/stance/owner-control paths");
+            Check(boosts != null && scores != null, "actual RoundTimer.Start installs authoritative pickups and scores");
             Vector3 eye = posture.ServerShotOrigin, body = posture.ServerBodyOrigin;
             Debug.Log($"[Capstone ORIGIN] resolved standing offset={eye - player.transform.position} body={body - player.transform.position}; " +
                 $"source=active Player prefab and inherited camera; no muzzle/client origin.");
