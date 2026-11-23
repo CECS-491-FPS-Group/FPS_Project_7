@@ -1,5 +1,11 @@
 # Windows capstone acceptance (AC10)
 
+**Closeout status:** AC10 interactive acceptance remains pending. Build it from the
+final closeout source (e1e7d9d/c536a5d plus documentation), not an assumed old binary.
+At closeout AC10-Clean/Test/archive were still absent. AC11-Release-Clean now exists
+as a separate non-Development export/launch check; it does not replace this Development
+gate. Keep all results tied to their candidate and generated buildId.
+
 AC09 live procedure **worked per user report**; no new per-case measurements/logs
 were supplied. This is the regression gate for the subsequent server-cover/pickup
 and recording-cost fixes. Automated evidence is in CapstoneDecisionValidation.md.
@@ -14,13 +20,20 @@ AC10-Clean, AC10-Test and approved-AC10.json before building. If occupied, prese
 all three and choose the next unused number consistently. Never overwrite AC09 or
 generate a trusted baseline from a modified Test. Current AC09 identity:
 5fcabd3f39f84fee92c0a717aeb869bd; Clean/Test/installed/archive rechecked read-only.
+The installed default is **still AC09**, not AC10; archive placement is not deployment.
+AC11-Release-Clean and approved-AC11-Release.json are reserved/preserved. If AC10 now
+exists, inspect its source/content/identity before deciding whether it is this candidate;
+never overwrite it or borrow its pass. If a fresh Development number is required, skip
+the occupied AC11 Release number and select the next unused number consistently.
 
 1. Stop standalones/Play Mode. Unity6000.3.8f1, current integration branch. Import,
    compile and allow FishNet processing. Windows x86_64 **Mono Development Build**,
-   existing MainMenu -> LobbyScene_v1 -> RoundImplementation scene list. Build to
+   unchanged enabled scene list (includes SampleScene); actual gameplay route is
+   MainMenu -> LobbyScene_v1 -> RoundImplementation. Build to
    `Desktop/Builds/AC10-Clean/Project FPS 7.exe`. This pass adds no RPC or network
    component layout; gameplay assembly/hash changed: **rebuild every participant**
-   as one cohort. Never assume independently rebuilt outputs share hashes.
+   as one cohort: standalones should use copies of this finished Clean output.
+   Never assume independently rebuilt outputs share hashes.
 2. From the **finished clean executable**, Tools -> Anti-Cheat -> **Generate Windows
    Mono Integrity Manifest**. Archive outside the build as
    `Desktop/Builds/Manifests/approved-AC10.json`. Generator also writes
@@ -85,7 +98,9 @@ Play Mode during PREGAME before GAME starts**; do not save a scene/settings chan
 | --- | --- | --- |
 |1. Clean admission | Host MainMenu -> lobby, A/B join and ready -> match. | Each remote `[File AC] owner=<id> kind=startup result=Verified`, approved buildId matches archive; host EditorSkipped means not verified. New `[Aim INCIDENT] match=<GUID> started` at GAME. Both clients usable. |
 |2. Combat near cover | A selects Sidearm; B has no Armor/Shield/Damage/Invisibility. In open ground A fires one settled centre-body shot. B then fully hides behind a solid exterior wall; A shoots while standing, then crouching/standing beside cover. B peeks around an exterior corner for a valid exposed hit. | Open hit lowers HP by approved40 absent effects. `[Weapon] ... accepted shot` / `[Combat] Accepted shot shooter=<A> hit=<collider>`; blocked shot hits wall, spends one round and plays normal effects, B HP unchanged. Exposed hit damages. No rejection merely for aiming at solid cover; no damage through it. Decorative windows may have solid colliders, so use actual collision gaps/open ground. |
+|2a. Invalid origin is different | While Play Mode is stopped, run Tools/Anti-Cheat/Validate Server Obstruction for its controlled thin-roof/rolled-root cases. In live play retain any legal route near low cover that unexpectedly rejects, but do not force an impossible origin or loosen the guard just to exercise it. | Invalid origin logs origin-obstruction/query-uncertain or unsupported-root rejection; no ammo/HP/kill/streak/accepted-shot effects. This is not the valid wall hit above. Controlled actual-server fixture passed; if current map/controls cannot reproduce an invalid origin, mark that **live case untested**, not passed. |
 |3. Clean corner and lifecycle | A holds a fixed exterior corner crosshair for15s; B moves behind adjacent wall then peeks. A briefly follows B for<2s after visibility loss, then holds still. A collects Speed, moves over road/bridge/slope, lets it expire or replaces with Jump, performs moving jump, dies while boosted, respawns and moves/shoots normally. | No client-aim alert/incident from clean hold/brief follow; ordinary pickup once, approved effect/expiry, no new movement accusation during legal travel/respawn. B remains functional. Prefer >42m for clean aim geometry where practical; near cues conservatively suppress too. Do not claim exact duration from visual impression. |
+|3a. Pickup eligibility and contention | A approaches a reachable pickup in open space, then A/B approach a second pickup together. If a spawned pickup can be approached within2.5m on the other side of solid cover, try collecting without rounding that cover, then approach through clear space. | Reachable living player collects once; contention gives one grant/one removal, no duplicate reward. Obstructed pickup remains until a valid player has a clear body-to-pickup path. No rejection kick. Native server checks cover reachable/blocked/two contenders/duplicates/death/stale round. If no suitable live obstructed placement exists, record it **untested on current map**, with fixture evidence separately. |
 |4. Review-only positive | Host sets Dynamic=Disconnect, selects A's spawned Player root / OccludedAimObserver context menu **Development/Run occluded aim fixture (server only)**. A/B continue normal gameplay for12s. | `[Aim AC FIXTURE] ... action=ReportOnly rule=correlated-occluded-aim source=scripted-fixture target=synthetic ...`; queued then `[Aim INCIDENT] saved=<match>_<incident>.json ... final=True`. Synthetic match/actors are distinct from A/B and explicitly labeled. Nobody disconnects, loses HP or receives correction from this signal. **Development/Stop occluded aim fixture** stops it safely; an early stop may give a shorter partial. |
 |5. Old enforcement/rejoin | Dynamic still Disconnect: A presses plain F7, runs continuously on open ground until sustained speed reaches the unchanged policy threshold. B keeps moving/shooting. | `[AC Policy] ... DynamicMovement ... action=Disconnect`; A returns to usable MainMenu with movement explanation (project's intended edited wording), host/B continue same match. Dismiss, A manually rejoins, fresh startup Verified, no stale notice. Old actor disable resets probe; if aborting before kick use Alt+F7. Restore host Dynamic=ReportOnly. |
 |6. Review and round | Finish round/return to lobby, all leave intentionally. Host returns MainMenu -> Theater / Replays -> **Server aim incidents**. Select the fixture's saved match/player/incident, play/scrub before alert and follow-up, toggle XZ/XY. Save short note via **Reviewed + Save note**, close/reopen. | Flag/source/IDs match host saved file; reported aim ray, server actor samples, recorded cover/decision and partial/gap labels readable. Missing intervals hide markers/ray, never invent a path. Fixture commonly ends partial before normal follow-up completes. Note survives reopen; no kick/suspicion/score/rejoin effect. Ordinary movement replay still opens. |
@@ -137,6 +152,80 @@ gives query/sample context; geometry tests already count queries. Do not infer e
 live query counts from CPU time. Check any main-thread spike against surrounding
 render/network/GC work before attributing it to disk. Worker lag/disk failure must
 stay neutral and not freeze gameplay. This capture is not yet performed by the agent.
+
+## Separate actual Release result and host configuration
+
+| Candidate | Identity | Evidence/status |
+| --- | --- | --- |
+|AC09 comparison |5fcabd3f39f84fee92c0a717aeb869bd |User-reported Windows acceptance. Clean/Test/archive/default installation rechecked read-only. Preserved. |
+|AC10 Development |Not generated locally yet |Automated source checks pass; interactive acceptance above and60s profiler pending. Generate identity from finished final-source Clean, record it with results. |
+|AC11-Release-Clean |f64c7d6b877842c68a3b65ba10f74c10 |Actual Windows x64 Mono **non-Development** export succeeded in26.29s. Three hashes/client descriptor match approved-AC11-Release.json. Exported DLL passes Release-surface/aim metadata tests. Agent launched it, visually checked rendered MainMenu/Theater entry, observed local menu listener/no startup exception, then closed normally. **No host/join/startupVerified/gameplay/settings-click acceptance performed.** |
+
+Release output: `Desktop/Builds/AC11-Release-Clean/Project FPS 7.exe`; separate trusted
+archive: `Desktop/Builds/Manifests/approved-AC11-Release.json`. No baseline was regenerated
+from a Test copy. The Editor's existing `IntegrityServer/approved.json` was not changed:
+it remains AC09 until AC10 is generated/installed for the Development run. Do not
+install the Release manifest over that default merely to launch Release.
+
+Exact supported Release-host setup is **server process environment before hosting**.
+No policy client RPC or player settings slider exists. Launch a fresh process when
+changing modes; FileAntiCheat reads these on server Started. This example gives only
+the Release child its matching trusted manifest and restores this shell's old values,
+so a later Editor launch does not inherit the Release configuration:
+
+```powershell
+$buildRoot = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Builds'
+$releaseExe = Join-Path $buildRoot 'AC11-Release-Clean/Project FPS 7.exe'
+$launch = @{
+    FPS_INTEGRITY_MANIFEST = Join-Path $buildRoot 'Manifests/approved-AC11-Release.json'
+    FPS_STATIC_AC_MODE = 'ReportOnly'
+    FPS_DYNAMIC_AC_MODE = 'ReportOnly'
+}
+$prior = @{}
+try {
+    foreach ($key in $launch.Keys) {
+        $prior[$key] = [Environment]::GetEnvironmentVariable($key, 'Process')
+        [Environment]::SetEnvironmentVariable($key, $launch[$key], 'Process')
+    }
+    Start-Process -FilePath $releaseExe -WorkingDirectory (Split-Path $releaseExe)
+} finally {
+    foreach ($key in $launch.Keys) { [Environment]::SetEnvironmentVariable($key, $prior[$key], 'Process') }
+}
+```
+
+Without an override, standalone server baseline defaults to its executable folder's
+`IntegrityServer/approved.json`; Editor default is project-root equivalent. Both are
+developer-controlled local deployment, separate from the client Data descriptor.
+Keep `FPS_DYNAMIC_AC_THRESHOLD` unset for the unchanged default8. For a deliberate
+demo set **host** FPS_STATIC_AC_MODE and/or FPS_DYNAMIC_AC_MODE to `Disconnect`
+independently in the launch dictionary, restart that host process, and confirm
+`[AC Policy] server static=... dynamic=... dynamicThreshold=8.00` plus the correct
+`[File AC] approved build=... path=...` when hosting starts. Unsupported/read/late/
+missing-report/configuration failures do not become cheating kicks. Only validated
+eligible static mismatch/missing-file and sustained horizontal suspicion qualify;
+the local player-host is always exempt. Aim/secondary movement/review never kicks.
+
+The repeatable **F7/F9 demo remains the AC10 Development cohort** above. Release has
+no abuse controls, no F9 recheck and refuses remote rechecks; do not mix candidates
+or bypass integrity just to force a demo. Release metadata/control inventory is in
+[AntiCheatMaintenance.md](AntiCheatMaintenance.md#release-surface-visibility-and-reachability).
+
+Remaining Release interaction, separately labeled to AC11/buildId: manually open
+Settings/Controls and ordinary Theater offline, then use normal host/join flow with
+another matching Release copy (copy only after existing metadata, no new baseline).
+Check correct server policy/approved-manifest log, startupVerified, lobby/match/leave
+and MainMenu recovery. Confirm no development buttons or built-in F7–F10 abuse actions
+(intentional normal user bindings on those keys still work). Actual
+export/launch does not complete these or the AC10 multiplayer/profiler gate. Keep the
+clean-game/settings review separate; no such cleanup was performed here.
+
+To reproduce a **new** Release export later, use Editor-only
+AntiCheatCloseoutChecks.BuildRelease with absolute FPS_RELEASE_BUILD_EXE and
+FPS_RELEASE_APPROVED_MANIFEST paths, Unity batchmode and projectPath. It requires a
+fresh output directory/new archive and current Mono backend, uses unchanged enabled
+scenes/BuildOptions.None, hashes only the finished build and never installs a server
+baseline. It refuses overwrite; preserve this AC11 pair. New export means a new
+identity/acceptance record even if source is identical.
 
 ## Short demo
 

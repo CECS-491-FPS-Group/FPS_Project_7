@@ -1,5 +1,15 @@
 # Optional server enforcement
 
+Closeout: exported AC11 Release DLL confirms both defaults ReportOnly and removal
+of all abuse controls while retaining enforcement/recovery. No serialized scene/
+prefab policy overrides; local host remains exempt. Configure a Release host through
+FPS_STATIC_AC_MODE / FPS_DYNAMIC_AC_MODE **before launching/hosting**, with its matching
+trusted FPS_INTEGRITY_MANIFEST; leave threshold unset at8. Exact child-process launch
+and eligibility rules: [ReleaseCandidateRuntime.md](ReleaseCandidateRuntime.md#separate-actual-release-result-and-host-configuration).
+Release export/MainMenu smoke passed; no Release host/recovery acceptance claimed.
+Use the preserved AC10 Development controls for the repeatable F7/F9 demo; its live
+gate remains pending. Review flags/notes and uncertain movement never punish.
+
 2026-11-23: AC09 procedure worked **per user report**, no invented logs/measurements.
 New cover/root/pickup invalidity rejects without punishment in every mode. Recording
 quotas, flags and notes never alter policy/suspicion. Both defaults still ReportOnly,

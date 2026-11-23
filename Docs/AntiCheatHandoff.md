@@ -1,6 +1,90 @@
 # Anti-cheat continuation handoff
 
-## Current release-candidate batch — 2026-11-23
+## Current team closeout — 2026-11-23
+
+Resumed **integration/anti-cheat-merged-test /b2b7343**, clean tree, no later/unrelated
+work to discard. **No missing in-scope implementation or unwired planned protection
+found.** No detector/gameplay/policy/network change added. Generic wall traversal
+remains deliberately deferred. Comments explain trust, side-effect order, clocks,
+grace, connection identity and thread/review boundaries at the decision points.
+
+Local source checkpoints: **e1e7d9d** maintainability comments; **c536a5d** active
+scene/prefab/registration and real installer checks, exported Release-surface checks,
+shared finished-build manifest factory and fresh-path Editor-only export tool.
+Use the **accepted final closeout HEAD including documentation** as the base for a
+future multiplayer integration, not an older feature branch. No push/main merge,
+vendor/scene/prefab/authority/AGENTS changes; no generated artifact in source commits.
+
+### Evidence and candidate identity
+
+| Candidate | Identity / status |
+| --- | --- |
+|AC09 comparison |**5fcabd3f39f84fee92c0a717aeb869bd**. User reports Windows procedure passed; no per-case metrics invented. Clean/Test, archive and installed default rechecked read-only; preserved. |
+|AC10 Development |Automated source checks passed; **interactive acceptance pending**, no new user results supplied. Clean/Test/archive still absent locally. No installed AC10 manifest exists: default is still AC09. Build final closeout source and generate/install matching AC10 before acceptance. |
+|AC11-Release-Clean |**f64c7d6b877842c68a3b65ba10f74c10**. Actual Windows x64 Mono non-Development export succeeded,26.29s. Finished output's three hashes/client metadata match separate approved-AC11-Release.json. Agent launched/rendered MainMenu/Theater entry, saw menu listener/no startup exception and closed normally. No host/join/startupVerified/gameplay/settings-click acceptance was performed. |
+
+Release output and archive live under Desktop/Builds/AC11-Release-Clean and
+Desktop/Builds/Manifests/approved-AC11-Release.json. Default Editor server baseline
+**not changed**; AC10 remains reserved for Development acceptance. Never transfer an
+AC09 live pass or AC11 launch result to a different binary/buildId. No hashes were
+regenerated from a Test copy, no old pair overwritten. Release smoke screenshot/log
+and generated files stay outside source control. Player and batch Editors closed.
+
+Actual closeout checks passed: **341 deterministic,121 native,60 unconnected lifecycle,
+82 terrain,22 original server/fixture,40 decision/installer,29 incident integration,
+19 load,15 active serialized-wiring checks**. Full Unity6000.3.8f1 import/compile/
+FishNet and147-source Editor/Development/Release profiles passed. Release exclusion
+and aim/incident independence checked on profiles **and actual exported Mono DLL**.
+The new test harness's malformed new GUID/untitled-scene restoration were corrected
+before final success; no existing asset GUID changed. Current tests use actual
+MainMenu/player installation and RoundTimer.Start, not only manually assembled helpers.
+Historical performance figures below keep their original fixture/source attribution;
+this closeout did not run a live Profiler capture or network simulation.
+
+Both compiled defaults remain **ReportOnly**, threshold8 and host exemption retained.
+Only eligible validated static mismatch/missing file or sustained horizontal evidence
+can optionally disconnect. Rejections are nonpunitive; secondary movement/aim/review
+notes never feed policy. Release removes F7–F10/modifier/menu probes, Inspector fixture/
+grant controls and environment test readers, including reachability/state; normal
+settings, disconnect notices, menu replay save and local Theater remain. Ordinary
+remotes can open offline Theater on their own machine, with no server-archive RPC;
+same-OS-account processes may share local archive files. Host-local is not encryption.
+
+Full active-plan reconciliation/actions/evidence: [AntiCheatAudit.md](AntiCheatAudit.md).
+Teammate source/edit/test map, Release inventory and trust/thread rules:
+[AntiCheatMaintenance.md](AntiCheatMaintenance.md).
+**One acceptance sheet:** [ReleaseCandidateRuntime.md](ReleaseCandidateRuntime.md),
+with exact AC10 build/install/copy steps, origin rejection versus valid wall hit,
+reachable/blocked/contested pickups, expected logs,60s profiler markers and safe
+Release-host environment launch without replacing the Development server baseline.
+
+### Remaining acceptance and merge gate
+
+1. Build final-source AC10 Clean -> archive/client metadata -> preserve/install trusted
+   server copy -> Test copy. All standalone peers use this same finished output.
+   Editor host + A/B remotes: both startupVerified, legal near-cover combat, boosted
+   death/respawn, reachable/contested pickup, clean corner, report-only fixture,
+   F7 kick/MainMenu/manual rejoin while B continues, offline playback/Reviewed note.
+2. Invalid obstructed origin and through-wall pickup already pass controlled actual
+   server fixtures. If current map cannot reproduce a live case, label it untested
+   with separate fixture evidence; do not force a threshold change or claim a pass.
+3. Run the documented60-real-second Editor CPU/GC capture. Optional AC11 Release
+   interaction/host/join/recovery needs its matching Release cohort/manifest and
+   separate results; MainMenu rendering alone is not these passes.
+4. Once accepted, branch from the final closeout commit printed in the user-facing
+   handoff, preserving recovery branch/pairs. After future multiplayer scene/prefab/
+   network changes rerun wiring/server/lifecycle/release gates and the small live
+   batch, regenerating a baseline only from a new finished clean build.
+
+No known implementation blocker. Sparse movement/contact history, client-reported
+root/aim/hash claims, trusted player hosts/editable local archive and no lag rewind
+remain architectural limits. Single approved buildId, no unverified-client admission
+restriction, no generic noclip/silent-flight guarantee or attestation. Broader latency/
+stress/macOS and Release multiplayer remain unverified. ML/full-match recording,
+authority rewrite/host migration/bots/cosmetic crouch/balance/settings cleanup deferred.
+Existing pre/postgame CanAct/reward policy preserved, not silently redesigned.
+
+## Previous release-candidate batch — 2026-11-23
 
 Resumed **integration/anti-cheat-merged-test /534ab8b**, initially clean, no newer or
 unrelated work to discard. **AC09 live procedure worked per user report**. This is

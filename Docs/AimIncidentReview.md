@@ -2,6 +2,14 @@
 
 ## Current release-candidate status
 
+Closeout source e1e7d9d/c536a5d: no unwired review implementation found. Exported
+Release DLL retains local review and removes fixture controls; actual AC11 MainMenu
+rendered its Theater entry. This is not a playback/note or multiplayer acceptance.
+AC10 interactive gate remains pending; current server checks include40 decision/
+installer assertions and15 separate active-wiring checks. Source/edit/Release access
+rules: [AntiCheatMaintenance.md](AntiCheatMaintenance.md), including same-OS-account
+local archive sharing and no remote server-archive RPC.
+
 AC09 live procedure **worked per user report**; no per-case metrics/logs inferred.
 Continuation from534ab8b retains the architecture. New limit **two clips per participant
 per match**, still32 globally, reserves capacity; overlapping alerts retain grouping/

@@ -1,26 +1,56 @@
 # Trust-boundary audit and first weekend batch — 2026-11-12
 
-## Current release-candidate coverage — 2026-11-23
+## Current closeout: active wiring and Release — 2026-11-23
 
-Base534ab8b, initial clean checkout. **AC09 live procedure worked per user aggregate
-report**; no invented per-case measurements. This supersedes old AC09 pending labels,
-not macOS, broad latency/stress or new-fix acceptance. Current source is authoritative.
+Resumed **b2b7343**, clean tree on integration/anti-cheat-merged-test. No intervening
+changes or unrelated edits. **AC09 passed per user Windows report**; no invented
+per-case logs/measurements. AC10 automated source checks passed; **AC10 interactive
+acceptance is still pending**. AC10 folders/archive are absent locally, not silently
+assumed installed. No missing in-scope implementation or unwired planned protection
+was found. New changes explain decisions and test wiring/Release, without changing
+gameplay, detector thresholds, networking, policies or adding a detector.
+
+Source checkpoints: **e1e7d9d** comments, **c536a5d** active wiring/export checks.
+Actual Windows Mono non-Development **AC11-Release-Clean** exported, matching manifest
+f64c7d6b877842c68a3b65ba10f74c10 generated from that finished build. Exported DLL passes
+control/reachability/default/aim independence checks. Player launched/rendered MainMenu
+and Theater entry, logged menu listener, closed normally; **no Release host/join/gameplay
+or startupVerified test was performed**. AC09/installed baseline untouched. Future
+results must identify candidate/buildId: neither AC09 acceptance nor AC11 launch
+establishes AC10 acceptance. macOS, broad latency/stress remain unverified.
 Decision traces, tests and cost methodology: [CapstoneDecisionValidation.md](CapstoneDecisionValidation.md).
 New acceptance: [ReleaseCandidateRuntime.md](ReleaseCandidateRuntime.md), next unused AC10.
 
-| Protection | Actual action | Strongest evidence now | Remaining limitation / live gate |
-| --- | --- | --- | --- |
-| Static integrity | Bounded report vs trusted baseline; optional disconnect only validated mismatch/missing file. Other unavailable/error results explicit/nonpunitive. |65 pure + lifecycle; historical user tamper/recovery, AC09 user acceptance; AC09 Clean/Test/archive/installed matching read-only. |Falsifiable hashes, three files only, trusted deployment. AC10 startupVerified required. |
-| Horizontal movement | Approved allowance/lifecycle validation, report; existing sustained suspicion optionally disconnects. No correction. |33 horizontal +58 received pure; AC08/09 user acceptance, old F7 recovery evidence; native integrated-terrain82 checks. |Client-authoritative/smoothed pose, no path truth; new boosted/recovery regression pending. |
-| Secondary movement | Repeated displacement, excessive ascent, fresh unsupported level-motion report-only, separate from kick suspicion. |Pure/native freshness/burst/lifecycle; seven actual-map capsule routes84 samples0 reports; AC08/09 user aggregate passes. |Slow/silent flight and sparse wall crossings unreliable. No traversal detector added. |
-| Combat/world cover | Reject sender/config/state/aim/cadence/ammo/reload/origin invalidity before mutation. Body/eye overlap + bidirectional mounted-origin path + upright root guard. Valid wall hit spends ammo/effects, stops damage. |Existing22 server/fixture +37 new real-prefab checks, native PhysX and AC09 user acceptance of earlier build. |Client root/aim, no lag rewind. New cover/root constraints need remote regression. Existing pre/postgame CanAct rule unchanged. |
-| Pickups/effects/rewards | Server polling only; living same-scene owner/range/unexpired ID/clear path, atomic consume once. Approved effects/health/weapon/reward values; five-kill milestones server-owned. |New real server contention/duplicate/death/expiry/stale-round/Armor/Invisibility cases;36 pure effects and previous combined user passes. |Forged position, balance deferred. New cover-gate legal collection/respawn needs runtime regression. |
-| Requests/config | Reference-scoped owner/auth, IDs/finite/state/range, per-connection budgets before expensive work; invalid config developer error; ordinary rejection never cheating kick. |78 pure validation, native/server config/ready/ping/lifecycle and historical F10/AC07/09 user results. |Transport/deserialization/DDoS outside gameplay budget; adverse bursts pending. |
-| Occluded aim | Conservative fresh geometry + client-reported aim correlation; report and server-local incident in all modes, no damage/correction/kick. |24 pure aim,121 total native incl clean brief-follow/cue case, scripted shared-logic positive; AC09 user acceptance. |Concealable/forged aim/pose; cue/exposure uncertainty suppresses; no seeing/hearing/intent proof or new human positive inferred. |
-| Incident review | Bounded lead/follow-up, stable identities, local archive/note. Two clips per participant/32 per match. No enforcement effect. |29 pure incident +29 save/select/play/note integration +19 load; leave/round/reusedID/gaps/partials/noisy actor. |Editable trusted-host files, no full replay/durability guarantee. New quota/churn and live load pending; Release export not run. |
+| Protection / actual active wiring | Decision and action | Strongest evidence / implementation versus evidence gap |
+| --- | --- | --- |
+| Static integrity: MainMenu NetworkManager -> GameplayPlayerSpawner.Awake installs FileAntiCheat; authenticated Report broadcast -> Receive/EvaluateReport -> BuildIntegrity/IntegrityReportLifecycle | Fixed three slots versus developer-installed baseline, exact coverage/build/session/rate/deadline. Only timely validated mismatch/missing file optionally disconnects; unavailable/config/late/unsupported/malformed distinct and nonpunitive. |65 pure plus native lifecycle, historical Windows tamper/recovery and AC09 user report. Active installer and exported Release paths verified. No missing implementation. New AC10 startupVerified requires live evidence; offline hashes/launch are not verification. Client hashes falsifiable, three files only. |
+| Horizontal movement: spawned Player.prefab variant has enabled SpeedHackDetector + client-authoritative NetworkTransform; LateUpdate -> HorizontalMovementObservation -> FileAntiCheat.EvaluateDynamic | Server ApprovedMovementLimits + MatchBoosts.ServerHasSpeedBoost; integrated elapsed allowance, bounded transition, Health-issued respawn grace. Sustained horizontal evidence optionally disconnects at unchanged threshold8. No correction. |33 horizontal pure; actual resolved authority/observer wiring and server spawn checked; native terrain82; AC08/09 user reports. No missing implementation. AC10 clean boosts/respawn and F7 isolation/rejoin pending. Replicated roots/smoothing remain untrusted observations. |
+| Secondary movement: same observer subscribes OnDataReceived, copies raw pooled goals/ticks, ObserveReceivedGoals -> ReceivedMovementObservation/MovementSupportQuery | Bounded fresh receipt evidence for repeated displacement/ascent/unsupported moving level motion; report-only in every mode, never horizontal suspicion. Stale/ambiguous support suppresses. |58 pure received plus native support/terrain; AC08/09 user reports. Deliberately no generic wall-traversal detector, slow/silent flight guarantee or contact/path authority. Source instrumentation is wired, not a hidden prototype. |
+| Combat/world cover: selected variant's single HitscanShooter under approved PlayerCameraSetup camera; owned RequestShot/Weapon/Reload -> ProcessServer... -> CombatRayGeometry -> Assets/Health.TakeDamage | Auth/session/budget/alive/config/finite/aim/cadence/ammo/reload/stance/origin gates before request side effects. Eye/body overlap + bidirectional path and supported root. Invalid origin rejects without ammo/damage/reward/effects; valid wall shot spends ammo/presents, nearest solid stops damage. No rejection kick. |Existing22 server/fixture +40 decision assertions, native PhysX and AC09 earlier-build user acceptance. Active camera/prefab/registration verified. No code omission. New remote near-cover regression pending; deliberately no lag rewind/position attestation. Existing pre/postgame CanAct policy retained. |
+| Pickups/effects/rewards: active RoundImplementation RoundTimer.Start adds MatchBoosts/MatchScoreboard; MatchBoosts.Update polls owned Health -> TryCollectServer -> ApplyServerBoost; Health death -> RecordDeath -> RewardServerStreak | No collection RPC. Living same-scene owner, unexpired ID/range/clear body path, atomic grant/consume once. Server effect values/deadlines/replacement, Armor separate, death/round reset, original Shield/Speed/Jump/Damage pool at5/10/... consecutive PvP kills. No rejection kick. |Actual RoundTimer installer now exercised, contention/duplicate/death/expiry/stale-round/Armor/Invisibility server cases within40;36 pure effect checks. New reachable/obstructed/contested pickup live evidence pending, not missing code. Client root still falsifiable; balance deferred. |
+| Requests/config: GameplayPlayerSpawner.TryConsumeCombatRequest, NetworkLobbyUI ready/ping RPCs in LobbyScene_v1, PlayerCameraSetup.RequestStance, MatchScoreboard.OnRequest, TrackPlayerCurrency.OnBalanceRequest | FishNet sender/ownership plus active/auth/state/finite/ID/range checks, reference-scoped per-connection budgets before expensive scans/physics. Invalid weapon snapshot is developer error. Ordinary rejection never cheating penalty. |78 pure, native/server config and lifecycle; historical F10/AC07/09 user evidence. No missing implementation or new unguarded developer handler. Transport/deserialization/DDoS is deliberately outside gameplay budgets. |
+| Disconnect recovery: FileAntiCheat.ApplyPolicy targeted Notice then installed FishNet Disconnect(false); roster OnClientConnectionState/spawner RemoteState; ClientDisconnectRecovery.OnClientState -> ReturnLocally | Once per connection; pending connection inactive immediately. FishNet despawns owner; lobby removes roster/ready/ping/budgets. Remote locally disposes old manager, loads MainMenu, restores cursor/menu and dismissible reason/fallback. Explicit host Return alone may stop server. |18 pure notice,60 unconnected lifecycle, historical AC02 and AC09 user reports; actual manager installation and Release notice/dismiss paths retained. No missing implementation. AC10 A kick/rejoin while B continues and Release multiplayer recovery still need live evidence. Reason delivery best effort. |
+| Occluded aim: HitscanShooter.OnStartServer adds OccludedAimObserver, owned5Hz ReportAim -> ProcessServerAim -> observer; server geometry/approved stance/current target eligibility -> OccludedAimTracking | Fresh client-reported aim correlated with moving confidently covered target after grace/cue filters. Always report/review flag, no damage/correction/kick in any mode. Invisible/dead/cosmetic corpses excluded, uncertainty suppresses. |24 pure aim,121 native including clean brief-follow/cue case, actual spawned installer and fixture; AC09 user acceptance. No missing implementation. Aim/poses concealable/forged, no client visibility/hearing/intent proof or inferred human positive. |
+| Incident review: MainMenu spawner installs AimIncidentRecorder; RoundTimer.BeginPhase starts/ends match; observer Record -> AimIncidentCapture -> AimIncidentArchive worker -> MainMenu LocalReplayMenu -> AimIncidentReviewMenu | Stable match/participant/incident IDs; reuse of numeric connection ID does not inherit flag. Bounded lead/follow-up/grouping/gaps/partials,2 clips/participant/32 match, bounded worker/disk. Offline local Reviewed note independent of gameplay/punishment. |29 pure incident +29 save/select/play/note +19 load; leave/round/reusedID/attribution/partials/noisy actor. Release MainMenu Theater entry rendered and exported review paths retained. AC10 interactive usability/live profiling pending. Host-local editable files, no full-match/map-accurate replay/durability guarantee. |
 
 Both defaults ReportOnly, host exempt. No new RPC/layout/vendor edits/threshold widening.
 AC09 comparison pair untouched. Invalid requests reject independently of punishment.
+No serialized FileAntiCheat policy override exists in the active scenes/prefabs;
+the MainMenu spawner installs it with compiled defaults. Static supports one approved
+buildId, not a multi-version catalog. Release measures once per authenticated connection,
+not continuously; F9 is Development-only. Missing/unverifiable reports leave gameplay
+admitted by deliberate policy: there is no unverified-client admission gate.
+See [AntiCheatMaintenance.md](AntiCheatMaintenance.md) for source/edit/test dependencies,
+Release inventory and trust/thread rules. One acceptance sheet remains
+[ReleaseCandidateRuntime.md](ReleaseCandidateRuntime.md), including Release host setup.
+
+Rechecked closeout results:341 deterministic,121 native,60 lifecycle,82 terrain,
+22 original server/fixture,40 decision/installer,29 incident,19 load,15 active-asset
+wiring checks. Full Unity import/compile/FishNet and147-source Editor/Development/
+Release compiler profiles passed. Actual non-Development export and exported-DLL
+release/aim metadata checks passed. A malformed GUID in a newly added test .meta
+and untitled-scene restoration in the new Editor harness were corrected before
+successful export; no existing GUID or gameplay decision changed.
 
 ### Ranked remaining work / decision
 
@@ -37,8 +67,9 @@ Scoped capstone implementation can be called complete **after new interactive
 acceptance**. New remote cover/collection tests are a release gate: failure could
 prevent legal shots/pickups or permit through-cover actions. Existing pre/postgame
 combat/reward policy needs an explicit gameplay decision only if GAME-only rewards
-are intended; preserve documented behavior. Broad latency/macOS/stress and actual
-Release export/runtime claims remain pending.
+are intended; preserve documented behavior. Broad latency/macOS/stress and Release
+multiplayer/recovery/settings interaction remain pending. Export and MainMenu launch
+are now demonstrated only for AC11-Release-Clean, not a connected-gameplay pass.
 
 ## Historical capstone coverage: incident review closeout
 

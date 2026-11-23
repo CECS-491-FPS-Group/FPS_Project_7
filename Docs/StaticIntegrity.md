@@ -1,5 +1,14 @@
 # Build-file integrity (schema 1, ReportOnly by default)
 
+Closeout: actual Windows Mono non-Development AC11-Release-Clean exported with
+matching archive/descriptor **f64c7d6b877842c68a3b65ba10f74c10**; offline three hashes
+and exported Release metadata checks passed. MainMenu launch is not startupVerified:
+no Release connection test was performed. Release checks at authentication only,
+no F9/recheck or periodic scanning. Its separate archive was not installed over the
+Editor default (still AC09); AC10 Development remains unbuilt locally/live pending.
+Candidate identities and safe Release host configuration:
+[ReleaseCandidateRuntime.md](ReleaseCandidateRuntime.md#separate-actual-release-result-and-host-configuration).
+
 2026-11-23: AC09 live procedure worked per user aggregate report; no new logs/metrics
 inferred. AC09 Clean/Test three hashes/client identities, archive and default installed
 server manifest rechecked read-only:5fcabd3f39f84fee92c0a717aeb869bd. No build/baseline/
