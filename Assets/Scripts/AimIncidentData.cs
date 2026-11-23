@@ -5,6 +5,7 @@ using System.IO;
 public static class AimIncidentData
 {
     public const int MaximumFrames = 160, MaximumAlerts = 4, MaximumIncidents = 32;
+    public const int MaximumPlayerIncidents = 2; // 16 players each retain a fair share of the32-clip match budget.
     public const double LeadSeconds = 10, FollowSeconds = 12, MaximumSeconds = 30, GapSeconds = .65;
     [Serializable] public struct Point
     {

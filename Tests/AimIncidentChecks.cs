@@ -69,6 +69,18 @@ internal static class AimIncidentChecks
         var encounters = new AimIncidentCapture("client-aim", "scene", _ => { });
         for (int i = 0; i <= 250; i++) encounters.Observe(a, b, Frame(i * .2), i == 0 || i == 200 ? (Alert?)Evidence : null);
         Check(encounters.Incidents == 2, "quiet nonoverlapping encounter permits a new bounded clip for same pair");
+        var fair = new AimIncidentCapture("client-aim", "scene", _ => { });
+        for (int i = 0; i < 40; i++) { var changing = Actor(99); fair.Observe(a, changing, Frame(i * .2), Evidence); }
+        Check(fair.Incidents == MaximumPlayerIncidents && fair.BudgetStatus.Contains("player"), "one noisy participant cannot exhaust shared match clip budget");
+        var innocent = Actor(77); fair.Observe(innocent, b, Frame(50), Evidence);
+        Check(fair.IsFlagged(innocent.participantId) && fair.Incidents == MaximumPlayerIncidents + 1, "another participant's evidence retains capacity");
+        var sixteen = new AimIncidentCapture("client-aim", "scene", _ => { });
+        for (int i = 0; i < 16; i++) { var p = Actor(i); for (int j = 0; j < MaximumPlayerIncidents; j++) { p.life++; sixteen.Observe(p, b, Frame(j), Evidence); } }
+        Check(sixteen.Incidents == MaximumIncidents && sixteen.FlaggedPlayers == 16, "all16 participants can retain two distinct clips each");
+        var attribution = new List<Incident>(); var reuse = new AimIncidentCapture("client-aim", "scene", attribution.Add);
+        reuse.Observe(a, b, Frame(0)); var newTarget = Actor(3); reuse.Observe(a, newTarget, Frame(.2), Evidence);
+        Check(attribution[0].target.participantId == newTarget.participantId && attribution[0].frames[0].time == .2,
+            "reused clean lead ring never attributes old target samples to a new target");
         Console.WriteLine($"AimIncident: {count} assertions passed; no Unity/network/policy dependency.");
     }
 }

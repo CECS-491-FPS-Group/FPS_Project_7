@@ -193,6 +193,11 @@ internal static class AimIncidentIntegrationChecks
                 ((TMP_Text)Read(menu, "_details")).text.Contains("GAP"), "review hides actor/ray at missing interval and labels gap");
             UnityEngine.Object.Destroy(menu.gameObject); var theater = UnityEngine.Object.FindFirstObjectByType<LocalReplayMenu>();
             if (theater != null) UnityEngine.Object.Destroy(theater.gameObject);
+            CapstoneLoadChecks.Begin(); phase = 7; return false;
+        }
+        if (phase == 7)
+        {
+            if (!CapstoneLoadChecks.Tick()) return false;
             FolderField.SetValue(null, Path.Combine(folder, "retention")); phase = 3; return false;
         }
         if (phase == 3)

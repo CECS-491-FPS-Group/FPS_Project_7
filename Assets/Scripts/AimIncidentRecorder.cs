@@ -5,12 +5,15 @@ using FishNet.Managing;
 using FishNet.Transporting;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Unity.Profiling;
 using static AimIncidentData;
 
 // Persistent server-side capture bridge. No network messages and no policy references.
 [DisallowMultipleComponent]
 public sealed class AimIncidentRecorder : MonoBehaviour
 {
+    private static readonly ProfilerMarker CaptureMarker = new("AC.Incident.Capture");
+    private static readonly ProfilerMarker FinalizeMarker = new("AC.Incident.Finalize");
     private NetworkManager _manager;
     private AimIncidentCapture _match;
     private Scene _scene;
@@ -39,7 +42,7 @@ public sealed class AimIncidentRecorder : MonoBehaviour
     }
     internal void FinishMatch(string reason)
     {
-        try { _match?.End(MatchTime, reason); }
+        try { using (FinalizeMarker.Auto()) _match?.End(MatchTime, reason); }
         catch (Exception error) { Warn(error.GetType().Name); }
         _match = null; _participants.Clear(); _targets.Clear();
     }
@@ -57,6 +60,7 @@ public sealed class AimIncidentRecorder : MonoBehaviour
         if (_match == null || !_manager.IsServerStarted || shooter.gameObject.scene != _scene) return;
         try
         {
+            using var captureScope = CaptureMarker.Auto();
             if (!shooter.ReviewPresent) { ActorStopped(shooter); return; }
             if (target != null && target.ReviewPresent)
             {
@@ -70,6 +74,7 @@ public sealed class AimIncidentRecorder : MonoBehaviour
             shooter.FillReviewPoses(target, ref frame);
             frame.time = MatchTime;
             _match.Observe(shooter.ReviewActor(a), target.ReviewActor(b), frame, alert);
+            if (alert.HasValue && _match.BudgetStatus != "available") Warn(_match.BudgetStatus + "; further alerts stay in observer logs");
         }
         catch (Exception error) { Warn("capture unavailable: " + error.GetType().Name); }
     }

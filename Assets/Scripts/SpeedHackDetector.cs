@@ -3,11 +3,13 @@ using FishNet.Object;
 using UnityEngine;
 using FishNet.Component.Transforming;
 using StarterAssets;
+using Unity.Profiling;
 
 // Observes the server's replicated position; optional server policy handles sustained abuse.
 [DisallowMultipleComponent]
 public sealed class SpeedHackDetector : NetworkBehaviour
 {
+    private static readonly ProfilerMarker ObserveMarker = new("AC.Movement.Observe");
     private const double SpawnGrace = 1.5d;
     private const double RespawnGrace = 1.5d;
     private const double LogInterval = 5d;
@@ -112,6 +114,7 @@ public sealed class SpeedHackDetector : NetworkBehaviour
 
     private void LateUpdate()
     {
+        using var observationScope = ObserveMarker.Auto();
         if (!_serverRunning || !IsServerInitialized || !IsSpawned) return;
         double now = Now;
         // Health's server flags also cover pending respawn placement and final match teardown.

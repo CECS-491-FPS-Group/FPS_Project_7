@@ -8,10 +8,10 @@ public sealed class AimIncidentCapture
     private sealed class Encounter
     {
         public Actor shooter, target;
-        public string id = Guid.NewGuid().ToString("N");
+        public string id;
         public readonly Queue<Frame> lead = new Queue<Frame>(52);
-        public readonly List<Frame> frames = new List<Frame>(MaximumFrames);
-        public readonly List<Alert> alerts = new List<Alert>(MaximumAlerts);
+        public List<Frame> frames;
+        public List<Alert> alerts;
         public string incidentId;
         public double closeAt, limit, lastTime = -1, lastAlert = double.NegativeInfinity;
         public bool finished;
@@ -21,6 +21,8 @@ public sealed class AimIncidentCapture
     public readonly string Source, Scene, StartedUtc, Clock;
     private readonly Dictionary<string, Encounter> _contexts = new Dictionary<string, Encounter>();
     private readonly HashSet<string> _flagged = new HashSet<string>();
+    private readonly Dictionary<string, int> _playerIncidents = new Dictionary<string, int>();
+    public string BudgetStatus { get; private set; } = "available";
     private readonly Action<Incident> _save;
     private int _incidents;
     private bool _ended;
@@ -36,6 +38,7 @@ public sealed class AimIncidentCapture
     public bool IsFlagged(string participant) => _flagged.Contains(participant);
     public void Observe(Actor shooter, Actor target, Frame frame, Alert? alert = null)
     {
+        BudgetStatus = "available";
         if (_ended || !Id(shooter.participantId) || !Id(target.participantId) || shooter.participantId == target.participantId ||
             !Finite(frame.time) || frame.time < 0 || !frame.shooter.Valid || !frame.target.Valid || !frame.eye.Valid || !frame.aim.Valid) return;
         if (!_contexts.TryGetValue(shooter.participantId, out var context))
@@ -46,8 +49,17 @@ public sealed class AimIncidentCapture
         if (context.target.participantId != target.participantId || context.target.life != target.life ||
             context.shooter.life != shooter.life || context.target.objectId != target.objectId || context.shooter.objectId != shooter.objectId)
         {
-            Finish(context, frame.time, "encounter/life changed", true);
-            _contexts[shooter.participantId] = context = new Encounter { shooter = shooter, target = target };
+            if (context.incidentId == null)
+            {
+                // Clean candidate churn needs only one reusable lead ring, not160-frame clip allocations.
+                context.shooter = shooter; context.target = target; context.lead.Clear();
+                context.lastTime = -1; context.lastAlert = double.NegativeInfinity;
+            }
+            else
+            {
+                Finish(context, frame.time, "encounter/life changed", true);
+                _contexts[shooter.participantId] = context = new Encounter { shooter = shooter, target = target };
+            }
         }
         if (context.finished && alert.HasValue && frame.time - context.lastAlert > LeadSeconds + FollowSeconds)
         {
@@ -64,13 +76,19 @@ public sealed class AimIncidentCapture
         context.lead.Enqueue(frame);
         if (context.incidentId != null && !context.finished && context.frames.Count < MaximumFrames && frame.time <= context.limit + .001)
             context.frames.Add(frame);
-        if (alert.HasValue && !context.finished && (context.incidentId != null || _incidents < MaximumIncidents))
+        bool playerRoom = !_playerIncidents.TryGetValue(shooter.participantId, out int playerClips) || playerClips < MaximumPlayerIncidents;
+        if (alert.HasValue && context.incidentId == null)
+            BudgetStatus = !playerRoom ? "player clip budget reached" : _incidents >= MaximumIncidents ? "match clip budget reached" : "available";
+        if (alert.HasValue && !context.finished && (context.incidentId != null || (_incidents < MaximumIncidents && playerRoom)))
         {
             if (context.incidentId == null)
             {
-                context.incidentId = Guid.NewGuid().ToString("N"); context.frames.AddRange(context.lead);
+                context.id = Guid.NewGuid().ToString("N"); context.incidentId = Guid.NewGuid().ToString("N");
+                context.frames = new List<Frame>(MaximumFrames); context.alerts = new List<Alert>(MaximumAlerts);
+                context.frames.AddRange(context.lead);
                 context.limit = context.frames[0].time + MaximumSeconds;
                 _flagged.Add(shooter.participantId); _incidents++;
+                _playerIncidents[shooter.participantId] = playerClips + 1;
             }
             var evidence = alert.Value; evidence.time = frame.time;
             if (context.alerts.Count < MaximumAlerts) context.alerts.Add(evidence);

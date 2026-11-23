@@ -3,6 +3,7 @@ using FishNet.Component.Transforming;
 using FishNet.Connection;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Unity.Profiling;
 
 // Server-only observation attached at runtime. Not a NetworkBehaviour or enforcement source.
 [DisallowMultipleComponent]
@@ -120,6 +121,7 @@ public sealed class OccludedAimObserver : MonoBehaviour
     private void LateUpdate()
     {
         if (!_running || _shooter == null || !_shooter.IsServerInitialized) return;
+        using var observationScope = AimMarker.Auto();
         _reviewTarget = null; _reviewAlert = null;
         _reviewFrame = new AimIncidentData.Frame { visibility = "Uncertain", decision = "awaiting-evaluation", cover = "",
             shooterEffect = "None", targetEffect = "None" };
@@ -130,6 +132,7 @@ public sealed class OccludedAimObserver : MonoBehaviour
             { _nextReview = Now + .2; _recorder.Record(this, _reviewTarget, _reviewFrame, _reviewAlert); }
         }
     }
+    private static readonly ProfilerMarker AimMarker = new("AC.Aim.Observe");
     private void ObserveLive()
     {
         if (!_running || _shooter == null || !_shooter.IsServerInitialized) return;

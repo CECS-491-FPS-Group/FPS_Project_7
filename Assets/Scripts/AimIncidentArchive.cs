@@ -6,10 +6,17 @@ using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
 using static AimIncidentData;
+using Unity.Profiling;
 
 // Host-local archive. Immutable snapshots, one worker, bounded pending queue, no RPC.
 public static class AimIncidentArchive
 {
+    private static readonly ProfilerMarker QueueMarker = new("AC.Incident.Queue");
+    private static readonly ProfilerMarker WriteMarker = new("AC.Incident.Write");
+    internal struct WriteMetrics { public int Writes, HighWater, Coalesced; public double TotalMs, MaximumMs; }
+    private static WriteMetrics _metrics;
+    internal static WriteMetrics Metrics { get { lock (Gate) return _metrics; } }
+    internal static void ResetMetrics() { lock (Gate) { if (_working) throw new InvalidOperationException("Writer busy"); _metrics = default; } }
     public const int MaximumBytes = 256 * 1024, RetainedFiles = 32, RetentionDays = 7;
     public const int MaximumPending = 16;
     private static readonly object Gate = new object();
@@ -25,18 +32,33 @@ public static class AimIncidentArchive
     internal static void ReportFailure(string reason) { lock (Gate) _failure = reason; }
     public static bool Enqueue(Incident data)
     {
+        using var queueScope = QueueMarker.Auto();
         Validate(data); string folder = Folder; // Resolve Unity path on caller/main thread.
         lock (Gate)
         {
             int existing = Pending.FindIndex(d => d.incidentId == data.incidentId);
-            if (existing >= 0) Pending[existing] = data;
+            if (existing >= 0) { Pending[existing] = data; if (_metrics.Coalesced < int.MaxValue) _metrics.Coalesced++; }
             else if (Pending.Count < MaximumPending) Pending.Add(data);
             else { _failure = "save queue full; incident snapshot not persisted"; return false; }
+            _metrics.HighWater = Math.Max(_metrics.HighWater, Pending.Count);
             if (!_working) { _working = true; Task.Run(() => Drain(folder)); }
         }
         return true;
     }
     private static void Drain(string folder)
+    {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        UnityEngine.Profiling.Profiler.BeginThreadProfiling("AntiCheat", "IncidentWriter");
+#endif
+        try { DrainQueue(folder); }
+        finally
+        {
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            UnityEngine.Profiling.Profiler.EndThreadProfiling();
+#endif
+        }
+    }
+    private static void DrainQueue(string folder)
     {
         while (true)
         {
@@ -46,7 +68,19 @@ public static class AimIncidentArchive
                 if (Pending.Count == 0) { _working = false; return; }
                 next = Pending[0]; Pending.RemoveAt(0);
             }
-            try { Write(folder, next); lock (Gate) _saved = $"{Leaf(next)} revision={next.revision} final={next.final}"; }
+            try
+            {
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                using (WriteMarker.Auto()) Write(folder, next);
+                watch.Stop();
+                lock (Gate)
+                {
+                    if (_metrics.Writes < int.MaxValue) _metrics.Writes++;
+                    _metrics.TotalMs += watch.Elapsed.TotalMilliseconds;
+                    _metrics.MaximumMs = Math.Max(_metrics.MaximumMs, watch.Elapsed.TotalMilliseconds);
+                    _saved = $"{Leaf(next)} revision={next.revision} final={next.final}";
+                }
+            }
             catch (Exception error) { lock (Gate) _failure = "incident save failed: " + error.GetType().Name; }
         }
     }

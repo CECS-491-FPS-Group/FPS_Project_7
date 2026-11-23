@@ -72,6 +72,7 @@ public static class TerrainIntegrationChecks
                 }
             }
             CheckSpawnPlacement(test);
+            checks += IntegratedMovementChecks.Run(test);
             test.buildProfile = WorldBuildProfile.ServerOnly;
             Build(test, world.editorSeed);
             Require(signature == test.LayoutSignature && structures.BuildingCount == buildings && roads.BridgeVertexCount == bridgeVertices, "Full/ServerOnly layout and structure consistency");

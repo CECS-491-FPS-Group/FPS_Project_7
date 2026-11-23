@@ -67,6 +67,29 @@ internal static class OcclusionGeometryChecks
             for (int i = 0; i < 800; i++) { Classify(); queries += query.Queries; }
             watch.Stop();
             Debug.Log($"[Occlusion PERF] synthetic max16 actors x5Hz x10 virtual seconds: classifications=800 queries={queries} elapsedMs={watch.Elapsed.TotalMilliseconds:F3}; static fixture, no live clients.");
+            var cleanModel = new OccludedAimTracking(); cleanModel.Reset(0); int cleanReports = 0, saved = 0, seenVisible = 0, seenCovered = 0;
+            var cleanCapture = new AimIncidentCapture("scripted-fixture", "clean corner fixture", _ => saved++);
+            var a = new AimIncidentData.Actor { participantId = Guid.NewGuid().ToString("N") };
+            var b = new AimIncidentData.Actor { participantId = Guid.NewGuid().ToString("N") };
+            float heldYaw = Mathf.Atan2(17 + 2 * Mathf.Sin(.3f), 50) * Mathf.Rad2Deg;
+            for (int i = 0; i <= 60; i++)
+            {
+                float t = i * .2f, x = t < 2 ? 23 - 3 * t : 17 + 2 * Mathf.Sin(t - 2);
+                target.transform.position = offset + new Vector3(x, 1, 50);
+                target.GetComponent<CapsuleCollider>().height = t >= 4 && t < 5 ? 1 : 2;
+                var state = Classify(); if (state == OccludedAimTracking.Visibility.Visible) seenVisible++; if (state == OccludedAimTracking.Visibility.Covered) seenCovered++;
+                float bearing = OccludedAimObserver.Yaw(target.transform.position - eye), aimYaw = t < 2.3f ? bearing : heldYaw;
+                bool cue = t >= 1.4f && t <= 3.9f;
+                if (cleanModel.Observe(new OccludedAimTracking.Sample { Time = t, Fresh = true, Cover = state, PossibleCue = cue,
+                    AimYaw = aimYaw, TargetYaw = bearing })) cleanReports++;
+                cleanCapture.Observe(a, b, new AimIncidentData.Frame { time = t, shooterKnown = true, targetKnown = true, aimKnown = true,
+                    shooter = new AimIncidentData.Point(eye.x, eye.y, eye.z), target = new AimIncidentData.Point(target.transform.position.x, target.transform.position.y, target.transform.position.z),
+                    visibility = state.ToString(), decision = "clean hold/brief follow/audio fixture", cover = "wall", cue = cue, shooterEffect = "None", targetEffect = "None" });
+            }
+            cleanCapture.End(12, "clean sequence ended");
+            Check(seenVisible > 0 && seenCovered > 0, "actual corner geometry transitions exposed to covered");
+            Check(cleanReports == 0, "clean hold then brief follow then held hidden angle with cue/partial posture never alerts");
+            Check(saved == 0 && cleanCapture.FlaggedPlayers == 0, "ordinary clean geometry sequence creates no review flag/file");
         }
         finally { UnityEngine.Object.DestroyImmediate(fixture); Physics.SyncTransforms(); }
         return checks;
