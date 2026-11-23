@@ -44,6 +44,7 @@ public class HitscanShooter : NetworkBehaviour
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
     private int _developmentProbe;
     private double _nextDevelopmentProbe;
+    private int _developmentAcceptedShots; // Fixture counts actual accepted-presentation dispatches, never a client verdict.
 #endif
     public string WeaponName => Profile?.label ?? "Weapon unavailable";
     private WeaponProfile Profile
@@ -165,8 +166,11 @@ public class HitscanShooter : NetworkBehaviour
 
     [ServerRpc(RequireOwnership = true)]
     private void RequestWeapon(int index, NetworkConnection sender = null)
+        => ProcessServerWeapon(index, sender);
+
+    internal void ProcessServerWeapon(int index, NetworkConnection sender)
     {
-        if (!IsServerInitialized || !IsSpawned || sender != Owner || sender == null ||
+        if (!IsServerInitialized || !IsSpawned || !ReferenceEquals(sender, Owner) || sender == null ||
             !sender.IsActive || !sender.IsAuthenticated) return;
         if (!_serverConfigurationValid || !AdmitRequest(sender, "switch")) return;
         if (_health == null || !_health.CanAct ||
@@ -216,8 +220,11 @@ public class HitscanShooter : NetworkBehaviour
 
     [ServerRpc(RequireOwnership = true)]
     private void RequestReload(NetworkConnection sender = null)
+        => ProcessServerReload(sender);
+
+    internal void ProcessServerReload(NetworkConnection sender)
     {
-        if (!IsServerInitialized || !IsSpawned || sender == null || sender != Owner ||
+        if (!IsServerInitialized || !IsSpawned || sender == null || !ReferenceEquals(sender, Owner) ||
             !sender.IsActive || !sender.IsAuthenticated) return;
         if (!_serverConfigurationValid || !AdmitRequest(sender, "reload")) return;
         ReconcileServerWeapon();
@@ -305,7 +312,7 @@ public class HitscanShooter : NetworkBehaviour
     internal void ProcessServerShot(Vector3 direction, NetworkConnection sender)
     {
         if (!IsServerInitialized) return;
-        if (sender == null || !sender.IsActive || !sender.IsAuthenticated || sender != Owner || !IsSpawned)
+        if (sender == null || !sender.IsActive || !sender.IsAuthenticated || !ReferenceEquals(sender, Owner) || !IsSpawned)
         {
             Reject("invalid ownership");
             return;
@@ -313,8 +320,6 @@ public class HitscanShooter : NetworkBehaviour
         if (!_serverConfigurationValid || !AdmitRequest(sender, "shot")) return;
         Vector3 origin = _posture != null ? _posture.ServerShotOrigin : transform.position;
         if (!Finite(origin.x) || !Finite(origin.y) || !Finite(origin.z)) { Reject("invalid server origin"); return; }
-        if (!_shotGeometry.OriginClear(origin, NetworkObject.transform))
-        { Reject("server origin inside solid cover or overlap query uncertain"); return; }
         ReconcileServerWeapon();
         if (_health == null || !_health.IsServerInitialized || !_health.CanAct)
         {
@@ -348,6 +353,10 @@ public class HitscanShooter : NetworkBehaviour
             Reject("cooldown");
             return;
         }
+        Vector3 body = _posture != null ? _posture.ServerBodyOrigin : origin;
+        if (!_shotGeometry.OriginClear(origin, NetworkObject.transform) || !_shotGeometry.OriginClear(body, NetworkObject.transform) ||
+            !_shotGeometry.WorldSegmentClear(body, origin, NetworkObject.transform))
+        { Reject("server origin inside solid cover or body-to-eye obstructed/query uncertain"); return; }
         _nextServerShotTime = now + 1d / Profile.rate;
         _ammo.Value--;
         if (_aimObserver != null) _aimObserver.AcceptedShot();
@@ -367,6 +376,9 @@ public class HitscanShooter : NetworkBehaviour
         }
         _bloom = Mathf.Min(4f, _bloom + 0.4f);
         _lastBloomTime = now;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        _developmentAcceptedShots++;
+#endif
         PresentAcceptedShot(damagedPlayer, Profile.pellets > 1);
     }
 

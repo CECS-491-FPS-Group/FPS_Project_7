@@ -33,6 +33,7 @@ public class PlayerCameraSetup : NetworkBehaviour
     private ServerGameplayValidation.RequestBudget _stanceRequests;
     private double _nextStanceLog;
     public bool Crouched => _crouching.Value;
+    public Vector3 ServerBodyOrigin => transform.TransformPoint(GetComponent<CharacterController>().center);
     public Vector3 ServerShotOrigin
     {
         get

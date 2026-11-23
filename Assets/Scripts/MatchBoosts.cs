@@ -29,6 +29,7 @@ public sealed class MatchBoosts : MonoBehaviour
     private int _nextId;
     private GameObject _visualPrefab;
     private bool _loggedSnapshot;
+    private readonly CombatRayGeometry _collectionGeometry = new();
     private double Now => _manager.TimeManager.TicksToTime(_manager.TimeManager.Tick);
 
     private void Awake() { Instance = this; _timer = GetComponent<RoundTimer>(); }
@@ -66,7 +67,7 @@ public sealed class MatchBoosts : MonoBehaviour
         effect.Type == Kind.Invisibility && _manager != null && effect.Expires > Now;
 
     // One authority for pickups, approved development fixtures and killstreak rewards.
-    private bool ApplyServerBoost(NetworkConnection connection, Kind kind, double seconds)
+    private bool ApplyServerBoost(NetworkConnection connection, Kind kind, double seconds, Health expectedPlayer = null)
     {
         if (!ServerMatchActive || connection == null || !connection.IsActive || !connection.IsAuthenticated ||
             kind < Kind.Shield || kind > Kind.Invisibility || !ServerGameplayValidation.Finite(seconds) || seconds <= 0) return false;
@@ -74,7 +75,7 @@ public sealed class MatchBoosts : MonoBehaviour
         foreach (NetworkObject obj in connection.Objects)
             if (obj != null && obj.IsSpawned && obj.gameObject.scene == gameObject.scene &&
                 obj.TryGetComponent(out Health candidate) && candidate.CanAct) { player = candidate; break; }
-        if (player == null) return false;
+        if (player == null || (expectedPlayer != null && player != expectedPlayer)) return false;
         if (kind == Kind.Armor)
         {
             if (!player.AddServerArmor(100)) return false;
@@ -138,17 +139,10 @@ public sealed class MatchBoosts : MonoBehaviour
                 foreach (NetworkObject obj in c.Objects)
                 {
                     Health health = obj.GetComponent<Health>();
-                    if (health == null || !health.CanAct || obj.gameObject.scene.name != "RoundImplementation") continue;
+                    if (health == null) continue;
                     for (int i = _pickups.Count - 1; i >= 0; i--)
                     {
-                        Vector3 delta = obj.transform.position - _pickups[i].Position;
-                        // Positive finite eligibility: NaN must not make a greater-than rejection fail open.
-                        if (!ServerGameplayValidation.WithinPickupRange(delta.x, delta.y, delta.z, 2.5d)) continue;
-                        Pickup p = _pickups[i];
-                        if (!ApplyServerBoost(c, p.Type, duration)) continue;
-                        _pickups.RemoveAt(i);
-                        _nextSnapshot = 0;
-                        break;
+                        if (TryCollectServer(c, health, _pickups[i].Id)) break;
                     }
                 }
             }
@@ -158,6 +152,28 @@ public sealed class MatchBoosts : MonoBehaviour
             _nextSnapshot = Now + 0.5d;
             _manager.ServerManager.Broadcast(new State { Pickups = _pickups.ToArray(), Effects = new List<Effect>(_effects.Values).ToArray() }, true, Channel.Reliable);
         }
+    }
+
+    // Same atomic decision for the server polling loop and server-only regression fixtures.
+    // Not an RPC: clients never name pickups, expected effects, actors or round IDs.
+    internal bool TryCollectServer(NetworkConnection connection, Health player, int pickupId)
+    {
+        if (!ServerMatchActive || connection == null || !connection.IsActive || !connection.IsAuthenticated ||
+            player == null || !player.IsServerInitialized || !player.IsSpawned || !player.CanAct ||
+            !ReferenceEquals(player.Owner, connection) || player.gameObject.scene != gameObject.scene) return false;
+        int index = _pickups.FindIndex(p => p.Id == pickupId);
+        if (index < 0) return false;
+        Pickup pickup = _pickups[index];
+        Vector3 delta = player.transform.position - pickup.Position;
+        if (!ServerGameplayValidation.Finite(pickup.Expires) || pickup.Expires <= Now || !ServerGameplayValidation.WithinPickupRange(delta.x, delta.y, delta.z, 2.5d)) return false;
+        var capsule = player.GetComponent<CharacterController>();
+        if (capsule == null) return false;
+        Vector3 body = player.transform.TransformPoint(capsule.center);
+        if (!_collectionGeometry.OriginClear(body, player.transform) ||
+            !_collectionGeometry.WorldSegmentClear(body, pickup.Position, player.transform)) return false;
+        if (!ApplyServerBoost(connection, pickup.Type, duration, player)) return false;
+        _pickups.RemoveAt(index); _nextSnapshot = 0;
+        return true;
     }
 
     private void SpawnPickup()

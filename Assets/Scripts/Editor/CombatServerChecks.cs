@@ -51,7 +51,7 @@ public static class CombatServerChecks
                 manager = UnityEngine.Object.FindFirstObjectByType<NetworkManager>(); if (manager == null) return;
                 Check(manager.ServerManager.StartConnection(29991), "start isolated server"); phase++; return;
             }
-            if (phase >= 3)
+            if (phase == 3)
             {
                 if (AimIncidentIntegrationChecks.Tick()) Finish(true);
                 return;
@@ -60,6 +60,12 @@ public static class CombatServerChecks
             if (phase == 1)
             {
                 RunCases();
+                CapstoneServerChecks.Run(manager);
+                phase = 4; return;
+            }
+            if (phase == 4)
+            {
+                if (UnityEngine.SceneManagement.SceneManager.GetSceneByName("RoundImplementation").IsValid()) return;
                 fixtureActor = UnityEngine.Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prefabs/Player.prefab"));
                 fixturePosition = new Vector3(15000, 300, 15000); fixtureActor.transform.position = fixturePosition;
                 manager.ServerManager.Spawn(fixtureActor, Owner(1003));
