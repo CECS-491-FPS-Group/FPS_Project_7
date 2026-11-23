@@ -160,8 +160,10 @@ public sealed class MatchBoosts : MonoBehaviour
     {
         if (!ServerMatchActive || connection == null || !connection.IsActive || !connection.IsAuthenticated ||
             player == null || !player.IsServerInitialized || !player.IsSpawned || !player.CanAct ||
-            !ReferenceEquals(player.Owner, connection) || player.gameObject.scene != gameObject.scene) return false;
-        int index = _pickups.FindIndex(p => p.Id == pickupId);
+            !ReferenceEquals(player.Owner, connection) || player.gameObject.scene != gameObject.scene ||
+            !CombatRayGeometry.SupportedPlayerRoot(player.transform)) return false;
+        int index = -1;
+        for (int i = 0; i < _pickups.Count; i++) if (_pickups[i].Id == pickupId) { index = i; break; }
         if (index < 0) return false;
         Pickup pickup = _pickups[index];
         Vector3 delta = player.transform.position - pickup.Position;

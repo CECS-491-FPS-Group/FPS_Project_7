@@ -3,6 +3,10 @@ using UnityEngine;
 // Shared hard shot geometry. No penetration: nearest non-self/non-dead solid wins.
 public sealed class CombatRayGeometry
 {
+    // Current controller rotates yaw only and keeps the network root unscaled/unparented.
+    // Reject unsupported request geometry; do not correct replicated movement or infer cheating.
+    public static bool SupportedPlayerRoot(Transform root) => root != null && root.parent == null &&
+        Vector3.Distance(root.lossyScale, Vector3.one) <= .001f && Vector3.Dot(root.up, Vector3.up) >= .999f;
     private readonly Collider[] _overlaps = new Collider[32];
     private readonly RaycastHit[] _segmentHits = new RaycastHit[32];
     // A clear endpoint alone cannot establish that a body-mounted origin is reachable.

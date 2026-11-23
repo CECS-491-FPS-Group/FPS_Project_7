@@ -61,6 +61,18 @@ internal static class CapstoneServerChecks
             }
             Reject(Vector3.forward, owner, "roof-displaced origin cannot consume ammo, HP, kill/streak or accepted presentation");
             wall.transform.position += Vector3.right * 30; Physics.SyncTransforms();
+            Vector3 originalTarget = victim.transform.position;
+            player.transform.rotation = Quaternion.Euler(0, 0, 90);
+            Vector3 rolledEye = posture.ServerShotOrigin;
+            wall.GetComponent<BoxCollider>().size = new Vector3(.05f, 3, 3);
+            wall.transform.position = player.transform.position + new Vector3(-.5f, .5f, 0);
+            victim.transform.position = rolledEye + Vector3.forward * 8 - Vector3.up * victim.GetComponent<CharacterController>().center.y;
+            Physics.SyncTransforms();
+            Check(query.OriginClear(rolledEye, player.transform) && query.WorldSegmentClear(posture.ServerBodyOrigin, rolledEye, player.transform),
+                "finite rolled root can extend both body/eye beyond wall while endpoint/segment alone look clear");
+            Reject(Vector3.forward, owner, "unsupported rolled root cannot authorize a displaced shot origin");
+            player.transform.rotation = Quaternion.identity; victim.transform.position = originalTarget;
+            wall.transform.position += Vector3.right * 30; Physics.SyncTransforms();
             Reject(new Vector3(float.NaN, 0, 1), owner, "nonfinite direction no side effects");
             Reject(Vector3.zero, owner, "zero direction no side effects");
             Reject(Vector3.back, owner, "wrong-facing direction no side effects");

@@ -26,8 +26,15 @@ Cheap invalid-request checks now precede geometry. Never confuse this with a leg
 shot hitting cover: that still spends ammo, dispatches accepted audio/effects, hits
 the nearest server collider and cannot damage someone behind it.
 
+An additional native server case demonstrates a finite rolled root extending both
+body and eye past a wall. Current controllers rotate yaw only and never scale/parent
+their network root. Shot and collection decisions reject unsupported root geometry
+(upright dot>=.999, unit scale within.001, no parent). This rejects a request, does not
+correct movement, increase suspicion or disconnect. A future supported lean/parented
+surface mechanic must supply an explicit approved geometry rule.
+
 CapstoneServerChecks uses actual server-spawned prefabs/Health/MatchScoreboard with
-simulated authenticated owners:35 assertions currently pass. Tests cover the old roof
+simulated authenticated owners:37 assertions currently pass. Tests cover the old roof
 endpoint ambiguity, new rejection, nonfinite/zero/wrong-facing/other-session/dead/
 match-locked/reloading/empty/cooldown requests without ammo/HP/kill/streak/presentation
 side effects, valid switch, respawn magazine reconciliation, immediate crouch/stand

@@ -318,6 +318,7 @@ public class HitscanShooter : NetworkBehaviour
             return;
         }
         if (!_serverConfigurationValid || !AdmitRequest(sender, "shot")) return;
+        if (!CombatRayGeometry.SupportedPlayerRoot(NetworkObject.transform)) { Reject("unsupported server player root geometry"); return; }
         Vector3 origin = _posture != null ? _posture.ServerShotOrigin : transform.position;
         if (!Finite(origin.x) || !Finite(origin.y) || !Finite(origin.z)) { Reject("invalid server origin"); return; }
         ReconcileServerWeapon();
