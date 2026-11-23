@@ -10,8 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 8182665079173085330}
   - component: {fileID: 5707067722242108103}
+  - component: {fileID: 7855377735070581606}
   m_Layer: 0
-  m_Name: Assault Rifle
+  m_Name: Final Bounce
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -39,7 +40,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4710465112796332097}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d2eb5d0905acda64bb3c869fbbbc0702, type: 3}
   m_Name: 
@@ -67,6 +68,31 @@ MonoBehaviour:
   hitMarker: {fileID: 4724461779606514509, guid: 3ee41655cbe230d4398da0ef5618e184, type: 3}
   maxHitMarkers: 8
   hitMarkerMinDistance: 0.1
+--- !u!114 &7855377735070581606
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4710465112796332097}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1aefc255e72d354ebc7b14143c2319a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ProjectileShooter
+  projectilePrefab: {fileID: 4981384571661608029, guid: 62e1632724050204fb2b02c26f2ba0bf, type: 3}
+  projectileSpeed: 25
+  projectileLifetime: 10
+  launchAngle: 10
+  detonationMode: 1
+  maxBounces: 3
+  bounciness: 2
+  detonationDelay: 3
+  explosionRadius: 5
+  explosionDamage: 50
+  explosionForce: 700
+  fireRate: 2
+  recoilAmount: 1
 --- !u!1 &4732219762754882448
 GameObject:
   m_ObjectHideFlags: 0
@@ -77,8 +103,9 @@ GameObject:
   m_Component:
   - component: {fileID: 6208916436898385921}
   - component: {fileID: 8324865052202982251}
+  - component: {fileID: 923982753616012250}
   m_Layer: 0
-  m_Name: Shotgun
+  m_Name: Every Bounce
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -106,7 +133,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4732219762754882448}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d2eb5d0905acda64bb3c869fbbbc0702, type: 3}
   m_Name: 
@@ -134,6 +161,31 @@ MonoBehaviour:
   hitMarker: {fileID: 4724461779606514509, guid: 3ee41655cbe230d4398da0ef5618e184, type: 3}
   maxHitMarkers: 8
   hitMarkerMinDistance: 0.1
+--- !u!114 &923982753616012250
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4732219762754882448}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1aefc255e72d354ebc7b14143c2319a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ProjectileShooter
+  projectilePrefab: {fileID: 4981384571661608029, guid: 62e1632724050204fb2b02c26f2ba0bf, type: 3}
+  projectileSpeed: 25
+  projectileLifetime: 10
+  launchAngle: 10
+  detonationMode: 0
+  maxBounces: 3
+  bounciness: 0.8
+  detonationDelay: 3
+  explosionRadius: 5
+  explosionDamage: 50
+  explosionForce: 700
+  fireRate: 2
+  recoilAmount: 1
 --- !u!1 &6077211246191985300
 GameObject:
   m_ObjectHideFlags: 0
@@ -146,7 +198,7 @@ GameObject:
   - component: {fileID: 4469243958953632411}
   - component: {fileID: 62676106364324506}
   m_Layer: 0
-  m_Name: Sniper
+  m_Name: Timed
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -216,6 +268,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ProjectileShooter
   projectilePrefab: {fileID: 4981384571661608029, guid: 62e1632724050204fb2b02c26f2ba0bf, type: 3}
   projectileSpeed: 25
+  projectileLifetime: 5
+  launchAngle: 10
+  detonationMode: 2
+  maxBounces: 3
+  bounciness: 0.2
+  detonationDelay: 2
+  explosionRadius: 5
+  explosionDamage: 50
+  explosionForce: 700
   fireRate: 2
   recoilAmount: 1
 --- !u!1001 &6112485168708652298

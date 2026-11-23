@@ -262,7 +262,18 @@ public class HitscanShooter : MonoBehaviour
 
             if (health != null)
             {
-                health.TakeDamage(damage);
+                // Hitbox is optional: anything without one takes normal damage.
+                Hitbox hitbox = hit.collider.GetComponent<Hitbox>();
+                float multiplier = hitbox != null ? hitbox.damageMultiplier : 1f;
+
+                int finalDamage = Mathf.Max(1, Mathf.RoundToInt(damage * multiplier));
+
+                health.TakeDamage(finalDamage);
+
+                if (hitbox != null && hitbox.isHead)
+                {
+                    Debug.Log("Headshot!");
+                }
             }
         }
 
