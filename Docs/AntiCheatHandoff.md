@@ -1,6 +1,86 @@
 # Anti-cheat continuation handoff
 
-## Current closeout: reviewable aim incidents — 2026-11-21
+## Current release-candidate batch — 2026-11-23
+
+Resumed **integration/anti-cheat-merged-test /534ab8b**, initially clean, no newer or
+unrelated work to discard. **AC09 live procedure worked per user report**. This is
+aggregate user-reported acceptance, not new agent-run multiplayer/profiler evidence;
+no detailed logs or measurements invented. Earlier AC09 pending labels below are
+historical. Windows remains preferred; broad latency/macOS/Release export unverified.
+
+Local checkpoints **ea9c839** (body-to-eye obstruction and atomic clear-space pickup
+decision), **2cca814** (unsupported root geometry rejection) preserve working FishNet
+authority/combat/lobby/recovery and server state. Invalid shots cannot spend ammo,
+damage, award kills/streaks or dispatch accepted-shot effects. Valid wall hits still
+spend ammo/play effects without damaging through cover. Server polling now requires
+unexpired eligible pickup in range with clear body-to-pickup world segment; contention,
+duplicates, death and previous-round absence tested in the actual server decision.
+No collection RPC, new detector, punishment for rejection or new network layout.
+
+Incident checkpoint **d706105**: two clips per participant within existing32/match cap prevents
+one changing-encounter participant exhausting all evidence capacity. Clean target
+churn reuses its lead ring, lazily allocates clip buffers only when flagged. Attribution,
+gaps/partial finals, grouping, reused connection ID, worker persistence and Theater
+review-note independence tested. Review remains host-local and always nonpunitive.
+Profiler markers added; worker writes stay bounded/asynchronous. Development tools
+and fixtures retained, excluded Release by checked compiler metadata.
+
+Actual automated checks: **341 pure**, **121 native**, **60 unconnected lifecycle**,
+**82 integrated-terrain**, existing **22 server/fixture**, **37 new server decision**,
+**29 incident integration**, **19 load** assertions. Full Unity6000.3.8f1 import/
+compile/FishNet and147-source Editor/Development/Release compiler profiles and release
+exclusion checks passed. GUID/meta references and existing materials preserved.
+No new standalone export, interactive play, live profiler or network simulation ran.
+
+Actual map seed2385 seven native3s routes /84 synthetic fresh samples: no secondary
+reports. No wall-traversal rule: same sparse endpoints support illegal straight crossing
+or legal corner detour. Supported lobby default4/max16. Synthetic16-player5Hz/30virtual
+seconds/2,400-call capture workload: clean3.361ms total, all qualifying4.312ms total;
+active-clip finalize/submit.243ms for all16,17 worker writes86.324ms total/max12.647ms.
+Clean target-churn heap delta fell79,544,320 ->131,072bytes,10.771 ->3.288ms total.
+GC heap deltas are not exact allocation measurements. Actual-map synthetic16-player
+PhysX:36,240 queries/2,416 evaluations,42.155ms total. No per-frame/live load claim;
+the old14.426ms also meant total for2,416 fixture calls.
+
+AC09 Clean/Test selected hashes and metadata, archived manifest and default installed
+server copy all match **5fcabd3f39f84fee92c0a717aeb869bd**, read-only. No environment
+FPS override found. No artifacts changed/regenerated. AC10 directories/archive absent
+at final inspection: next acceptance number **AC10**, recheck before building. Exact
+build/manifest/install/copy order and short must-pass then extended/profiler steps:
+[ReleaseCandidateRuntime.md](ReleaseCandidateRuntime.md). All peers need new matching
+build despite no new RPC/layout. Preserve AC09 as comparison; never baseline Test.
+
+Recommendation: **scoped capstone implementation is release-candidate complete after
+this new interactive acceptance passes**; no remaining automated blocker found.
+Main fixed gameplay consequence: mounted eye beyond thin cover and distance-only
+through-wall pickups were accepted; both now reject without gameplay side effects.
+Residual falsifiable root/aim/hash claims, trusted host/local archive, no lag rewind,
+sparse contact/path history remain architectural limits. Existing pre/postgame combat
+follows CanAct until final lock; changing warmup/postgame rewards needs an explicit
+gameplay decision, not an invented anti-cheat restriction. Cosmetic/settings/balance
+pass is later; no branch integration/push/main merge/vendor or AGENTS changes.
+
+### Next session
+
+1. Verify current HEAD/status; keep checkpoints local until user pushes/merges.
+2. Fresh AC10 Clean -> archived manifest/client metadata -> preserve/install trusted
+   server copy -> Test copy. Both remote startupVerified; EditorSkipped not verified.
+3. Editor host + A/B: combat near cover, legal boosted death/respawn, clean corner,
+   saved report-only fixture, F7 kick/MainMenu/manual rejoin while B keeps playing,
+   offline Theater playback/note, normal round/lobby/intentional leave.
+4. Capture60 real seconds of CPU/GC timeline as documented; record live results
+   separately from this batch's scripted/native measurements. Retain any clean-alert
+   route/incident. Broader adverse network, macOS and Release runtime remain pending.
+
+Details, evidence table/cost methodology and deferred traversal rationale:
+[CapstoneDecisionValidation.md](CapstoneDecisionValidation.md), [AntiCheatAudit.md](AntiCheatAudit.md).
+Both committed enforcement defaults remain **ReportOnly**, host exempt. Only eligible
+static integrity and sustained horizontal evidence can optionally disconnect; aim,
+review notes and all secondary movement observations never do.
+
+## Historical checkpoint notes
+
+## Previous closeout: reviewable aim incidents — 2026-11-21
 
 Resumed integration/anti-cheat-merged-test at **152fc8e**, clean tree;170fafa present,
 no later source/unrelated changes to discard. New local source checkpoints:

@@ -1,5 +1,16 @@
 # Build-file integrity (schema 1, ReportOnly by default)
 
+2026-11-23: AC09 live procedure worked per user aggregate report; no new logs/metrics
+inferred. AC09 Clean/Test three hashes/client identities, archive and default installed
+server manifest rechecked read-only:5fcabd3f39f84fee92c0a717aeb869bd. No build/baseline/
+deployment changed; no FPS override found. New runtime code requires fresh matching
+AC10 cohort (unused at inspection), all peers rebuilt, despite no new RPC/layout.
+Use [ReleaseCandidateRuntime.md](ReleaseCandidateRuntime.md) for finished Clean ->
+archive/client metadata -> separate server installation -> Test copy order. Preserve
+AC09; never baseline Test. Defaults ReportOnly/host exemption and static error vs
+validated mismatch policy unchanged. Client hashes remain falsifiable, not attestation.
+Older pending/installed-build labels below are historical.
+
 Incident closeout: AC08 Clean/Test/installed server archive still match preserved
 a70a4853fb014589aaa7e703be232ef2, read-only. No AC09 live pass supplied; AC09 build/
 archive still absent at inspection. Rebuild all peers for new runtime assembly/UI,

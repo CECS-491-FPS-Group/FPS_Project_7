@@ -1,5 +1,14 @@
 # Optional server enforcement
 
+2026-11-23: AC09 procedure worked **per user report**, no invented logs/measurements.
+New cover/root/pickup invalidity rejects without punishment in every mode. Recording
+quotas, flags and notes never alter policy/suspicion. Both defaults still ReportOnly,
+host exempt, sustained-speed threshold unchanged. Only existing eligible static
+mismatch/missing-file or sustained horizontal evidence can optionally disconnect.
+New AC10 cover/collection and F7/rejoin/isolation regression:
+[ReleaseCandidateRuntime.md](ReleaseCandidateRuntime.md). No new punitive rule or
+unverified-client admission restriction. Earlier pending AC09 labels historical.
+
 Incident closeout: occluded-aim match flags, saved clips and Reviewed notes are
 **always report-only** and have no policy/suspicion/damage/network-admission path.
 DynamicDisconnect does not make them punitive. Both committed defaults remain

@@ -1,6 +1,46 @@
 # Trust-boundary audit and first weekend batch — 2026-11-12
 
-## Current capstone coverage: incident review closeout
+## Current release-candidate coverage — 2026-11-23
+
+Base534ab8b, initial clean checkout. **AC09 live procedure worked per user aggregate
+report**; no invented per-case measurements. This supersedes old AC09 pending labels,
+not macOS, broad latency/stress or new-fix acceptance. Current source is authoritative.
+Decision traces, tests and cost methodology: [CapstoneDecisionValidation.md](CapstoneDecisionValidation.md).
+New acceptance: [ReleaseCandidateRuntime.md](ReleaseCandidateRuntime.md), next unused AC10.
+
+| Protection | Actual action | Strongest evidence now | Remaining limitation / live gate |
+| --- | --- | --- | --- |
+| Static integrity | Bounded report vs trusted baseline; optional disconnect only validated mismatch/missing file. Other unavailable/error results explicit/nonpunitive. |65 pure + lifecycle; historical user tamper/recovery, AC09 user acceptance; AC09 Clean/Test/archive/installed matching read-only. |Falsifiable hashes, three files only, trusted deployment. AC10 startupVerified required. |
+| Horizontal movement | Approved allowance/lifecycle validation, report; existing sustained suspicion optionally disconnects. No correction. |33 horizontal +58 received pure; AC08/09 user acceptance, old F7 recovery evidence; native integrated-terrain82 checks. |Client-authoritative/smoothed pose, no path truth; new boosted/recovery regression pending. |
+| Secondary movement | Repeated displacement, excessive ascent, fresh unsupported level-motion report-only, separate from kick suspicion. |Pure/native freshness/burst/lifecycle; seven actual-map capsule routes84 samples0 reports; AC08/09 user aggregate passes. |Slow/silent flight and sparse wall crossings unreliable. No traversal detector added. |
+| Combat/world cover | Reject sender/config/state/aim/cadence/ammo/reload/origin invalidity before mutation. Body/eye overlap + bidirectional mounted-origin path + upright root guard. Valid wall hit spends ammo/effects, stops damage. |Existing22 server/fixture +37 new real-prefab checks, native PhysX and AC09 user acceptance of earlier build. |Client root/aim, no lag rewind. New cover/root constraints need remote regression. Existing pre/postgame CanAct rule unchanged. |
+| Pickups/effects/rewards | Server polling only; living same-scene owner/range/unexpired ID/clear path, atomic consume once. Approved effects/health/weapon/reward values; five-kill milestones server-owned. |New real server contention/duplicate/death/expiry/stale-round/Armor/Invisibility cases;36 pure effects and previous combined user passes. |Forged position, balance deferred. New cover-gate legal collection/respawn needs runtime regression. |
+| Requests/config | Reference-scoped owner/auth, IDs/finite/state/range, per-connection budgets before expensive work; invalid config developer error; ordinary rejection never cheating kick. |78 pure validation, native/server config/ready/ping/lifecycle and historical F10/AC07/09 user results. |Transport/deserialization/DDoS outside gameplay budget; adverse bursts pending. |
+| Occluded aim | Conservative fresh geometry + client-reported aim correlation; report and server-local incident in all modes, no damage/correction/kick. |24 pure aim,121 total native incl clean brief-follow/cue case, scripted shared-logic positive; AC09 user acceptance. |Concealable/forged aim/pose; cue/exposure uncertainty suppresses; no seeing/hearing/intent proof or new human positive inferred. |
+| Incident review | Bounded lead/follow-up, stable identities, local archive/note. Two clips per participant/32 per match. No enforcement effect. |29 pure incident +29 save/select/play/note integration +19 load; leave/round/reusedID/gaps/partials/noisy actor. |Editable trusted-host files, no full replay/durability guarantee. New quota/churn and live load pending; Release export not run. |
+
+Both defaults ReportOnly, host exempt. No new RPC/layout/vendor edits/threshold widening.
+AC09 comparison pair untouched. Invalid requests reject independently of punishment.
+
+### Ranked remaining work / decision
+
+1. **Windows must-pass and short live profiler capture**: high gameplay impact, small
+   effort, no new detector risk; two remotes, cover/pickup/lifecycle/review/enforcement
+   isolation. No remaining automated blocker found.
+2. **Adverse-network/terrain/stance clean characterization**: moderate effort; retain
+   clean-alert routes and diagnose freshness/support, never loosen thresholds.
+3. **Stronger contact/path/visibility authority**, if later required: substantial
+   design. Sparse endpoints cannot justify repeated traversal. Enemy filtering,
+   authority rewrite, full-match recording and ML remain deferred.
+
+Scoped capstone implementation can be called complete **after new interactive
+acceptance**. New remote cover/collection tests are a release gate: failure could
+prevent legal shots/pickups or permit through-cover actions. Existing pre/postgame
+combat/reward policy needs an explicit gameplay decision only if GAME-only rewards
+are intended; preserve documented behavior. Broad latency/macOS/stress and actual
+Release export/runtime claims remain pending.
+
+## Historical capstone coverage: incident review closeout
 
 Source 1c7f5b7/81fddd9, based on152fc8e. AC08 user-reported pass; **no AC09 live
 multiplayer pass supplied**.337 deterministic/118 native/60 unconnected lifecycle/

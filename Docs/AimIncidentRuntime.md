@@ -1,4 +1,12 @@
-# Combined Windows acceptance: aim incidents and pending AC09 live checks
+# AC09 acceptance procedure (historical)
+
+**AC09 live procedure worked per user report**, recorded2026-11-23 without invented
+per-case logs/metrics. Preserve AC09 comparison pair. Do not repeat these historical
+build/install steps over existing artifacts. Current acceptance for the subsequent
+cover/pickup/recording fixes is **AC10**, after checking unused destinations:
+[ReleaseCandidateRuntime.md](ReleaseCandidateRuntime.md). Actual new automated results:
+[CapstoneDecisionValidation.md](CapstoneDecisionValidation.md). Earlier pending labels
+below describe the prior checkpoint, not today's evidence.
 
 Use current integration/anti-cheat-merged-test, including source checkpoint 1c7f5b7.
 AC08 passed per user report; **AC09 has no reported live multiplayer pass**. Automated

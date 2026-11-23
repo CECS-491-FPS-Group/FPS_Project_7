@@ -1,5 +1,16 @@
 # Movement observer (ReportOnly by default)
 
+2026-11-23: **AC09 live procedure worked per user report**, no per-case measurements
+invented. Native terrain checks: seven3s capsule routes/84 synthetic fresh samples on
+integrated seed2385 road/bridges/slopes/building/water-edge, zero secondary reports;
+terrain suite82 passed. Scripted state is not live boost/packet proof. No wall-traversal
+detector: coalesced endpoints cannot distinguish crossing cover from legal corner
+detour. Authority/thresholds/allowances/ReportOnly defaults/host exemption unchanged.
+Secondary rules remain report-only. AC.Movement.Observe marker added, no new control.
+New remote regression/profiler: [ReleaseCandidateRuntime.md](ReleaseCandidateRuntime.md).
+Evidence/limits: [CapstoneDecisionValidation.md](CapstoneDecisionValidation.md).
+Earlier AC09 pending labels historical; broader latency/macOS/Release remain pending.
+
 AC09 update: **AC08 checklist passed per user aggregate report**; no per-case logs,
 measurements or optional breakdown supplied. Earlier AC08 pending labels below are
 historical. Existing movement thresholds/enforcement/authority remain unchanged.

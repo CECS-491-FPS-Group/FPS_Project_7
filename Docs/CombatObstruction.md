@@ -1,5 +1,17 @@
 # Server combat obstruction
 
+2026-11-23: AC09 procedure worked per user aggregate report; no per-case measurements
+inferred. New confirmed gaps fixed: thin solid between body and clear eye endpoint
+rejects via bounded bidirectional world segment; unsupported root roll/scale/parent
+cannot move that mounted origin beyond cover. Cheap invalidity checks precede
+geometry. No invalid-request ammo/damage/kill/streak/accepted-effect mutation. Valid
+wall hits still spend ammo/present normally with zero covered-target HP change.
+Exact owner reference on shot/reload/switch protects against reused numeric identity.
+New37 real-prefab decision assertions plus old22 server/fixture checks passed.
+Details: [CapstoneDecisionValidation.md](CapstoneDecisionValidation.md). New remote
+regression pending in ReleaseCandidateRuntime.md; old AC09 pending labels historical.
+No lag rewind/position attestation claim.
+
 AC09 review, based on AC08 `384a6c6`. `HitscanShooter.ProcessServerShot` is the
 guarded path used by the owned RPC: admission budget, server weapon snapshot,
 living shooter, finite unit direction, pitch/facing, reload/ammo/cadence. The origin

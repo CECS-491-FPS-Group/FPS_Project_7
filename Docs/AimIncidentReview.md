@@ -1,5 +1,21 @@
 # Server aim incident review
 
+## Current release-candidate status
+
+AC09 live procedure **worked per user report**; no per-case metrics/logs inferred.
+Continuation from534ab8b retains the architecture. New limit **two clips per participant
+per match**, still32 globally, reserves capacity; overlapping alerts retain grouping/
+caps. Clean candidate changes reuse lead buffers, defer clip allocation until an alert.
+Regression verifies old-target lead-in is cleared. No threshold/punishment change.
+Current checks:341 pure,121 native,60 lifecycle,82 terrain,22 existing server/fixture,
+37 new server decision,29 incident pipeline,19 load. Real Temp worker IO and synthetic
+4/16-player workloads measured, not live/per-frame profiling. See
+[CapstoneDecisionValidation.md](CapstoneDecisionValidation.md) and new
+[ReleaseCandidateRuntime.md](ReleaseCandidateRuntime.md). Old metrics below historical;
+14.426ms meant total for2,416 calls.
+
+## Original incident checkpoint (historical)
+
 Source checkpoints: `81fddd9` (bounded capture model), `1c7f5b7` (server/archive/Theater
 integration). Resumed integration/anti-cheat-merged-test at 152fc8e with a clean tree;
 170fafa/152fc8e were present, with no intervening work to discard. AC08 passed **per
@@ -38,7 +54,7 @@ failure logs a bounded neutral warning and never changes gameplay or policy.
 | Lead-in | Up to 10 seconds /51 samples, per current shooter-target context. Shorter if the context itself is new. |
 | Follow-up/grouping |12 seconds after latest alert; overlapping alerts for same pair/life/source share one incident. |
 | Clip |30 seconds,160 frames,4 stored alerts maximum. Continuous alerts beyond the cap retain the existing match flag, without growing the clip. A quiet interval >22 seconds before a subsequent alert permits a new, nonoverlapping encounter clip. |
-| Match memory |16 active contexts/participants,32 incidents/flagged participant identities at most per match, even with connection churn. |
+| Match memory |16 active contexts/participants,32 incidents/flagged participant identities at most per match, even with connection churn. Current2 clips per participant reserves capacity; observer logs remain after recording-budget exhaustion. |
 | Worker |One background writer,16 pending immutable snapshots (coalesced by incident ID); no unbounded retry or worker creation. Queue saturation is explicitly a storage failure, not a player verdict. |
 | Disk |Version1 JSON, <=256 KiB/incident, latest 32 files,7-day retention; <=8 MiB incident payload plus bounded review sidecars and transient atomic-write files. Retention/expiry pruned on saves; expired files omitted from catalog. |
 | Notes |Separate <=4 KiB sidecar,280-character local note. Tied to evidence revision; a later snapshot makes an earlier review stale. Notes are deleted with expired evidence; marking Reviewed does not renew retention. |
