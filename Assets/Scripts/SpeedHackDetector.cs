@@ -127,6 +127,8 @@ public sealed class SpeedHackDetector : NetworkBehaviour
         }
 
         Vector3 position = transform.position;
+        // Raw received goals below are still client claims; the original horizontal model observes
+        // the server's possibly smoothed transform. Do not combine their suspicion or count both as evidence.
         ObserveReceivedGoals(now); // Always separate from punitive horizontal suspicion/policy.
         HorizontalMovementObservation.Evidence? result =
             _observation.Observe(now, position.x, position.z, GetServerHorizontalSpeed());

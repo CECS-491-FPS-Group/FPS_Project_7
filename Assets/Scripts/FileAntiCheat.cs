@@ -35,6 +35,7 @@ public sealed class FileAntiCheat : MonoBehaviour
         public bool invalidLogged, enforcementHandled, hostExemptionLogged;
     }
     private NetworkManager _manager;
+    // Numeric connection IDs are reused. Never carry verification or a handled kick into a new session.
     private readonly Dictionary<NetworkConnection, Session> _sessions = new(ConnectionReferenceComparer.Instance);
     private BuildIntegrity.Manifest _approved;
     private CancellationTokenSource _cancel;
@@ -52,6 +53,7 @@ public sealed class FileAntiCheat : MonoBehaviour
 #endif
     private double _clientNext;
     private bool _initialPending;
+    // Unscaled server/client monotonic seconds; pausing a menu cannot extend a report deadline.
     private const double Deadline = 60, RecheckInterval = 15;
     private static double Now => Time.realtimeSinceStartupAsDouble;
 
@@ -87,6 +89,7 @@ public sealed class FileAntiCheat : MonoBehaviour
         Debug.Log($"[AC Policy] server static={staticMode} dynamic={dynamicMode} dynamicThreshold={HorizontalMovementObservation.EnforcementThreshold(dynamicSuspicionThreshold):F2}");
         try
         {
+            // Deployment configuration only: neither the client's manifest nor its report can replace this baseline.
             string path = Environment.GetEnvironmentVariable("FPS_INTEGRITY_MANIFEST");
             if (string.IsNullOrWhiteSpace(path))
                 path = Path.Combine(Directory.GetParent(Application.dataPath).FullName, "IntegrityServer", "approved.json");
@@ -290,6 +293,8 @@ public sealed class FileAntiCheat : MonoBehaviour
             return;
         }
         string result = EvaluateReport(report, _approved, Application.isEditor && sender.IsLocalClient);
+        // A validated mismatch is different from inability to verify (late/read/config/unsupported).
+        // Do not turn those neutral results into kicks by applying policy to every non-Verified result.
         bool eligible = BuildIntegrity.CanEnforce(result, s.reports.Late);
         s.reports.Complete(result);
         if (result == "HashMismatch" || result == "MissingRequiredFile" || result == "UnreadableFile")

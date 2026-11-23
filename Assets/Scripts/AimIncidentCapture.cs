@@ -130,6 +130,8 @@ public sealed class AimIncidentCapture
     }
     private void Save(Encounter context, bool final, bool partial, string reason)
     {
+        // Immutable snapshot boundary: the worker may serialize after the next main-thread sample.
+        // Review flags/notes never enter the movement policy or mutate live gameplay state.
         _save?.Invoke(new Incident { matchId = MatchId, incidentId = context.incidentId, encounterId = context.id,
             revision = ++context.revision, scene = Scene, source = Source, startedUtc = StartedUtc, clock = Clock,
             shooter = context.shooter, target = context.target, alertTime = context.alerts[0].time,

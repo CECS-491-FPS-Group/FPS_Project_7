@@ -49,6 +49,8 @@ public sealed class ClientDisconnectRecovery : MonoBehaviour
     private void QueueEnd() => _queueBusy = false;
     private void OnNotice(Notice notice, Channel channel)
     {
+        // Fixed server-originated reason is best effort; Stopped must recover even if it never arrives.
+        // Host callbacks are excluded so a targeted remote kick cannot tear down everyone's server.
         if (_manager != null && !_manager.IsServerStarted && _manager.IsClientStarted &&
             _manager.ClientManager.Connection.IsAuthenticated) _state.ReceiveReason(notice.Reason);
     }

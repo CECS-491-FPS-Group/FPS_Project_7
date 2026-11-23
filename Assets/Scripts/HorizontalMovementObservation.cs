@@ -107,6 +107,8 @@ internal sealed class HorizontalMovementObservation
 
         double limit = _windowBudget * SpeedMargin + DistanceSlack + _windowMaxSpeed * BurstSeconds;
         bool excessive = _windowDistance > limit;
+        // Suspicion is elapsed evidence seconds, not a count of frames or overlapping evaluations.
+        // ClearWindow below is essential: a fast server must not reach enforcement sooner.
         Suspicion = excessive ? Math.Min(MaxSuspicion, Suspicion + _windowTime) : Math.Max(0d, Suspicion - _windowTime);
         Evidence? result = excessive && Suspicion >= ReportSuspicion
             ? MakeEvidence("sustained-horizontal-speed", _windowDistance, limit, _windowTime, _windowMaxSpeed)

@@ -50,6 +50,8 @@ internal static class ServerGameplayValidation
             _rate = rate; _capacity = capacity; _tokens = capacity;
         }
 
+        // Caller supplies monotonic SERVER seconds and uses one bucket per connection reference.
+        // Rejection is ordinary admission control, never evidence for automatic punishment.
         internal bool TryConsume(double now)
         {
             if (!Finite(now) || now < 0d) return false;

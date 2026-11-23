@@ -18,6 +18,8 @@ public sealed class AimIncidentRecorder : MonoBehaviour
     private AimIncidentCapture _match;
     private Scene _scene;
     private double _start, _nextWarning;
+    // GUIDs are match-scoped; connection numbers are labels, not participant identities.
+    // Reference identity plus removal on stop prevents reconnects inheriting another session's flag.
     private readonly Dictionary<NetworkConnection, string> _participants = new(ConnectionReferenceComparer.Instance);
     private readonly Dictionary<OccludedAimObserver, OccludedAimObserver> _targets = new();
     private double Now => Time.realtimeSinceStartupAsDouble;

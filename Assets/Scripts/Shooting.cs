@@ -358,6 +358,8 @@ public class HitscanShooter : NetworkBehaviour
         if (!_shotGeometry.OriginClear(origin, NetworkObject.transform) || !_shotGeometry.OriginClear(body, NetworkObject.transform) ||
             !_shotGeometry.WorldSegmentClear(body, origin, NetworkObject.transform))
         { Reject("server origin inside solid cover or body-to-eye obstructed/query uncertain"); return; }
+        // Acceptance boundary: every request-dependent ammo/damage/reward/presentation side effect
+        // must remain below the guards. A valid ray hitting a wall is accepted and spends ammo normally.
         _nextServerShotTime = now + 1d / Profile.rate;
         _ammo.Value--;
         if (_aimObserver != null) _aimObserver.AcceptedShot();

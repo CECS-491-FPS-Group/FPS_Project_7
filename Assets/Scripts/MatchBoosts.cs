@@ -80,6 +80,8 @@ public sealed class MatchBoosts : MonoBehaviour
         {
             if (!player.AddServerArmor(100)) return false;
         }
+        // Armor is separate Health state; timed effects replace one another, not stack indefinitely.
+        // Server entitlement reads also check Expires, so a delayed Update cannot prolong a boost.
         else _effects[connection] = new Effect { ClientId = connection.ClientId, Type = kind, Expires = Now + seconds };
         _nextSnapshot = 0;
         Debug.Log($"[Boost] Server granted {kind} to connection {connection.ClientId}.");
@@ -173,6 +175,8 @@ public sealed class MatchBoosts : MonoBehaviour
         Vector3 body = player.transform.TransformPoint(capsule.center);
         if (!_collectionGeometry.OriginClear(body, player.transform) ||
             !_collectionGeometry.WorldSegmentClear(body, pickup.Position, player.transform)) return false;
+        // One main-thread decision, with no await/RPC between grant and removal: two contenders
+        // cannot both consume this ID. Keep grant failure non-consuming and all values server-owned.
         if (!ApplyServerBoost(connection, pickup.Type, duration, player)) return false;
         _pickups.RemoveAt(index); _nextSnapshot = 0;
         return true;

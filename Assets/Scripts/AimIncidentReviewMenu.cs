@@ -29,6 +29,8 @@ public sealed class AimIncidentReviewMenu : MonoBehaviour
     public static void Show()
     {
         if (_open != null) return;
+        // Any graphical instance can open this LOCAL archive. Hiding a button is not access control:
+        // privacy comes from never downloading server incidents/hidden poses to remote players.
         var manager = InstanceFinder.NetworkManager;
         if (manager != null && (manager.IsClientStarted || manager.IsServerStarted))
         { Debug.LogWarning("[Aim REVIEW] Leave the session before opening local review."); return; }

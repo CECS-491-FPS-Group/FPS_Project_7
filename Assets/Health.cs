@@ -159,6 +159,8 @@ public class Health : NetworkBehaviour
             !sender.IsActive || !sender.IsAuthenticated || !_dead.Value ||
             token == 0 || token != _pendingSequence) return;
 
+        // ACK confirms this issued placement only. It cannot choose a destination or renew the
+        // observer's fixed grace deadline; clear the token before making the player alive again.
         SetServerPosition(_respawnPosition);
         _pendingSequence = 0;
         GetComponent<SpeedHackDetector>()?.CompleteServerRespawn(token);
