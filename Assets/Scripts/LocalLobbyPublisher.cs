@@ -1,5 +1,6 @@
 using FishNet;
 using FishNet.Transporting;
+using FishNet.Transporting.Tugboat;
 using UnityEngine;
 
 [DisallowMultipleComponent]
@@ -11,6 +12,7 @@ public sealed class LocalLobbyPublisher : MonoBehaviour
     private bool _isPublishing;
     private float _nextHeartbeatTime;
     private LanLobbyDiscovery _discovery;
+    private Tugboat _transport;
 
     private void OnEnable()
     {
@@ -31,7 +33,7 @@ public sealed class LocalLobbyPublisher : MonoBehaviour
         if (_isPublishing && _room != null && InstanceFinder.ServerManager.Started)
         {
             _room.playerCount = InstanceFinder.ServerManager.Clients.Count;
-            _room.port = InstanceFinder.NetworkManager.TransportManager.Transport.GetPort();
+            _room.port = _transport.GetPort();
             _discovery?.Poll(_room);
         }
         if (!_isPublishing || Time.unscaledTime < _nextHeartbeatTime)
@@ -48,6 +50,7 @@ public sealed class LocalLobbyPublisher : MonoBehaviour
     public void PrepareRoom(LocalLobbyRecord room)
     {
         StopPublishing();
+        _transport = GetComponent<Tugboat>();
         _room = room?.Copy();
     }
 
@@ -58,7 +61,7 @@ public sealed class LocalLobbyPublisher : MonoBehaviour
 
     private void OnServerStateChanged(ServerConnectionStateArgs args)
     {
-        if (_room == null)
+        if (_room == null || args.TransportIndex != _transport.Index)
             return;
 
         if (args.ConnectionState == LocalConnectionState.Started)
@@ -69,7 +72,7 @@ public sealed class LocalLobbyPublisher : MonoBehaviour
             {
                 _discovery = new LanLobbyDiscovery(true);
                 if (string.IsNullOrEmpty(_discovery.Error))
-                    Debug.Log($"[LAN] Public room {_room.code}: discovery UDP {LanLobbyDiscovery.DiscoveryPort}, gameplay UDP {InstanceFinder.NetworkManager.TransportManager.Transport.GetPort()}.");
+                    Debug.Log($"[LAN] Public room discovery UDP {LanLobbyDiscovery.DiscoveryPort}, gameplay UDP {_transport.GetPort()}.");
             }
             PublishHeartbeat();
         }

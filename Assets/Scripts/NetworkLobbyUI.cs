@@ -125,6 +125,7 @@ public class NetworkLobbyUI : NetworkBehaviour
 
         _playerPings[connection.ClientId] = 0;
         _requests[connection] = new Requests();
+        Debug.Log($"[Lobby] Admitted FishNet client {connection.ClientId}, roster {_playerIds.Count}/{maximumPlayers} at {System.DateTime.UtcNow:HH:mm:ss.fff}Z.");
     }
     
     private void OnAuthenticationResult(NetworkConnection connection, bool authenticated)

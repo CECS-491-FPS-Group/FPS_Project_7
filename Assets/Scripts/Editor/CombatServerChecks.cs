@@ -49,7 +49,10 @@ public static class CombatServerChecks
             if (phase == 0)
             {
                 manager = UnityEngine.Object.FindFirstObjectByType<NetworkManager>(); if (manager == null) return;
-                Check(manager.ServerManager.StartConnection(29991), "start isolated server"); phase++; return;
+                var transports = manager.GetComponent<FishNet.Transporting.Multipass.Multipass>();
+                transports.SetClientTransport(0);
+                transports.Transports[0].SetPort(29991);
+                Check(transports.StartConnection(true, 0), "start isolated LAN server"); phase++; return;
             }
             if (phase == 3)
             {
@@ -183,7 +186,7 @@ public static class CombatServerChecks
         AimIncidentIntegrationChecks.Restore();
         Application.logMessageReceived -= FixtureLog;
         if (manager != null && fixtureActor != null && fixtureActor.GetComponent<Health>().IsSpawned) manager.ServerManager.Despawn(fixtureActor);
-        if (manager != null && manager.IsServerStarted) manager.ServerManager.StopConnection(true);
+        if (manager != null && manager.IsServerStarted) manager.GetComponent<FishNet.Transporting.Multipass.Multipass>().StopServerConnection(true, 0);
         SessionState.SetBool(Key + "passed", passed); SessionState.SetBool(Key + "finished", true); EditorApplication.ExitPlaymode();
     }
 }

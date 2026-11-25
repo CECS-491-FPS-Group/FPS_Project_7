@@ -1,136 +1,167 @@
-using FishNet;
-using FishNet.Managing.Scened;
-using FishNet.Transporting;
-using TMPro;
-using UnityEngine;
-using UnityEngine.UI;
+using System;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
+using FishNet;
+using FishNet.Managing;
+using FishNet.Managing.Scened;
+using FishNet.Transporting;
+using FishNet.Transporting.Multipass;
+using FishNet.Transporting.Tugboat;
+using FishNet.Transporting.UTP;
+using TMPro;
+using Unity.Services.Core;
+using Unity.Services.Relay;
+using UnityEngine;
+using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 public sealed class LobbyConnection : MonoBehaviour
 {
-    [Header("UI References")]
-    [Tooltip("This was previously the IP field. It is now the 6-character lobby-code field.")]
     public TMP_InputField ipInputField;
     [SerializeField] private TMP_InputField lanHostInputField;
     [SerializeField] private TMP_Text statusText;
-
-    [Header("Room visibility")]
-    [Tooltip("Checked creates a public room. Unchecked creates a private room.")]
+    [SerializeField] private GameObject browserButton, browserOverlay, hostOptions, visibilityGroup;
     [SerializeField] private Toggle publicLobbyToggle;
-    [Tooltip("Optional text that explains the current Public or Private selection.")]
     [SerializeField] private TMP_Text lobbyVisibilityText;
-    [Tooltip("Fallback used only when Public Lobby Toggle is not assigned.")]
     [SerializeField] private bool listCreatedRoom = true;
-
-    [Header("Local room test")]
     [SerializeField, Min(1)] private int maximumPlayers = 4;
     [SerializeField] private string roomName = "";
 
-    private bool _subscribed;
-    private bool _waitingForHostServer;
-    private bool _joiningClient;
-    private bool _lobbySceneLoadRequested;
+    private enum Phase { Idle, Preparing, SigningIn, RelayAllocation, RelayLookup, Server, RelayBind, Client, Authenticating }
+    private Phase _phase;
+    private int _generation;
+    private float _deadline;
+    private bool _internet, _host;
+    private GameObject _attemptView;
+    private Button _lanButton, _internetButton;
+    private NetworkManager _manager;
+    private Multipass _multipass;
     private LocalLobbyPublisher _publisher;
+    private RelayHostBinding _binding;
+    private Transform Controls => ipInputField.transform.parent;
+    private int Index => _internet ? 1 : 0;
 
     private void Start()
     {
-        // Start runs after every object's Awake, so FishNet's managers are ready.
-        SubscribeToNetworkEvents();
-
-        if (statusText == null && lanHostInputField != null)
+        _manager = InstanceFinder.NetworkManager;
+        if (_manager != null)
         {
-            statusText = Instantiate(lanHostInputField.textComponent, lanHostInputField.transform.parent);
-            statusText.name = "ConnectionStatus";
-            statusText.text = string.Empty;
-            statusText.fontSize = 14f;
-            statusText.color = Color.white;
-            statusText.raycastTarget = false;
-            statusText.alignment = TextAlignmentOptions.Center;
-            RectTransform rect = statusText.rectTransform;
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = new Vector2(0f, -275f);
-            rect.sizeDelta = new Vector2(440f, 52f);
+            _multipass = _manager.TransportManager.Transport as Multipass;
+            _manager.ServerManager.OnServerConnectionState += OnServerState;
+            _manager.ClientManager.OnClientConnectionState += OnClientState;
+            _manager.ClientManager.OnAuthenticated += OnAuthenticated;
         }
 
+        _lanButton = IntegrationUi.Button(Controls, "LAN", new Vector2(-74, 145), () => SelectInternet(false), new Vector2(136, 32));
+        _internetButton = IntegrationUi.Button(Controls, "INTERNET", new Vector2(74, 145), () => SelectInternet(true), new Vector2(136, 32));
+        if (statusText == null)
+            statusText = IntegrationUi.Text(Controls.parent, "", new Vector2(0, -275), new Vector2(540, 52), 16);
         if (publicLobbyToggle != null)
             publicLobbyToggle.onValueChanged.AddListener(OnPublicLobbyToggleChanged);
-
-        RefreshLobbyVisibilityUI();
+        SelectInternet(false);
     }
 
     private void OnDestroy()
     {
+        CancelAttempt("Menu closed.");
+        if (_manager != null)
+        {
+            _manager.ServerManager.OnServerConnectionState -= OnServerState;
+            _manager.ClientManager.OnClientConnectionState -= OnClientState;
+            _manager.ClientManager.OnAuthenticated -= OnAuthenticated;
+        }
         if (publicLobbyToggle != null)
             publicLobbyToggle.onValueChanged.RemoveListener(OnPublicLobbyToggleChanged);
+    }
 
-        UnsubscribeFromNetworkEvents();
+    private void SelectInternet(bool internet)
+    {
+        CancelAttempt("Connection cancelled.");
+        if (_internet != internet) ipInputField.SetTextWithoutNotify("");
+        _internet = internet;
+        ipInputField.characterLimit = internet ? RelayLobby.MaxCodeLength : LobbyCodeUtility.CodeLength;
+        lanHostInputField.gameObject.SetActive(!internet);
+        browserButton.SetActive(!internet);
+        visibilityGroup.SetActive(!internet);
+        _lanButton.interactable = internet;
+        _internetButton.interactable = !internet;
+        RefreshLobbyVisibilityUI();
+        statusText.text = internet ? "Internet rooms are invite-only." : "";
+    }
+
+    private bool Begin(bool host)
+    {
+        if (_phase != Phase.Idle || ClientDisconnectRecovery.InProgress) return false;
+        if (_multipass == null || _multipass.Transports.Count != 2 ||
+            !(_multipass.Transports[0] is Tugboat) || !(_multipass.Transports[1] is FishyUnityTransport))
+        {
+            SetStatus("MainMenu transport configuration is missing.");
+            return false;
+        }
+        foreach (var child in _multipass.Transports)
+            if (child.GetConnectionState(true) != LocalConnectionState.Stopped ||
+                child.GetConnectionState(false) != LocalConnectionState.Stopped)
+            {
+                SetStatus("Transport is still busy. Try again in a moment.");
+                return false;
+            }
+
+        _generation++;
+        _host = host;
+        _attemptView = host ? hostOptions : browserOverlay.activeInHierarchy ? browserOverlay : Controls.gameObject;
+        ClientDisconnectRecovery.ClearForAttempt();
+        _multipass.SetClientTransport(Index);
+        SetPhase(Phase.Preparing);
+        return true;
+    }
+
+    private void SetPhase(Phase phase)
+    {
+        _phase = phase;
+        _deadline = Time.realtimeSinceStartup + 35f;
+    }
+
+    private void Update()
+    {
+        if (_phase == Phase.Idle) return;
+        if (!_attemptView.activeInHierarchy) CancelAttempt("Connection cancelled.");
+        else if (Time.realtimeSinceStartup >= _deadline) CancelAttempt($"{_phase} timed out. Try again.");
+        else if (_phase == Phase.RelayBind && _binding.Established)
+        {
+            ReleaseBinding();
+            SetStatus("Relay confirmed the host DTLS bind.");
+            StartClient();
+        }
     }
 
     public void StartHost()
     {
-        SubscribeToNetworkEvents();
-
-        if (!_subscribed)
-            return;
-
-        if (!CanStartConnection())
-            return;
-
-        ClientDisconnectRecovery.ClearForAttempt();
-        bool createPublicRoom = IsPublicLobbySelected();
-
-        if (!LocalLobbyRegistry.TryReserveRoom(
-                roomName,
-                createPublicRoom,
-                maximumPlayers,
-                out LocalLobbyRecord room,
-                out string error))
+        if (!Begin(true)) return;
+        if (_internet) { PrepareInternet(null); return; }
+        if (!LocalLobbyRegistry.TryReserveRoom(roomName, IsPublicLobbySelected(), maximumPlayers, out var room, out string error))
         {
-            SetStatus(error);
+            CancelAttempt(error);
             return;
         }
-
-        LocalLobbySession.BeginHosting(room);
-
-        _publisher = GetOrCreatePublisher();
+        _publisher = _manager.GetComponent<LocalLobbyPublisher>() ?? _manager.gameObject.AddComponent<LocalLobbyPublisher>();
         _publisher.PrepareRoom(room);
-
-        SetLobbyVisibilityInteractable(false);
-        _waitingForHostServer = true;
-        _lobbySceneLoadRequested = false;
-        string visibilityName = createPublicRoom ? "public" : "private";
-        SetStatus($"Creating {visibilityName} room {room.code}...");
-
-        // Start only the server here. The local host client starts after the
-        // server confirms that its unique port was opened successfully.
-        if (!InstanceFinder.ServerManager.StartConnection((ushort)room.port))
-        {
-            _waitingForHostServer = false;
-            _publisher.CancelRoom();
-            SetLobbyVisibilityInteractable(true);
-            SetStatus("FishNet could not start the local server.");
-        }
+        LocalLobbySession.BeginHosting(room);
+        ConfigureLan(room);
+        StartServer();
     }
 
     public void JoinGame()
     {
-        string endpoint = lanHostInputField == null ? string.Empty : lanHostInputField.text.Trim();
-        if (!string.IsNullOrEmpty(endpoint))
+        string endpoint = lanHostInputField.text.Trim();
+        if (_internet || endpoint.Length == 0) { JoinByCode(ipInputField.text); return; }
+        if (!Begin(false)) return;
+        if (!TryParseLanEndpoint(endpoint, out string address, out ushort port))
         {
-            SubscribeToNetworkEvents();
-            if (!_subscribed || !CanStartConnection()) return;
-            if (!TryParseLanEndpoint(endpoint, out string address, out ushort port))
-            {
-                SetStatus("Enter an IPv4 address, optionally followed by :port (1-65535).");
-                return;
-            }
-            BeginJoin(new LocalLobbyRecord { address = address, port = port, code = string.Empty });
+            CancelAttempt("Enter an IPv4 address, optionally followed by :port (1-65535).");
             return;
         }
-        JoinByCode(ipInputField == null ? string.Empty : ipInputField.text);
+        JoinLan(new LocalLobbyRecord { address = address, port = port, code = string.Empty });
     }
 
     private static bool TryParseLanEndpoint(string input, out string address, out ushort port)
@@ -155,190 +186,167 @@ public sealed class LobbyConnection : MonoBehaviour
 
     public void JoinByCode(string enteredCode)
     {
-        SubscribeToNetworkEvents();
-
-        if (!_subscribed)
-            return;
-
-        if (!CanStartConnection())
-            return;
-
-        string normalizedCode = LobbyCodeUtility.Normalize(enteredCode);
-
-        if (!LocalLobbyRegistry.TryFindOpenRoom(
-                normalizedCode,
-                out LocalLobbyRecord room,
-                out string error))
+        if (!Begin(false)) return;
+        if (_internet)
         {
-            SetStatus(error);
+            string code = (enteredCode ?? "").Trim().ToUpperInvariant();
+            if (!RelayLobby.ValidCode(code)) { CancelAttempt("Enter the 6–12 character Internet invite code."); return; }
+            PrepareInternet(code);
             return;
         }
-
-        if (ipInputField != null)
-            ipInputField.SetTextWithoutNotify(normalizedCode);
-
-        BeginJoin(room);
-    }
-
-    private void BeginJoin(LocalLobbyRecord room)
-    {
-        ClientDisconnectRecovery.ClearForAttempt();
-        LocalLobbySession.BeginJoining(room);
-
-        _joiningClient = true;
-        SetStatus(string.IsNullOrEmpty(room.code) ? $"Connecting to {room.address}:{room.port}..." : $"Joining room {room.code}...");
-
-        if (!InstanceFinder.ClientManager.StartConnection(room.address, (ushort)room.port))
+        string localCode = LobbyCodeUtility.Normalize(enteredCode);
+        if (!LocalLobbyRegistry.TryFindOpenRoom(localCode, out var room, out string error))
         {
-            _joiningClient = false;
-            LocalLobbySession.Clear();
-            SetStatus("FishNet could not begin the connection attempt.");
+            CancelAttempt(error);
+            return;
         }
+        ipInputField.SetTextWithoutNotify(localCode);
+        JoinLan(room);
     }
 
     public void JoinDiscoveredRoom(LocalLobbyRecord room)
     {
-        SubscribeToNetworkEvents();
-        if (!_subscribed || !CanStartConnection() || room == null) return;
+        if (_internet || room == null || !Begin(false)) return;
         if (!TryParseLanEndpoint(room.address + ":" + room.port, out string address, out ushort port))
         {
-            SetStatus("Invalid discovered lobby endpoint.");
+            CancelAttempt("Invalid discovered lobby endpoint.");
             return;
         }
-        LocalLobbyRecord target = room.Copy();
+        var target = room.Copy();
         target.address = address;
         target.port = port;
-        BeginJoin(target);
+        JoinLan(target);
     }
 
-    private void SubscribeToNetworkEvents()
+    private void ConfigureLan(LocalLobbyRecord room)
     {
-        if (_subscribed)
+        var tugboat = (Tugboat)_multipass.Transports[0];
+        tugboat.SetPort((ushort)room.port);
+        tugboat.SetClientAddress(room.address);
+    }
+
+    private void JoinLan(LocalLobbyRecord room)
+    {
+        LocalLobbySession.BeginJoining(room);
+        ConfigureLan(room);
+        StartClient();
+    }
+
+    private async void PrepareInternet(string code)
+    {
+        int generation = _generation;
+        void CheckAttempt()
+        {
+            if (this == null || generation != _generation ||
+                !_attemptView.activeInHierarchy) throw new OperationCanceledException();
+        }
+        try
+        {
+            SetPhase(Phase.SigningIn);
+            SetStatus("UGS initialization and anonymous sign-in started.");
+            await RelayLobby.Initialize();
+            CheckAttempt();
+            SetPhase(_host ? Phase.RelayAllocation : Phase.RelayLookup);
+            SetStatus(_host ? "UGS signed in. Requesting Relay allocation." : "UGS signed in. Looking up Relay invite.");
+            var transport = (FishyUnityTransport)_multipass.Transports[1];
+            if (_host)
+                code = await RelayLobby.ConfigureHost(transport, maximumPlayers - 1, CheckAttempt);
+            else
+                await RelayLobby.ConfigureClient(transport, code, CheckAttempt);
+            CheckAttempt();
+            LocalLobbySession.BeginInternet(code, _host);
+            SetStatus(_host ? "Relay allocation configured (DTLS)." : "Relay lookup succeeded (DTLS).");
+            if (_host) StartRelayServer(transport); else StartClient();
+        }
+        catch (Exception error)
+        {
+            if (this == null || generation != _generation) return;
+            string reason = error is RelayServiceException { Reason: RelayExceptionReason.JoinCodeNotFound }
+                ? "Invite not found or expired (Relay JoinCodeNotFound). Ask the host for the current code."
+                : error is RelayServiceException relay ? $"Relay {relay.Reason} ({relay.ErrorCode}). Try again."
+                : error is RequestFailedException service ? $"Unity Services request failed ({service.ErrorCode}). Try again."
+                : error is OperationCanceledException ? "Connection cancelled."
+                : $"Internet setup failed ({error.GetType().Name}). Try again.";
+            CancelAttempt(reason);
+        }
+    }
+
+    private void StartRelayServer(FishyUnityTransport transport)
+    {
+        _binding = new RelayHostBinding(transport);
+        StartServer();
+    }
+
+    private void ReleaseBinding()
+    {
+        _binding?.Dispose();
+        _binding = null;
+    }
+
+    private void StartServer()
+    {
+        SetPhase(Phase.Server);
+        SetStatus("Starting FishNet server transport.");
+        if (!_multipass.StartConnection(true, Index)) CancelAttempt("Server transport failed to start.");
+    }
+
+    private void OnServerState(ServerConnectionStateArgs args)
+    {
+        if (_phase == Phase.Idle || !_host || args.TransportIndex != Index) return;
+        if (args.ConnectionState == LocalConnectionState.Stopped) { CancelAttempt("Server transport stopped."); return; }
+        if (_phase != Phase.Server || args.ConnectionState != LocalConnectionState.Started) return;
+        if (_binding != null)
+        {
+            SetPhase(Phase.RelayBind);
+            SetStatus("Server transport started. Waiting for Relay to confirm the DTLS bind.");
             return;
-
-        if (InstanceFinder.ServerManager == null || InstanceFinder.ClientManager == null)
-        {
-            SetStatus("FishNet NetworkManager is not ready.");
-            return;
         }
-
-        InstanceFinder.ServerManager.OnServerConnectionState += OnServerStateChanged;
-        InstanceFinder.ClientManager.OnClientConnectionState += OnClientStateChanged;
-        _subscribed = true;
+        if (!_internet) SetStatus($"Host listening on UDP port {LocalLobbySession.Port}.");
+        StartClient();
     }
 
-    private void UnsubscribeFromNetworkEvents()
+    private void StartClient()
     {
-        if (!_subscribed)
-            return;
-
-        if (InstanceFinder.ServerManager != null)
-            InstanceFinder.ServerManager.OnServerConnectionState -= OnServerStateChanged;
-
-        if (InstanceFinder.ClientManager != null)
-            InstanceFinder.ClientManager.OnClientConnectionState -= OnClientStateChanged;
-
-        _subscribed = false;
+        SetPhase(Phase.Client);
+        string target = _internet ? (_host ? "in-process" : "Relay DTLS") : $"{LocalLobbySession.Address}:{LocalLobbySession.Port}";
+        SetStatus($"Starting FishNet client ({target}).");
+        if (!_manager.ClientManager.StartConnection()) CancelAttempt("Client transport failed to start.");
     }
 
-    private void OnServerStateChanged(ServerConnectionStateArgs args)
+    private void OnClientState(ClientConnectionStateArgs args)
     {
-        if (!_waitingForHostServer)
-            return;
-
-        if (args.ConnectionState == LocalConnectionState.Started)
+        if (_phase == Phase.Idle || args.TransportIndex != Index) return;
+        if (args.ConnectionState == LocalConnectionState.Stopped) CancelAttempt("Client transport stopped before authentication.");
+        else if (args.ConnectionState == LocalConnectionState.Started)
         {
-            _waitingForHostServer = false;
-
-            var transport = InstanceFinder.NetworkManager.TransportManager.Transport;
-            string bind = transport.GetServerBindAddress(IPAddressType.IPv4);
-            Debug.Log($"[LAN] Host listening on {(string.IsNullOrEmpty(bind) ? "0.0.0.0 (all IPv4 interfaces)" : bind)}:{transport.GetPort()}. Use this PC's LAN IPv4 address on remote clients.");
-
-            // The server owns this port now, so it is safe to connect its host client.
-            bool hostClientRequestAccepted = InstanceFinder.ClientManager.StartConnection(
-                LocalLobbySession.Address,
-                LocalLobbySession.Port);
-
-            if (!hostClientRequestAccepted)
-            {
-                InstanceFinder.ServerManager.StopConnection(true);
-
-                if (_publisher != null)
-                    _publisher.CancelRoom();
-
-                SetLobbyVisibilityInteractable(true);
-                SetStatus("The server started, but its host player could not connect.");
-                return;
-            }
-
-            SetStatus($"Room {LocalLobbySession.LobbyCode} created. Port: {LocalLobbySession.Port}.");
-
-            if (!_lobbySceneLoadRequested)
-            {
-                _lobbySceneLoadRequested = true;
-                SceneLoadData sceneLoadData = new SceneLoadData("LobbyScene_v1");
-                sceneLoadData.ReplaceScenes = ReplaceOption.All;
-                InstanceFinder.SceneManager.LoadGlobalScenes(sceneLoadData);
-            }
-        }
-        else if (args.ConnectionState == LocalConnectionState.Stopped)
-        {
-            _waitingForHostServer = false;
-
-            if (_publisher != null)
-                _publisher.CancelRoom();
-
-            SetLobbyVisibilityInteractable(true);
-            SetStatus("The local server stopped before the room was created.");
+            SetPhase(Phase.Authenticating);
+            SetStatus("Client transport connected. Waiting for FishNet authentication.");
         }
     }
 
-    private void OnClientStateChanged(ClientConnectionStateArgs args)
+    private void OnAuthenticated()
     {
-        if (args.ConnectionState == LocalConnectionState.Started)
-        {
-            _joiningClient = false;
-
-            if (!LocalLobbySession.IsHosting)
-                SetStatus(string.IsNullOrEmpty(LocalLobbySession.LobbyCode)
-                    ? $"Connected to {LocalLobbySession.Address}:{LocalLobbySession.Port}."
-                    : $"Connected to room {LocalLobbySession.LobbyCode}.");
-        }
-        else if (args.ConnectionState == LocalConnectionState.Stopped && _joiningClient)
-        {
-            _joiningClient = false;
-            string failedCode = LocalLobbySession.LobbyCode;
-            string failedEndpoint = $"{LocalLobbySession.Address}:{LocalLobbySession.Port}";
-            LocalLobbySession.Clear();
-            SetStatus(string.IsNullOrEmpty(failedCode) ? $"Could not connect to {failedEndpoint}. Check address, port and firewall."
-                : $"Could not connect to room {failedCode}. Refresh and try again.");
-        }
+        if (_phase != Phase.Authenticating) return;
+        if (!_attemptView.activeInHierarchy) { CancelAttempt("Connection cancelled."); return; }
+        _phase = Phase.Idle;
+        _generation++;
+        SetStatus("FishNet authenticated. Entering lobby.");
+        if (_host)
+            _manager.SceneManager.LoadGlobalScenes(new SceneLoadData("LobbyScene_v1") { ReplaceScenes = ReplaceOption.All });
     }
 
-    private LocalLobbyPublisher GetOrCreatePublisher()
+    private void CancelAttempt(string message)
     {
-        GameObject networkManagerObject = InstanceFinder.NetworkManager.gameObject;
-        LocalLobbyPublisher publisher =
-            networkManagerObject.GetComponent<LocalLobbyPublisher>();
-
-        if (publisher == null)
-            publisher = networkManagerObject.AddComponent<LocalLobbyPublisher>();
-
-        return publisher;
-    }
-
-    private bool CanStartConnection()
-    {
-        if (ClientDisconnectRecovery.InProgress) return false;
-        if (_waitingForHostServer || _joiningClient ||
-            InstanceFinder.ServerManager.Started ||
-            InstanceFinder.ClientManager.Started)
-        {
-            SetStatus("A network connection is already running or starting.");
-            return false;
-        }
-
-        return true;
+        if (_phase == Phase.Idle) return;
+        _phase = Phase.Idle;
+        _generation++;
+        ReleaseBinding();
+        var child = _multipass.Transports[Index];
+        if (child.GetConnectionState(false) != LocalConnectionState.Stopped) _manager.ClientManager.StopConnection();
+        if (_host && child.GetConnectionState(true) != LocalConnectionState.Stopped) _multipass.StopServerConnection(false, Index);
+        _publisher?.CancelRoom();
+        LocalLobbySession.Clear();
+        SetStatus(message);
     }
 
     public void SetLobbyPublic()
@@ -374,28 +382,16 @@ public sealed class LobbyConnection : MonoBehaviour
         RefreshLobbyVisibilityUI();
     }
 
-    private void SetLobbyVisibilityInteractable(bool interactable)
-    {
-        if (publicLobbyToggle != null)
-            publicLobbyToggle.interactable = interactable;
-    }
-
     private void RefreshLobbyVisibilityUI()
     {
-        if (lobbyVisibilityText == null)
-            return;
-
-        lobbyVisibilityText.text = IsPublicLobbySelected()
-            ? "PUBLIC LOBBY - visible in room list"
-            : "PRIVATE LOBBY - join by code only";
+        if (lobbyVisibilityText == null) return;
+        lobbyVisibilityText.text = _internet ? "INTERNET LOBBY - invite by code"
+            : IsPublicLobbySelected() ? "PUBLIC LOBBY - visible in room list" : "PRIVATE LOBBY - join by code only";
     }
 
     private void SetStatus(string message)
     {
-        if (statusText != null)
-            statusText.text = message;
-
-        if (!string.IsNullOrEmpty(message))
-            Debug.Log(message);
+        if (statusText != null) statusText.text = message;
+        Debug.Log($"[Lobby {(_internet ? "Internet" : "LAN")}] {DateTime.UtcNow:HH:mm:ss.fff}Z {message}");
     }
 }

@@ -148,7 +148,7 @@ internal static class AimIncidentIntegrationChecks
             Check(reused.All(d => d.final && d.partial) && reused.Any(d => d.endReason == "connection left") && reused.Any(d => d.endReason == "round ended"),
                 "disconnect and round partial reasons survive disk");
             Check(new FileInfo(Path.Combine(folder, AimIncidentArchive.Leaf(fixture))).Length <= AimIncidentArchive.MaximumBytes, "saved file byte bound");
-            manager.ServerManager.StopConnection(true); phase = 1; return false;
+            manager.GetComponent<FishNet.Transporting.Multipass.Multipass>().StopServerConnection(true, 0); phase = 1; return false;
         }
         if (phase == 1)
         {

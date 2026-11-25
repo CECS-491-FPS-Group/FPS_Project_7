@@ -61,9 +61,8 @@ public sealed class LobbyCodeUI : NetworkBehaviour
     {
         base.OnStartServer();
 
-        // The Main Menu already reserved this exact code with a unique port.
-        // The fallback keeps direct LobbyScene development tests working.
-        _lobbyCode.Value = LobbyCodeUtility.IsValid(LocalLobbySession.LobbyCode)
+        // The Relay allocation survives gameplay and remains the source of the invite on return.
+        _lobbyCode.Value = LocalLobbySession.IsInternet || LobbyCodeUtility.IsValid(LocalLobbySession.LobbyCode)
             ? LocalLobbySession.LobbyCode
             : LobbyCodeUtility.Generate();
     }
@@ -107,7 +106,7 @@ public sealed class LobbyCodeUI : NetworkBehaviour
         {
             lobbyCodeText.text = codeIsReady && _isCodeVisible
                 ? currentCode
-                : CreateMask(LobbyCodeUtility.CodeLength);
+                : CreateMask(codeIsReady ? currentCode.Length : LobbyCodeUtility.CodeLength);
         }
 
         if (visibilityButton != null)

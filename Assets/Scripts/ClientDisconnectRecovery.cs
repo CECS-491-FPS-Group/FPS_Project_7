@@ -2,6 +2,7 @@ using System.Collections;
 using FishNet.Broadcast;
 using FishNet.Managing;
 using FishNet.Transporting;
+using FishNet.Transporting.Multipass;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -40,6 +41,7 @@ public sealed class ClientDisconnectRecovery : MonoBehaviour
         _manager.ClientManager.RegisterBroadcast<Notice>(OnNotice);
         _manager.ClientManager.OnAuthenticated += OnAuthenticated;
         _manager.ClientManager.OnClientConnectionState += OnClientState;
+        _manager.ServerManager.OnServerConnectionState += OnServerState;
         _manager.SceneManager.OnQueueStart += QueueStart;
         _manager.SceneManager.OnQueueEnd += QueueEnd;
     }
@@ -61,6 +63,12 @@ public sealed class ClientDisconnectRecovery : MonoBehaviour
         if (_state.BeginRecovery(false)) StartCoroutine(ReturnLocally());
     }
 
+    private void OnServerState(ServerConnectionStateArgs args)
+    {
+        if (!_quitting && args.ConnectionState == LocalConnectionState.Stopped &&
+            LocalLobbySession.IsHosting && _state.BeginRecovery(false)) StartCoroutine(ReturnLocally());
+    }
+
     public static void ClearForAttempt()
     {
         if (_instance == null) return;
@@ -78,17 +86,23 @@ public sealed class ClientDisconnectRecovery : MonoBehaviour
         if (self._manager != null)
         {
             // Stopping a host is allowed only for its explicit local Return action.
-            if (self._manager.IsServerStarted) self._manager.ServerManager.StopConnection(true);
-            self._manager.ClientManager.StopConnection();
+            if (self._manager.IsServerStarted)
+            {
+                if (self._manager.TransportManager.Transport is Multipass multipass)
+                    multipass.StopServerConnection(true, multipass.ClientTransport.Index);
+                else
+                    self._manager.ServerManager.StopConnection(true);
+            }
+            if (self._manager.IsClientStarted) self._manager.ClientManager.StopConnection();
         }
-        self.StartCoroutine(self.ReturnLocally());
+        self.StartCoroutine(self.ReturnLocally(true));
     }
 
-    private IEnumerator ReturnLocally()
+    private IEnumerator ReturnLocally(bool intentional = false)
     {
         // Let FishNet finish its stop callback and any already-started scene operation.
         yield return null;
-        while (_manager != null && _queueBusy) yield return null;
+        while (_manager != null && (_queueBusy || (intentional && _manager.IsServerStarted))) yield return null;
         if (_manager != null && _manager.IsServerStarted)
         {
             _state.CompleteRecovery();
@@ -172,6 +186,7 @@ public sealed class ClientDisconnectRecovery : MonoBehaviour
             _manager.ClientManager.UnregisterBroadcast<Notice>(OnNotice);
             _manager.ClientManager.OnAuthenticated -= OnAuthenticated;
             _manager.ClientManager.OnClientConnectionState -= OnClientState;
+            _manager.ServerManager.OnServerConnectionState -= OnServerState;
             _manager.SceneManager.OnQueueStart -= QueueStart;
             _manager.SceneManager.OnQueueEnd -= QueueEnd;
         }

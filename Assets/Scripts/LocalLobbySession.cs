@@ -3,6 +3,7 @@ using UnityEngine;
 public static class LocalLobbySession
 {
     public static bool IsHosting { get; private set; }
+    public static bool IsInternet { get; private set; }
     public static string LobbyCode { get; private set; } = string.Empty;
     public static string OwnerToken { get; private set; } = string.Empty;
     public static string Address { get; private set; } = string.Empty;
@@ -16,6 +17,7 @@ public static class LocalLobbySession
 
     public static void BeginHosting(LocalLobbyRecord room)
     {
+        IsInternet = false;
         IsHosting = true;
         LobbyCode = room.code;
         OwnerToken = room.ownerToken;
@@ -25,11 +27,20 @@ public static class LocalLobbySession
 
     public static void BeginJoining(LocalLobbyRecord room)
     {
+        IsInternet = false;
         IsHosting = false;
         LobbyCode = room.code;
         OwnerToken = string.Empty;
         Address = room.address;
         Port = (ushort)room.port;
+    }
+
+    public static void BeginInternet(string code, bool host)
+    {
+        Clear();
+        IsInternet = true;
+        IsHosting = host;
+        LobbyCode = code;
     }
 
     public static void ClearHostedRoom(string ownerToken)
@@ -42,6 +53,7 @@ public static class LocalLobbySession
 
     public static void Clear()
     {
+        IsInternet = false;
         IsHosting = false;
         LobbyCode = string.Empty;
         OwnerToken = string.Empty;
