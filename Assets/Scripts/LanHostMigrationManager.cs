@@ -24,6 +24,7 @@ public sealed class LanHostMigrationManager : MonoBehaviour
         public string PlayerToken;
         public int JoinOrder;
         public bool IsCurrentHost;
+        public bool IsReady;
     }
 
     public struct MigrationRosterSnapshot : IBroadcast
@@ -100,6 +101,8 @@ public sealed class LanHostMigrationManager : MonoBehaviour
         new Dictionary<string, MigrationPlayer>(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _knownJoinOrders =
         new Dictionary<string, int>(StringComparer.Ordinal);
+    private readonly Dictionary<string, bool> _knownReadyStates =
+        new Dictionary<string, bool>(StringComparer.Ordinal);
 
     private NetworkManager _networkManager;
     private RejoinIdentityManager _identityManager;
@@ -186,6 +189,56 @@ public sealed class LanHostMigrationManager : MonoBehaviour
     {
         playerToken = ElectedSuccessorToken;
         return IsValidPlayerToken(playerToken);
+    }
+
+    // NetworkLobbyUI uses the stable player token instead of FishNet's
+    // temporary client ID so Ready state survives a replacement server.
+    public bool TryGetServerPlayerReady(
+        string playerToken,
+        out bool isReady)
+    {
+        if (IsValidPlayerToken(playerToken) &&
+            _serverPlayers.TryGetValue(
+                playerToken,
+                out MigrationPlayer player))
+        {
+            isReady = player.IsReady;
+            return true;
+        }
+
+        if (IsValidPlayerToken(playerToken) &&
+            _knownReadyStates.TryGetValue(playerToken, out isReady))
+        {
+            return true;
+        }
+
+        isReady = false;
+        return false;
+    }
+
+    public bool TrySetServerPlayerReady(
+        string playerToken,
+        bool isReady)
+    {
+        if (_networkManager == null ||
+            !_networkManager.IsServerStarted ||
+            !IsValidPlayerToken(playerToken) ||
+            !_serverPlayers.TryGetValue(
+                playerToken,
+                out MigrationPlayer player))
+        {
+            return false;
+        }
+
+        _knownReadyStates[playerToken] = isReady;
+
+        if (player.IsReady == isReady)
+            return true;
+
+        player.IsReady = isReady;
+        _serverPlayers[playerToken] = player;
+        PublishServerRoster();
+        return true;
     }
 
     // RejoinManager and LobbyReturnController may receive FishNet's stopped
@@ -852,6 +905,7 @@ public sealed class LanHostMigrationManager : MonoBehaviour
 
         _serverPlayers.Clear();
         _knownJoinOrders.Clear();
+        _knownReadyStates.Clear();
         _serverRevision = 0;
         _nextJoinOrder = 0;
 
@@ -864,6 +918,7 @@ public sealed class LanHostMigrationManager : MonoBehaviour
             {
                 MigrationPlayer player = _pendingPlan.Players[i];
                 _knownJoinOrders[player.PlayerToken] = player.JoinOrder;
+                _knownReadyStates[player.PlayerToken] = player.IsReady;
                 _nextJoinOrder = Mathf.Max(
                     _nextJoinOrder,
                     player.JoinOrder + 1);
@@ -963,11 +1018,15 @@ public sealed class LanHostMigrationManager : MonoBehaviour
             {
                 PlayerToken = playerToken,
                 JoinOrder = joinOrder,
-                IsCurrentHost = isHost
+                IsCurrentHost = isHost,
+                IsReady = _knownReadyStates.TryGetValue(
+                    playerToken,
+                    out bool restoredReady) && restoredReady
             };
         }
 
         _serverPlayers[playerToken] = player;
+        _knownReadyStates[playerToken] = player.IsReady;
         PublishServerRoster();
     }
 
@@ -1328,6 +1387,7 @@ public sealed class LanHostMigrationManager : MonoBehaviour
     {
         _serverPlayers.Clear();
         _knownJoinOrders.Clear();
+        _knownReadyStates.Clear();
         _serverSessionId = string.Empty;
         _serverGeneration = 0;
         _serverRevision = 0;

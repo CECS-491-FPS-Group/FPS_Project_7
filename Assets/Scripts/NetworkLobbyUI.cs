@@ -35,6 +35,7 @@ public class NetworkLobbyUI : NetworkBehaviour
     private readonly SyncDictionary<int, int> _playerPings = new SyncDictionary<int, int>();
 
     private TimeManager _timeManager;
+    private RejoinIdentityManager _identityManager;
     private bool _transitionInProgress;
     private readonly Vector3[] _referenceStatusCorners = new Vector3[4];
     private readonly Vector3[] _statusCorners = new Vector3[4];
@@ -49,6 +50,7 @@ public class NetworkLobbyUI : NetworkBehaviour
 
     private void OnDestroy()
     {
+        UnsubscribeFromIdentityManager();
         Canvas.willRenderCanvases -= AlignStatusColumn;
         _playerNames.OnChange -= PlayerNames_OnChange;
         _playerIds.OnChange -= PlayerIds_OnChange;
@@ -67,6 +69,7 @@ public class NetworkLobbyUI : NetworkBehaviour
 
         ServerManager.OnAuthenticationResult += OnAuthenticationResult;
         ServerManager.OnRemoteConnectionState += OnClientConnectionState;
+        SubscribeToIdentityManager();
 
         foreach (NetworkConnection connection in ServerManager.Clients.Values)
         {
@@ -80,6 +83,7 @@ public class NetworkLobbyUI : NetworkBehaviour
 
     public override void OnStopServer()
     {
+        UnsubscribeFromIdentityManager();
         ServerManager.OnAuthenticationResult -= OnAuthenticationResult;
         ServerManager.OnRemoteConnectionState -= OnClientConnectionState;
         base.OnStopServer();
@@ -118,7 +122,7 @@ public class NetworkLobbyUI : NetworkBehaviour
 
         // Add the silent data first
         _playerIds.Add(connection.ClientId);
-        _playerReady.Add(false);
+        _playerReady.Add(GetRestoredReadyState(connection));
         
         // Add the Name LAST to safely trigger the UpdateUI() loop
         _playerNames.Add(playerName);
@@ -129,6 +133,73 @@ public class NetworkLobbyUI : NetworkBehaviour
     private void OnAuthenticationResult(NetworkConnection connection, bool authenticated)
     {
         if (authenticated) TryAddPlayer(connection);
+    }
+
+    private void SubscribeToIdentityManager()
+    {
+        UnsubscribeFromIdentityManager();
+        _identityManager = RejoinIdentityManager.Instance;
+
+        if (_identityManager != null)
+        {
+            _identityManager.ServerIdentityRegistered +=
+                OnServerIdentityRegistered;
+        }
+    }
+
+    private void UnsubscribeFromIdentityManager()
+    {
+        if (_identityManager != null)
+        {
+            _identityManager.ServerIdentityRegistered -=
+                OnServerIdentityRegistered;
+        }
+
+        _identityManager = null;
+    }
+
+    private bool GetRestoredReadyState(NetworkConnection connection)
+    {
+        if (connection == null ||
+            _identityManager == null ||
+            !_identityManager.TryGetPlayerToken(
+                connection,
+                out string playerToken) ||
+            LanHostMigrationManager.Instance == null ||
+            !LanHostMigrationManager.Instance.TryGetServerPlayerReady(
+                playerToken,
+                out bool isReady))
+        {
+            return false;
+        }
+
+        return isReady;
+    }
+
+    private void OnServerIdentityRegistered(
+        NetworkConnection connection,
+        string playerToken,
+        bool isReturningPlayer)
+    {
+        if (connection == null || !connection.IsAuthenticated)
+            return;
+
+        TryAddPlayer(connection);
+
+        int playerIndex = _playerIds.IndexOf(connection.ClientId);
+        if (playerIndex < 0 || playerIndex >= _playerReady.Count)
+            return;
+
+        bool restoredReady = false;
+        if (LanHostMigrationManager.Instance != null)
+        {
+            LanHostMigrationManager.Instance.TryGetServerPlayerReady(
+                playerToken,
+                out restoredReady);
+        }
+
+        if (_playerReady[playerIndex] != restoredReady)
+            _playerReady[playerIndex] = restoredReady;
     }
 
     private void OnClientConnectionState(NetworkConnection connection, RemoteConnectionStateArgs args)
@@ -337,7 +408,21 @@ public class NetworkLobbyUI : NetworkBehaviour
         int index = _playerIds.IndexOf(caller.ClientId);
         if (index != -1)
         {
-            _playerReady[index] = !_playerReady[index];
+            bool isReady = !_playerReady[index];
+            _playerReady[index] = isReady;
+
+            RejoinIdentityManager identityManager =
+                RejoinIdentityManager.Instance;
+            if (identityManager != null &&
+                identityManager.TryGetPlayerToken(
+                    caller,
+                    out string playerToken) &&
+                LanHostMigrationManager.Instance != null)
+            {
+                LanHostMigrationManager.Instance.TrySetServerPlayerReady(
+                    playerToken,
+                    isReady);
+            }
         }
     }
 
